@@ -135,5 +135,12 @@ struct input_state
     
     double xScroll;
     double yScroll;
+    
+    float sensitivity = 0.05f;
+    
+    float mouseYaw;
+    float mousePitch;
+    
+    bool firstMouse;
 };
 

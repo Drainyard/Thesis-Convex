@@ -1,7 +1,16 @@
-
 static void SetMatrixUniform(GLuint programID, const char* name, glm::mat4 matrix)
 {
     glUniformMatrix4fv(glGetUniformLocation(programID, name), 1, GL_FALSE, &matrix[0][0]);
+}
+
+static void SetVec3Uniform(GLuint programID, const char* name, glm::vec3 vec)
+{
+    glUniform3f(glGetUniformLocation(programID, name), vec.x, vec.y, vec.z);
+}
+
+static void SetFloatUniform(GLuint programID, const char* name, float value)
+{
+    glUniform1f(glGetUniformLocation(programID, name), value);
 }
 
 
@@ -127,9 +136,9 @@ static void InitializeOpenGL(render_context& renderContext)
     
     // Open a window and create its OpenGL context
     // (In the accompanying source code, this variable is global for simplicity)
-    auto width = 1024;
-    auto height = 768;
-    renderContext.window = glfwCreateWindow(width, height, "Convex Hull", NULL, NULL);
+    renderContext.screenWidth= 1024;
+    renderContext.screenHeight = 768;
+    renderContext.window = glfwCreateWindow(renderContext.screenWidth, renderContext.screenHeight, "Convex Hull", NULL, NULL);
     if(renderContext.window == NULL){
         fprintf( stderr, "Failed to open GLFW window\n" );
         glfwTerminate();
@@ -147,12 +156,16 @@ static void InitializeOpenGL(render_context& renderContext)
     printf("Glad Version: %d.%d\n", GLVersion.major, GLVersion.minor);
     
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
+    //glEnable(GL_CULL_FACE);
+    glDisable(GL_CULL_FACE);
     glDepthFunc(GL_LESS);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
-    glfwSetInputMode(renderContext.window, GLFW_STICKY_KEYS, GL_TRUE);
+    glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
     renderContext.basicShader = LoadShaders("../shaders/basic.vert", "../shaders/basic.frag");
+    
 }
 
 
@@ -160,39 +173,90 @@ static void ComputeModelTransformation(render_context& renderContext , double de
 {
     if(glfwGetMouseButton(renderContext.window, Key_MouseLeft) == GLFW_PRESS)
     {
-        object.orientation = glm::vec3(object.orientation.x - (float)inputState.yDelta * (float)deltaTime, object.orientation.y - (float)inputState.xDelta * (float)deltaTime, 0);
-        glm::quat qY = glm::quat(object.orientation.y - (float)inputState.yDelta * (float)deltaTime, 0, 1, 0);
-        glm::quat qX = glm::quat(object.orientation.x - (float)inputState.xDelta * (float)deltaTime, 1, 0 ,1);
-        auto rot = qY * qX;
-        object.transform = glm::toMat4(rot);
-        object.transform = glm::translate(object.transform, glm::vec3(0, 0, 0));
         
     }
 }
 
-static void RenderBasicCube(render_context& renderContext, model& cube, double deltaTime)
+static model LoadModel(render_context& renderContext, gl_buffer vbo, gl_buffer* uvBuffer = 0, gl_buffer* colorBuffer = 0, gl_buffer* normalBuffer = 0)
+{
+    model object = {};
+    
+    glGenVertexArrays(1, &object.VAO);
+    glBindVertexArray(object.VAO);
+    glGenBuffers(1, &object.VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, object.VBO);
+    glBufferData(GL_ARRAY_BUFFER, vbo.size, vbo.data, GL_STATIC_DRAW);
+    
+    if(uvBuffer)
+    {
+        glGenBuffers(1, &object.uvBufferHandle);
+        glBindBuffer(GL_ARRAY_BUFFER, object.uvBufferHandle);
+        glBufferData(GL_ARRAY_BUFFER, uvBuffer->size, uvBuffer->data, GL_STATIC_DRAW);
+        object.hasUV = true;
+        object.modelTexture = uvBuffer->uv.tex;
+    }
+    
+    if(colorBuffer)
+    {
+        glGenBuffers(1, &object.colorBufferHandle);
+        glBindBuffer(GL_ARRAY_BUFFER, object.colorBufferHandle);
+        glBufferData(GL_ARRAY_BUFFER, colorBuffer->size, colorBuffer->data, GL_STATIC_DRAW);
+        object.hasColor = true;
+    }
+    
+    if(normalBuffer)
+    {
+        glGenBuffers(1, &object.normalBufferHandle);
+        glBindBuffer(GL_ARRAY_BUFFER, object.normalBufferHandle);
+        glBufferData(GL_ARRAY_BUFFER, normalBuffer->size, normalBuffer->data, GL_STATIC_DRAW);
+        object.hasNormals = true;
+    }
+    
+    
+    object.position = glm::vec3(0);
+    object.orientation = glm::vec3(0);
+    object.transform = glm::mat4(1.0f);
+    
+    return object;
+}
+
+static void RenderModel(render_context& renderContext, model& m, double deltaTime, float alpha = 1.0, light* l = 0)
 {
     glUseProgram(renderContext.basicShader.programID);
-    ComputeModelTransformation(renderContext, deltaTime, cube);
-    SetMatrixUniform(renderContext.basicShader.programID, "M", cube.transform);
+    ComputeModelTransformation(renderContext, deltaTime, m);
+    SetMatrixUniform(renderContext.basicShader.programID, "M", m.transform);
     SetMatrixUniform(renderContext.basicShader.programID, "V", renderContext.viewMatrix);
     SetMatrixUniform(renderContext.basicShader.programID, "P", renderContext.projectionMatrix);
     
-    glBindVertexArray(cube.VAO);
+    SetVec3Uniform(renderContext.basicShader.programID, "lightPosWorld", l ? l->position : glm::vec3(1, 1, 1));
+    SetVec3Uniform(renderContext.basicShader.programID, "lightColor", l ? l->color : glm::vec3(1, 1, 1));
+    SetFloatUniform(renderContext.basicShader.programID, "lightPower", l ? l->power : 2.0f);
     
-    glBindTexture(GL_TEXTURE_2D, cube.modelTexture.textureID);
+    SetFloatUniform(renderContext.basicShader.programID, "alpha", alpha);
+    
+    glBindVertexArray(m.VAO);
     
     glEnableVertexAttribArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, cube.VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, m.VBO);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
     
-    glEnableVertexAttribArray(1);
-    glBindBuffer(GL_ARRAY_BUFFER, cube.uvBufferHandle);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    if(m.hasUV)
+    {
+        glBindTexture(GL_TEXTURE_2D, m.modelTexture.textureID);
+        glEnableVertexAttribArray(1);
+        glBindBuffer(GL_ARRAY_BUFFER, m.uvBufferHandle);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    }
+    
+    if(m.hasNormals)
+    {
+        glEnableVertexAttribArray(2);
+        glBindBuffer(GL_ARRAY_BUFFER, m.normalBufferHandle);
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    }
     
     glDrawArrays(GL_TRIANGLES, 0, 12 * 3);
     glDisableVertexAttribArray(0);
-    
 }
 
 static void Render(render_context& renderContext, double deltaTime)
@@ -203,19 +267,67 @@ static void Render(render_context& renderContext, double deltaTime)
 static void ComputeMatrices(render_context& renderContext, double deltaTime, glm::vec3 target)
 {
     
-    renderContext.projectionMatrix = glm::perspective(glm::radians(renderContext.FoV), 4.0f / 3.0f, 0.1f, 100.0f);
+    
+    if(renderContext.FoV >= 1.0f && renderContext.FoV <= 45.0f)
+        renderContext.FoV -= inputState.yScroll;
+    if(renderContext.FoV <= 1.0f)
+        renderContext.FoV = 1.0f;
+    if(renderContext.FoV >= 45.0f)
+        renderContext.FoV = 45.0f;
+    
+    renderContext.projectionMatrix = glm::perspective(glm::radians(renderContext.FoV), (float)renderContext.screenWidth / (float)renderContext.screenHeight, 0.1f, 100.0f);
     
     auto scrollSpeed = 10.0f;
     
-    renderContext.position += glm::vec3(target.x - renderContext.position.x * deltaTime * inputState.yScroll * scrollSpeed, target.y - renderContext.position.y * deltaTime * inputState.yScroll * scrollSpeed, target.z - renderContext.position.z * deltaTime * inputState.yScroll * scrollSpeed);
-    renderContext.viewMatrix = glm::lookAt(renderContext.position, target, glm::vec3(0, 1, 0));
+    
+    float cameraSpeed = 2.5f * deltaTime;
+    float panSpeed = 5.0f * deltaTime;
+    if(glfwGetKey(renderContext.window, Key_W) == GLFW_PRESS)
+    {
+        renderContext.position += cameraSpeed * renderContext.direction;
+    }
+    if(glfwGetKey(renderContext.window, Key_S) == GLFW_PRESS)
+    {
+        renderContext.position -= cameraSpeed * renderContext.direction;
+    }
+    if(glfwGetKey(renderContext.window, Key_A) == GLFW_PRESS)
+    {
+        renderContext.position -= glm::normalize(glm::cross(renderContext.direction, renderContext.up)) * cameraSpeed;
+    }
+    if(glfwGetKey(renderContext.window, Key_D) == GLFW_PRESS)
+    {
+        renderContext.position += glm::normalize(glm::cross(renderContext.direction, renderContext.up)) * cameraSpeed;
+    }
+    
+    if(glfwGetMouseButton(renderContext.window, Key_MouseLeft) == GLFW_PRESS)
+    {
+        glm::vec3 front;
+        front.x = cos(glm::radians(inputState.mousePitch)) * cos(glm::radians(inputState.mouseYaw));
+        front.y = sin(glm::radians(inputState.mousePitch));
+        front.z = cos(glm::radians(inputState.mousePitch)) * sin(glm::radians(inputState.mouseYaw));
+        renderContext.direction = glm::normalize(front);
+    }
+    if(glfwGetMouseButton(renderContext.window, Key_MouseRight) == GLFW_PRESS)
+    {
+        auto ySign = inputState.yDelta < 0 ? -1.0f : 1.0f;
+        renderContext.position += glm::normalize(glm::cross(renderContext.direction, renderContext.up)) * panSpeed * (float)-inputState.xDelta;
+        renderContext.position += glm::normalize(renderContext.up) * panSpeed * (float)-inputState.yDelta;
+        
+    }
+    renderContext.viewMatrix = glm::lookAt(renderContext.position, renderContext.position + renderContext.direction, renderContext.up);
 }
 
 
-static texture LoadTGA(const char* Path)
+static texture LoadTexture(const char* Path)
 {
     texture newTex;
-    newTex.data = stbi_load(Path, &newTex.width, &newTex.height, 0, STBI_rgb);
+    newTex.data = stbi_load(Path, &newTex.width, &newTex.height, 0, STBI_rgb_alpha);
+    
+    if(!newTex.data)
+    {
+        fprintf(stderr, "Could not load texture\n");
+        return newTex;
+    }
     
     GLuint textureID;
     glGenTextures(1, &textureID);
@@ -223,7 +335,7 @@ static texture LoadTGA(const char* Path)
     glBindTexture(GL_TEXTURE_2D, textureID);
     
     newTex.textureID = textureID;
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, newTex.width, newTex.height, 0, GL_RGB, GL_UNSIGNED_BYTE, newTex.data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, newTex.width, newTex.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, newTex.data);
     
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
