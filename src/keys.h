@@ -75,8 +75,8 @@
 #define Key_9 GLFW_KEY_9
 #define Key_Add GLFW_KEY_ADD
 #define Key_Subtract GLFW_KEY_SUBTRACT
-#define Key_MouseLeft GLFW_KEY_MOUSE_LEFT
-#define Key_MouseRight GLFW_KEY_MOUSE_RIGHT
+#define Key_MouseLeft GLFW_MOUSE_BUTTON_LEFT
+#define Key_MouseRight GLFW_MOUSE_BUTTON_RIGHT
 #define Key_Unknown GLFW_KEY_UNKNOWN
 #define Key_Apostrophe GLFW_KEY_APOSTROPHE
 #define Key_Comma GLFW_KEY_COMMA
@@ -124,4 +124,16 @@
 #define Key_KPEqual GLFW_KEY_KPEQUAL
 #define Key_Last Key_KPEqual
 
+
+struct input_state
+{
+    double xPos;
+    double yPos;
+    
+    double xDelta;
+    double yDelta;
+    
+    double xScroll;
+    double yScroll;
+};
 

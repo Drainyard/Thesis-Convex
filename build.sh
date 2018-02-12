@@ -1,6 +1,6 @@
 #!/bin/bash
 
-WIGNORE="-Wno-zero-as-null-pointer-constant -Wno-old-style-cast -Wno-c++98-compat"
+WIGNORE="-Wno-zero-as-null-pointer-constant -Wno-old-style-cast -Wno-c++98-compat -Wno-sign-conversion -Wno-cast-align -Wno-double-promotion"
 
 pushd build
 
