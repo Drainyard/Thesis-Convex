@@ -6,6 +6,12 @@
 #include <glm/glm.hpp>
 #include "keys.h"
 
+static void PrintError()
+{
+    if(auto err = glGetError() != GL_NO_ERROR)
+        printf("%d\n", glGetError());
+}
+
 int main()
 {
     if( !glfwInit() )
@@ -37,11 +43,39 @@ int main()
     // Ensure we can capture the escape key being pressed below
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
     
+    
+    GLuint VertexArrayID;
+    glGenVertexArrays(1, &VertexArrayID);
+    glBindVertexArray(VertexArrayID);
+    
+    static const GLfloat g_vertex_buffer_data[] = {
+        -1.0f, -1.0f, 0.0f,
+        1.0f, -1.0f, 0.0f,
+        0.0f,  1.0f, 0.0f,
+    };
+    
+    GLuint vertexBuffer;
+    glGenBuffers(1, &vertexBuffer);
+    PrintError();
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+    PrintError();
+    glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
+    PrintError();
     // Check if the ESC key was pressed or the window was closed
     while(glfwGetKey(window, Key_Escape ) != GLFW_PRESS &&
           glfwWindowShouldClose(window) == 0 )
     {
-        // Draw nothing, see you in tutorial 2 !
+        glEnableVertexAttribArray(0);
+        PrintError();
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+        PrintError();
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+        PrintError();
+        
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        PrintError();
+        glDisableVertexAttribArray(0);
+        PrintError();
         
         // Swap buffers
         glfwSwapBuffers(window);
