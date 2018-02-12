@@ -160,7 +160,7 @@ int main()
     // Ensure we can capture the escape key being pressed below
     glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
     
-    GLuint ProgramID = LoadShaders("shaders/basic.vert", "shaders/basic.frag");
+    GLuint ProgramID = LoadShaders("../shaders/basic.vert", "../shaders/basic.frag");
     
     // Check if the ESC key was pressed or the window was closed
     while(glfwGetKey(window, Key_Escape ) != GLFW_PRESS &&

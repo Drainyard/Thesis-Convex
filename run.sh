@@ -1,4 +1,8 @@
 #!/bin/bash
 
-./build/main
+pushd build
+
+./main
+
+popd
 
