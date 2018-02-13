@@ -18,13 +18,6 @@ static void SetFloatUniform(GLuint programID, const char* name, float value)
     glUniform1f(glGetUniformLocation(programID, name), value);
 }
 
-
-static void PrintGLError()
-{
-    if(auto err = glGetError() != GL_NO_ERROR)
-        printf("%d\n", err);
-}
-
 void MessageCallback(GLenum source,
                      GLenum type,
                      GLuint id,
@@ -33,9 +26,13 @@ void MessageCallback(GLenum source,
                      const GLchar* message,
                      const void* userParam)
 {
-    fprintf( stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
-            (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
-            type, severity, message);
+    (void)userParam; // Silence unused warning
+    if(type == GL_DEBUG_TYPE_ERROR)
+    {
+        fprintf( stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s, source = %x, id = %ud, length %ud= \n",
+                (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
+                type, severity, message, source, id, length);
+    }
 }
 
 
@@ -49,7 +46,7 @@ static glm::mat4 ComputeTransformation(glm::vec3 scale = glm::vec3(1.0f), glm::q
     return t;
 }
 
-static void ComputeModelTransformation(render_context& renderContext , double deltaTime, model& object)
+static void ComputeModelTransformation(model& object)
 {
     object.transform = ComputeTransformation(object.scale, object.orientation, object.position);
 }
@@ -191,13 +188,14 @@ static void InitializeOpenGL(render_context& renderContext)
     printf("Glad Version: %d.%d\n", GLVersion.major, GLVersion.minor);
     
     glEnable(GL_DEPTH_TEST);
+    
     //glEnable(GL_CULL_FACE);
     glDisable(GL_CULL_FACE);
     glDepthFunc(GL_LESS);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
-    // During init, enable debug output
+    // Enable debug output
     glEnable              (GL_DEBUG_OUTPUT);
     glDebugMessageCallback((GLDEBUGPROC) MessageCallback, 0);
     
@@ -310,7 +308,7 @@ static model& LoadModel(render_context& renderContext, gl_buffer vbo, gl_buffer*
     return object;
 }
 
-static void UpdateBuffer(render_context& renderContext, gl_buffer newBuffer, int bufferHandle)
+static void UpdateBuffer(gl_buffer newBuffer, int bufferHandle)
 {
     if(newBuffer.size != 0 && newBuffer.data)
     {
@@ -319,11 +317,11 @@ static void UpdateBuffer(render_context& renderContext, gl_buffer newBuffer, int
     }
 }
 
-static void RenderModel(render_context& renderContext, model& m, double deltaTime)
+static void RenderModel(render_context& renderContext, model& m)
 {
     auto& material = m.material;
     glUseProgram(material.materialShader.programID);
-    ComputeModelTransformation(renderContext, deltaTime, m);
+    ComputeModelTransformation(m);
     SetMatrixUniform(material.materialShader.programID, "M", m.transform);
     SetMatrixUniform(material.materialShader.programID, "V", renderContext.viewMatrix);
     SetMatrixUniform(material.materialShader.programID, "P", renderContext.projectionMatrix);
@@ -334,7 +332,7 @@ static void RenderModel(render_context& renderContext, model& m, double deltaTim
     if(renderContext.lightCount > 0)
     {
         auto& light = renderContext.lights[0];
-        lightPos = light.position;
+        lightPos = renderContext.position; //light.position;
         lightColor = light.color;
         lightPower = light.power;
     }
@@ -381,7 +379,6 @@ static void RenderModel(render_context& renderContext, model& m, double deltaTim
 static void RenderGrid(render_context& renderContext, glm::vec4 color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f), float lineWidth = 2.0f)
 {
     float gridSize = 10.0f;
-    float yOrigin = -5.0f;
     glm::vec3 offset = glm::vec3(5.0f, 0.0f, 5.0f);
     for(int x = 0; x < gridSize; x++)
     {
@@ -397,16 +394,16 @@ static void RenderGrid(render_context& renderContext, glm::vec4 color = glm::vec
 }
 
 
-static void Render(render_context& renderContext, double deltaTime)
+static void Render(render_context& renderContext)
 {
     for(int modelIndex = 0; modelIndex < renderContext.modelCount; modelIndex++)
     {
-        RenderModel(renderContext, renderContext.models[modelIndex], deltaTime);
+        RenderModel(renderContext, renderContext.models[modelIndex]);
     }
     RenderGrid(renderContext, glm::vec4(0.6f, 0.6f, 0.6f, 1.0f), 1.0f);
 }
 
-static void ComputeMatrices(render_context& renderContext, double deltaTime, glm::vec3 target)
+static void ComputeMatrices(render_context& renderContext, double deltaTime)
 {
     if(renderContext.FoV >= 1.0f && renderContext.FoV <= 45.0f)
         renderContext.FoV -= inputState.yScroll;
@@ -417,38 +414,34 @@ static void ComputeMatrices(render_context& renderContext, double deltaTime, glm
     
     renderContext.projectionMatrix = glm::perspective(glm::radians(renderContext.FoV), (float)renderContext.screenWidth / (float)renderContext.screenHeight, 0.1f, 100.0f);
     
-    auto scrollSpeed = 10.0f;
-    
-    float cameraSpeed = 2.5f * deltaTime;
-    float panSpeed = 5.0f * deltaTime;
+    float panSpeed = 7.0f * (float)deltaTime;
     if(glfwGetKey(renderContext.window, Key_W) == GLFW_PRESS)
     {
-        renderContext.position += cameraSpeed * renderContext.direction;
+        renderContext.position += panSpeed * renderContext.direction;
     }
     if(glfwGetKey(renderContext.window, Key_S) == GLFW_PRESS)
     {
-        renderContext.position -= cameraSpeed * renderContext.direction;
+        renderContext.position -= panSpeed * renderContext.direction;
     }
     if(glfwGetKey(renderContext.window, Key_A) == GLFW_PRESS)
     {
-        renderContext.position -= glm::normalize(glm::cross(renderContext.direction, renderContext.up)) * cameraSpeed;
+        renderContext.position -= glm::normalize(glm::cross(renderContext.direction, renderContext.up)) * panSpeed;
     }
     if(glfwGetKey(renderContext.window, Key_D) == GLFW_PRESS)
     {
-        renderContext.position += glm::normalize(glm::cross(renderContext.direction, renderContext.up)) * cameraSpeed;
+        renderContext.position += glm::normalize(glm::cross(renderContext.direction, renderContext.up)) * panSpeed;
     }
     
     if(glfwGetMouseButton(renderContext.window, Key_MouseLeft) == GLFW_PRESS)
     {
         glm::vec3 front;
-        front.x = cos(glm::radians(inputState.mousePitch)) * cos(glm::radians(inputState.mouseYaw));
-        front.y = sin(glm::radians(inputState.mousePitch));
-        front.z = cos(glm::radians(inputState.mousePitch)) * sin(glm::radians(inputState.mouseYaw));
+        front.x = (float)(cos(glm::radians(inputState.mousePitch)) * cos(glm::radians(inputState.mouseYaw)));
+        front.y = (float)(sin(glm::radians(inputState.mousePitch)));
+        front.z = (float)(cos(glm::radians(inputState.mousePitch)) * sin(glm::radians(inputState.mouseYaw)));
         renderContext.direction = glm::normalize(front);
     }
     if(glfwGetMouseButton(renderContext.window, Key_MouseRight) == GLFW_PRESS)
     {
-        auto ySign = inputState.yDelta < 0 ? -1.0f : 1.0f;
         auto right = glm::normalize(glm::cross(renderContext.direction, renderContext.up));
         renderContext.position += right * panSpeed * (float)-inputState.xDelta;
         auto up = glm::normalize(glm::cross(right, renderContext.direction));
@@ -457,7 +450,6 @@ static void ComputeMatrices(render_context& renderContext, double deltaTime, glm
     }
     renderContext.viewMatrix = glm::lookAt(renderContext.position, renderContext.position + renderContext.direction, renderContext.up);
 }
-
 
 static texture LoadTexture(const char* Path)
 {

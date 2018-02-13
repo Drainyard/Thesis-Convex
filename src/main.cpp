@@ -69,7 +69,7 @@ int main()
     inputState.mouseYaw = -90.0f;
     inputState.mousePitch = -45.0f;
     
-    CreateLight(renderContext, glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 2.0f);
+    CreateLight(renderContext, glm::vec3(0.0f, 7.5f, 10.0f), glm::vec3(1, 1, 1), 25.0f);
     
     // Check if the ESC key was pressed or the window was closed
     while(glfwGetKey(renderContext.window, Key_Escape ) != GLFW_PRESS &&
@@ -81,9 +81,9 @@ int main()
         
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-        ComputeMatrices(renderContext, deltaTime, glm::vec3(0, 0, 0));
+        ComputeMatrices(renderContext, deltaTime);
         
-        Render(renderContext, deltaTime);
+        Render(renderContext);
         
         // Swap buffers
         glfwSwapBuffers(renderContext.window);

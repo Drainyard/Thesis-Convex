@@ -26,6 +26,7 @@
     
     static void MouseScrollCallback(GLFWwindow* window, double xScroll, double yScroll)
     {
+        (void)window; // Silence unused warning
         inputState.xScroll = xScroll;
         inputState.yScroll = yScroll;
     }
