@@ -1,7 +1,6 @@
     static void MousePositionCallback(GLFWwindow * window, double xPos, double yPos)
     {
-        
-        if(inputState.firstMouse) // this bool variable is initially set to true
+        if(inputState.firstMouse)
         {
             inputState.xPos = xPos;
             inputState.yPos = yPos;

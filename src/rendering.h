@@ -11,25 +11,6 @@ struct shader
     int programID;
 };
 
-struct render_context
-{
-    glm::mat4 projectionMatrix;
-    glm::mat4 viewMatrix;
-    
-    float FoV;
-    
-    glm::vec3 position;
-    glm::vec3 direction;
-    glm::vec3 up;
-    
-    int screenWidth;
-    int screenHeight;
-    
-    GLFWwindow* window;
-    
-    shader basicShader;
-};
-
 enum Buffer_Type
 {
     BT_vertexBuffer,
@@ -69,13 +50,41 @@ struct light
     float power;
 };
 
+enum Material_Type
+{
+    MT_color,
+    MT_texture
+};
+
+struct render_material
+{
+    Material_Type type;
+    union
+    {
+        struct
+        {
+            glm::vec3 diffuseColor;
+        } diffuse;
+        struct
+        {
+            texture tex;
+        } texture;
+    };
+    
+    glm::vec3 specularColor;
+    float alpha;
+    
+    shader materialShader;
+};
+
 struct model
 {
     glm::vec3 position;
-    glm::vec3 orientation;
+    glm::quat orientation;
+    glm::vec3 scale;
     glm::mat4 transform;
     
-    texture modelTexture;
+    render_material material;
     
     GLuint VAO;
     GLuint VBO;
@@ -87,6 +96,38 @@ struct model
     
     GLuint normalBufferHandle;
     bool hasNormals;
+};
+
+
+struct render_context
+{
+    glm::mat4 projectionMatrix;
+    glm::mat4 viewMatrix;
+    
+    float FoV;
+    
+    glm::vec3 position;
+    glm::vec3 direction;
+    glm::vec3 up;
+    glm::vec3 right;
+    
+    int screenWidth;
+    int screenHeight;
+    
+    GLFWwindow* window;
+    
+    shader textureShader;
+    shader colorShader;
+    shader basicShader;
+    
+    model models[64];
+    int modelCount;
+    
+    light lights[64];
+    int lightCount;
+    
+    GLuint primitiveVAO;
+    GLuint primitiveVBO;
 };
 
 static GLfloat uvs[] = {

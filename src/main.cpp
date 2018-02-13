@@ -28,8 +28,8 @@ int main()
 {
     render_context renderContext = {};
     renderContext.FoV = 45.0f;
-    renderContext.position = glm::vec3(-10.0f, 3.0f, 3.0f);
-    renderContext.direction = glm::vec3(0.0f, 0.0f, -1.0f);
+    renderContext.position = glm::vec3(0.0f, 7.5f, 10.0f);
+    renderContext.direction = glm::vec3(0.0f, -0.75f, -1.0f);
     renderContext.up = glm::vec3(0.0f, 1.0f, 0.0f);
     
     InitializeOpenGL(renderContext);
@@ -50,18 +50,26 @@ int main()
     normalBuffer.data = normals;
     normalBuffer.size = sizeof(normals);
     
-    auto cube = LoadModel(renderContext, vbo, &uvBuffer, 0, &normalBuffer);
+    auto& m1 = LoadModel(renderContext, vbo, 0, 0, &normalBuffer, glm::vec3(0.5f, 0.5f, 0.0f));
+    auto& m2 = LoadModel(renderContext, vbo, 0, 0, &normalBuffer, glm::vec3(0.5f, 0.5f, 0.0f));
     
-    glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
+    m1.position = glm::vec3(0, 0, 0);
+    m1.material.diffuse.diffuseColor = glm::vec3(1.0, 0.0, 0.0);
+    m1.scale = glm::vec3(5.0f, 1.0f, 1.0f);
+    m2.position = glm::vec3(0, 2, 0);
+    m2.material.diffuse.diffuseColor = glm::vec3(0.0, 1.0, 0.0);
+    m2.scale = glm::vec3(5.0f, 3.0f, 3.0f);
+    m2.orientation = glm::normalize(glm::quat(glm::radians(23.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
+    
+    glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
     
     double lastFrame = glfwGetTime();
     double currentFrame = 0.0;
     double deltaTime;
+    inputState.mouseYaw = -90.0f;
+    inputState.mousePitch = -45.0f;
     
-    light l = {};
-    l.position = glm::vec3(1, 1, 1);
-    l.color = glm::vec3(1, 1, 1);
-    l.power = 2.0f;
+    CreateLight(renderContext, glm::vec3(1, 1, 1), glm::vec3(1, 1, 1), 2.0f);
     
     // Check if the ESC key was pressed or the window was closed
     while(glfwGetKey(renderContext.window, Key_Escape ) != GLFW_PRESS &&
@@ -75,7 +83,7 @@ int main()
         
         ComputeMatrices(renderContext, deltaTime, glm::vec3(0, 0, 0));
         
-        RenderModel(renderContext, cube, deltaTime, 0.3f, &l);
+        Render(renderContext, deltaTime);
         
         // Swap buffers
         glfwSwapBuffers(renderContext.window);

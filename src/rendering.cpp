@@ -8,6 +8,11 @@ static void SetVec3Uniform(GLuint programID, const char* name, glm::vec3 vec)
     glUniform3f(glGetUniformLocation(programID, name), vec.x, vec.y, vec.z);
 }
 
+static void SetVec4Uniform(GLuint programID, const char* name, glm::vec4 vec)
+{
+    glUniform4f(glGetUniformLocation(programID, name), vec.x, vec.y, vec.z, vec.w);
+}
+
 static void SetFloatUniform(GLuint programID, const char* name, float value)
 {
     glUniform1f(glGetUniformLocation(programID, name), value);
@@ -19,6 +24,36 @@ static void PrintGLError()
     if(auto err = glGetError() != GL_NO_ERROR)
         printf("%d\n", err);
 }
+
+void MessageCallback(GLenum source,
+                     GLenum type,
+                     GLuint id,
+                     GLenum severity,
+                     GLsizei length,
+                     const GLchar* message,
+                     const void* userParam)
+{
+    fprintf( stderr, "GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+            (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
+            type, severity, message);
+}
+
+
+
+static glm::mat4 ComputeTransformation(glm::vec3 scale = glm::vec3(1.0f), glm::quat orientation = glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3 position = glm::vec3(0.0f))
+{
+    glm::mat4 t;
+    t = glm::scale(glm::mat4(1.0f), scale);
+    t = glm::toMat4(orientation) * t;
+    t = glm::translate(t, position);
+    return t;
+}
+
+static void ComputeModelTransformation(render_context& renderContext , double deltaTime, model& object)
+{
+    object.transform = ComputeTransformation(object.scale, object.orientation, object.position);
+}
+
 
 
 static char* LoadShaderFromFile(const char* Path)
@@ -136,8 +171,8 @@ static void InitializeOpenGL(render_context& renderContext)
     
     // Open a window and create its OpenGL context
     // (In the accompanying source code, this variable is global for simplicity)
-    renderContext.screenWidth= 1024;
-    renderContext.screenHeight = 768;
+    renderContext.screenWidth= 1600;
+    renderContext.screenHeight = 900;
     renderContext.window = glfwCreateWindow(renderContext.screenWidth, renderContext.screenHeight, "Convex Hull", NULL, NULL);
     if(renderContext.window == NULL){
         fprintf( stderr, "Failed to open GLFW window\n" );
@@ -162,24 +197,69 @@ static void InitializeOpenGL(render_context& renderContext)
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
+    // During init, enable debug output
+    glEnable              (GL_DEBUG_OUTPUT);
+    glDebugMessageCallback((GLDEBUGPROC) MessageCallback, 0);
+    
+    
     glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
+    renderContext.textureShader = LoadShaders("../shaders/texture.vert", "../shaders/texture.frag");
+    renderContext.colorShader = LoadShaders("../shaders/color.vert", "../shaders/color.frag");
     renderContext.basicShader = LoadShaders("../shaders/basic.vert", "../shaders/basic.frag");
     
+    // Initialize line buffer
+    glGenVertexArrays(1, &renderContext.primitiveVAO);
+    glBindVertexArray(renderContext.primitiveVAO);
+    glGenBuffers(1, &renderContext.primitiveVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, renderContext.primitiveVBO);
+    
+    glBindVertexArray(0);
 }
 
-
-static void ComputeModelTransformation(render_context& renderContext , double deltaTime, model& object)
+static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec3(0.0f), glm::vec3 end = glm::vec3(0.0f), glm::vec4 color = glm::vec4(1.0f), float lineWidth = 2.0f)
 {
-    if(glfwGetMouseButton(renderContext.window, Key_MouseLeft) == GLFW_PRESS)
-    {
-        
-    }
+    glUseProgram(renderContext.basicShader.programID);
+    
+    glBindVertexArray(renderContext.primitiveVAO);
+    
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, renderContext.primitiveVBO);
+    auto width = 0.02f * lineWidth;
+    
+    auto normal =  glm::vec3(width/2.0f, 0.0f, width/2.0f);
+    
+    auto v1 = start - normal;
+    auto v2 = start + normal;
+    auto v3 = end - normal;
+    auto v4 = end + normal;
+    
+    GLfloat points[18] = {v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, v3.x, v3.y, v3.z, v4.x, v4.y, v4.z, v2.x, v2.y, v2.z};
+    glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(GLfloat), &points[0], GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
+    
+    SetMatrixUniform(renderContext.basicShader.programID, "M", glm::mat4(1.0f));
+    SetMatrixUniform(renderContext.basicShader.programID, "V", renderContext.viewMatrix);
+    SetMatrixUniform(renderContext.basicShader.programID, "P", renderContext.projectionMatrix);
+    SetVec4Uniform(renderContext.basicShader.programID, "c", color);
+    
+    glDrawArrays(GL_TRIANGLES, 0, 18);
 }
 
-static model LoadModel(render_context& renderContext, gl_buffer vbo, gl_buffer* uvBuffer = 0, gl_buffer* colorBuffer = 0, gl_buffer* normalBuffer = 0)
+static light& CreateLight(render_context& renderContext, glm::vec3 position = glm::vec3(0.0f), glm::vec3 color = glm::vec3(1.0f), float power = 2.0f)
 {
-    model object = {};
+    auto& l = renderContext.lights[renderContext.lightCount++];
+    
+    l.position = position;
+    l.color = color;
+    l.power = power;
+    
+    return l;
+}
+
+static model& LoadModel(render_context& renderContext, gl_buffer vbo, gl_buffer* uvBuffer = 0, gl_buffer* colorBuffer = 0, gl_buffer* normalBuffer = 0, glm::vec3 diffuseColor = glm::vec3(1.0f))
+{
+    model& object = renderContext.models[renderContext.modelCount++];
     
     glGenVertexArrays(1, &object.VAO);
     glBindVertexArray(object.VAO);
@@ -187,13 +267,25 @@ static model LoadModel(render_context& renderContext, gl_buffer vbo, gl_buffer* 
     glBindBuffer(GL_ARRAY_BUFFER, object.VBO);
     glBufferData(GL_ARRAY_BUFFER, vbo.size, vbo.data, GL_STATIC_DRAW);
     
+    auto& mat = object.material;
+    mat.specularColor = glm::vec3(1, 1, 1);
+    mat.alpha = 1.0f;
+    
     if(uvBuffer)
     {
         glGenBuffers(1, &object.uvBufferHandle);
         glBindBuffer(GL_ARRAY_BUFFER, object.uvBufferHandle);
         glBufferData(GL_ARRAY_BUFFER, uvBuffer->size, uvBuffer->data, GL_STATIC_DRAW);
         object.hasUV = true;
-        object.modelTexture = uvBuffer->uv.tex;
+        mat.type = MT_texture;
+        mat.texture.tex = uvBuffer->uv.tex;
+        mat.materialShader = renderContext.textureShader;
+    }
+    else
+    {
+        mat.type = MT_color;
+        mat.diffuse.diffuseColor = diffuseColor;
+        mat.materialShader = renderContext.colorShader;
     }
     
     if(colorBuffer)
@@ -202,6 +294,9 @@ static model LoadModel(render_context& renderContext, gl_buffer vbo, gl_buffer* 
         glBindBuffer(GL_ARRAY_BUFFER, object.colorBufferHandle);
         glBufferData(GL_ARRAY_BUFFER, colorBuffer->size, colorBuffer->data, GL_STATIC_DRAW);
         object.hasColor = true;
+        mat.type = MT_color;
+        mat.diffuse.diffuseColor = glm::vec3(1, 1, 1);
+        mat.materialShader = renderContext.colorShader;
     }
     
     if(normalBuffer)
@@ -212,27 +307,48 @@ static model LoadModel(render_context& renderContext, gl_buffer vbo, gl_buffer* 
         object.hasNormals = true;
     }
     
-    
-    object.position = glm::vec3(0);
-    object.orientation = glm::vec3(0);
-    object.transform = glm::mat4(1.0f);
-    
     return object;
 }
 
-static void RenderModel(render_context& renderContext, model& m, double deltaTime, float alpha = 1.0, light* l = 0)
+static void UpdateBuffer(render_context& renderContext, gl_buffer newBuffer, int bufferHandle)
 {
-    glUseProgram(renderContext.basicShader.programID);
+    if(newBuffer.size != 0 && newBuffer.data)
+    {
+        glBindBuffer(GL_ARRAY_BUFFER, bufferHandle);
+        glBufferData(GL_ARRAY_BUFFER, newBuffer.size, newBuffer.data, GL_STATIC_DRAW);
+    }
+}
+
+static void RenderModel(render_context& renderContext, model& m, double deltaTime)
+{
+    auto& material = m.material;
+    glUseProgram(material.materialShader.programID);
     ComputeModelTransformation(renderContext, deltaTime, m);
-    SetMatrixUniform(renderContext.basicShader.programID, "M", m.transform);
-    SetMatrixUniform(renderContext.basicShader.programID, "V", renderContext.viewMatrix);
-    SetMatrixUniform(renderContext.basicShader.programID, "P", renderContext.projectionMatrix);
+    SetMatrixUniform(material.materialShader.programID, "M", m.transform);
+    SetMatrixUniform(material.materialShader.programID, "V", renderContext.viewMatrix);
+    SetMatrixUniform(material.materialShader.programID, "P", renderContext.projectionMatrix);
     
-    SetVec3Uniform(renderContext.basicShader.programID, "lightPosWorld", l ? l->position : glm::vec3(1, 1, 1));
-    SetVec3Uniform(renderContext.basicShader.programID, "lightColor", l ? l->color : glm::vec3(1, 1, 1));
-    SetFloatUniform(renderContext.basicShader.programID, "lightPower", l ? l->power : 2.0f);
+    auto lightPos = glm::vec3(1, 1, 1);
+    auto lightColor = glm::vec3(1, 1, 1);
+    auto lightPower = 2.0f;
+    if(renderContext.lightCount > 0)
+    {
+        auto& light = renderContext.lights[0];
+        lightPos = light.position;
+        lightColor = light.color;
+        lightPower = light.power;
+    }
     
-    SetFloatUniform(renderContext.basicShader.programID, "alpha", alpha);
+    SetVec3Uniform(material.materialShader.programID, "lightPosWorld", lightPos);
+    SetVec3Uniform(material.materialShader.programID, "lightColor", lightColor);
+    SetFloatUniform(material.materialShader.programID, "lightPower", lightPower);
+    SetVec3Uniform(material.materialShader.programID, "specularColor", material.specularColor);
+    SetFloatUniform(material.materialShader.programID, "alpha", material.alpha);
+    
+    if(material.type == MT_color)
+    {
+        SetVec3Uniform(material.materialShader.programID, "diffuseColor", material.diffuse.diffuseColor);
+    }
     
     glBindVertexArray(m.VAO);
     
@@ -242,7 +358,7 @@ static void RenderModel(render_context& renderContext, model& m, double deltaTim
     
     if(m.hasUV)
     {
-        glBindTexture(GL_TEXTURE_2D, m.modelTexture.textureID);
+        glBindTexture(GL_TEXTURE_2D, m.material.texture.tex.textureID);
         glEnableVertexAttribArray(1);
         glBindBuffer(GL_ARRAY_BUFFER, m.uvBufferHandle);
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
@@ -257,17 +373,41 @@ static void RenderModel(render_context& renderContext, model& m, double deltaTim
     
     glDrawArrays(GL_TRIANGLES, 0, 12 * 3);
     glDisableVertexAttribArray(0);
+    glDisableVertexAttribArray(1);
+    glDisableVertexAttribArray(2);
+    glBindVertexArray(0);
 }
+
+static void RenderGrid(render_context& renderContext, glm::vec4 color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f), float lineWidth = 2.0f)
+{
+    float gridSize = 10.0f;
+    float yOrigin = -5.0f;
+    glm::vec3 offset = glm::vec3(5.0f, 0.0f, 5.0f);
+    for(int x = 0; x < gridSize; x++)
+    {
+        for(int y = 0; y < gridSize; y++)
+        {
+            RenderLine(renderContext, glm::vec3(x, 0.0f, y) - offset, glm::vec3(gridSize, 0.0f, y) - offset, color, lineWidth);
+            RenderLine(renderContext, glm::vec3(x, 0.0f, y) - offset, glm::vec3(x, 0.0f, gridSize) - offset, color, lineWidth);
+        }
+    }
+    
+    RenderLine(renderContext, glm::vec3(gridSize, 0.0f, 0.0f) - offset, glm::vec3(gridSize, 0.0f, gridSize) - offset, color, lineWidth);
+    RenderLine(renderContext, glm::vec3(0.0f, 0.0f, gridSize) - offset, glm::vec3(gridSize, 0.0f, gridSize) - offset, color, lineWidth);
+}
+
 
 static void Render(render_context& renderContext, double deltaTime)
 {
-    
+    for(int modelIndex = 0; modelIndex < renderContext.modelCount; modelIndex++)
+    {
+        RenderModel(renderContext, renderContext.models[modelIndex], deltaTime);
+    }
+    RenderGrid(renderContext, glm::vec4(0.6f, 0.6f, 0.6f, 1.0f), 1.0f);
 }
 
 static void ComputeMatrices(render_context& renderContext, double deltaTime, glm::vec3 target)
 {
-    
-    
     if(renderContext.FoV >= 1.0f && renderContext.FoV <= 45.0f)
         renderContext.FoV -= inputState.yScroll;
     if(renderContext.FoV <= 1.0f)
@@ -278,7 +418,6 @@ static void ComputeMatrices(render_context& renderContext, double deltaTime, glm
     renderContext.projectionMatrix = glm::perspective(glm::radians(renderContext.FoV), (float)renderContext.screenWidth / (float)renderContext.screenHeight, 0.1f, 100.0f);
     
     auto scrollSpeed = 10.0f;
-    
     
     float cameraSpeed = 2.5f * deltaTime;
     float panSpeed = 5.0f * deltaTime;
@@ -310,8 +449,10 @@ static void ComputeMatrices(render_context& renderContext, double deltaTime, glm
     if(glfwGetMouseButton(renderContext.window, Key_MouseRight) == GLFW_PRESS)
     {
         auto ySign = inputState.yDelta < 0 ? -1.0f : 1.0f;
-        renderContext.position += glm::normalize(glm::cross(renderContext.direction, renderContext.up)) * panSpeed * (float)-inputState.xDelta;
-        renderContext.position += glm::normalize(renderContext.up) * panSpeed * (float)-inputState.yDelta;
+        auto right = glm::normalize(glm::cross(renderContext.direction, renderContext.up));
+        renderContext.position += right * panSpeed * (float)-inputState.xDelta;
+        auto up = glm::normalize(glm::cross(right, renderContext.direction));
+        renderContext.position += glm::normalize(up) * panSpeed * (float)-inputState.yDelta;
         
     }
     renderContext.viewMatrix = glm::lookAt(renderContext.position, renderContext.position + renderContext.direction, renderContext.up);
