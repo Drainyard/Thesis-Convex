@@ -46,7 +46,7 @@ static glm::mat4 ComputeTransformation(glm::vec3 scale = glm::vec3(1.0f), glm::q
     return t;
 }
 
-static void ComputeModelTransformation(model& object)
+static void ComputeMeshTransformation(mesh& object)
 {
     object.transform = ComputeTransformation(object.scale, object.orientation, object.position);
 }
@@ -118,9 +118,9 @@ static shader LoadShaders(const char* vertexFilePath, const char* fragmentFilePa
     glGetShaderiv(fragmentShaderID, GL_INFO_LOG_LENGTH, &infoLogLength);
     if(infoLogLength > 0)
     {
-        char* Buffer = (char*)malloc((infoLogLength + 1) * sizeof(char));
-        glGetShaderInfoLog(fragmentShaderID, infoLogLength, NULL, &Buffer[0]);
-        printf("%s\n", &Buffer[0]);
+        char* buffer = (char*)malloc((infoLogLength + 1) * sizeof(char));
+        glGetShaderInfoLog(fragmentShaderID, infoLogLength, NULL, &buffer[0]);
+        printf("%s\n", &buffer[0]);
     }
     
     printf("Linking program\n");
@@ -133,9 +133,10 @@ static shader LoadShaders(const char* vertexFilePath, const char* fragmentFilePa
     glGetProgramiv(programID, GL_INFO_LOG_LENGTH, &infoLogLength);
     if(infoLogLength > 0)
     {
-        char* Buffer = (char*)malloc((infoLogLength + 1) * sizeof(char));
-        glGetShaderInfoLog(programID, infoLogLength, NULL, &Buffer[0]);
-        printf("Bob: %s\n", &Buffer[0]);
+        char* buffer = (char*)malloc((infoLogLength + 1) * sizeof(char));
+        glGetShaderInfoLog(programID, infoLogLength, NULL, &buffer[0]);
+        printf("%s\n", &buffer[0]);
+        printf("%d\n", result);
     }
     
     glDetachShader(programID, vertexShaderID);
@@ -199,6 +200,7 @@ static void InitializeOpenGL(render_context& renderContext)
     glDebugMessageCallback((GLDEBUGPROC) MessageCallback, 0);
     
     glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    //glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     
     renderContext.textureShader = LoadShaders("../shaders/texture.vert", "../shaders/texture.frag");
     renderContext.colorShader = LoadShaders("../shaders/color.vert", "../shaders/color.frag");
@@ -274,38 +276,76 @@ static light& CreateLight(render_context& renderContext, glm::vec3 position = gl
     return l;
 }
 
-static float* BuildVertexBuffer(face* faces, int numFaces)
+static GLfloat* BuildVertexBuffer(face* faces, int numFaces)
 {
-    float* vertices = (float*)malloc(sizeof(float) * numFaces * 3 * 3);
+    GLfloat* vertices = (GLfloat*)malloc(numFaces * 3 * sizeof(vertex));
     for(int i = 0; i < numFaces; i++)
     {
-        vertices[i * 9] = faces[i].vertices[0].x;
-        vertices[i * 9 + 1] = faces[i].vertices[0].y;
-        vertices[i * 9 + 2] = faces[i].vertices[0].z;
-        vertices[i * 9 + 3] = faces[i].vertices[1].x;
-        vertices[i * 9 + 4] = faces[i].vertices[1].y;
-        vertices[i * 9 + 5] = faces[i].vertices[1].z;
-        vertices[i * 9 + 6] = faces[i].vertices[2].x;
-        vertices[i * 9 + 7] = faces[i].vertices[2].y;
-        vertices[i * 9 + 8] = faces[i].vertices[2].z;
+        auto v1 = faces[i].vertices[0];
+        auto v2 = faces[i].vertices[1];
+        auto v3 = faces[i].vertices[2];
+        // First vertex
+        vertices[i * 30] = v1.position.x;
+        vertices[i * 30 + 1] = v1.position.y;
+        vertices[i * 30 + 2] = v1.position.z;
+        
+        // First normal
+        vertices[i * 30 + 3] = faces[i].faceNormal.x;
+        vertices[i * 30 + 4] = faces[i].faceNormal.y;
+        vertices[i * 30 + 5] = faces[i].faceNormal.z;
+        
+        // First color
+        vertices[i * 30 + 6] = faces[i].faceColor.x;//v1.color.x;
+        vertices[i * 30 + 7] = faces[i].faceColor.y;//v1.color.y;
+        vertices[i * 30 + 8] = faces[i].faceColor.z;//v1.color.z;
+        vertices[i * 30 + 9] = faces[i].faceColor.w;//v1.color.w;
+        
+        // Second vertex
+        vertices[i * 30 + 10] = v2.position.x;
+        vertices[i * 30 + 11] = v2.position.y;
+        vertices[i * 30 + 12] = v2.position.z;
+        
+        // Second normal
+        vertices[i * 30 + 13] = faces[i].faceNormal.x;
+        vertices[i * 30 + 14] = faces[i].faceNormal.y;
+        vertices[i * 30 + 15] = faces[i].faceNormal.z;
+        
+        // Second color
+        vertices[i * 30 + 16] = faces[i].faceColor.x;//v2.color.x;
+        vertices[i * 30 + 17] = faces[i].faceColor.y;//v2.color.y;
+        vertices[i * 30 + 18] = faces[i].faceColor.z;//v2.color.z;
+        vertices[i * 30 + 19] = faces[i].faceColor.w;//v2.color.w;
+        
+        // Third vertex
+        vertices[i * 30 + 20] = v3.position.x;
+        vertices[i * 30 + 21] = v3.position.y;
+        vertices[i * 30 + 22] = v3.position.z;
+        
+        // Third normal
+        vertices[i * 30 + 23] = faces[i].faceNormal.x;
+        vertices[i * 30 + 24] = faces[i].faceNormal.y;
+        vertices[i * 30 + 25] = faces[i].faceNormal.z;
+        
+        // Third color
+        vertices[i * 30 + 26] = faces[i].faceColor.x;//v3.color.x;
+        vertices[i * 30 + 27] = faces[i].faceColor.y;//v3.color.y;
+        vertices[i * 30 + 28] = faces[i].faceColor.z;//v3.color.z;
+        vertices[i * 30 + 29] = faces[i].faceColor.w;//v3.color.w;
     }
     return vertices;
 }
 
 static glm::vec3 ComputeFaceNormal(face f)
 {
-    auto u = f.vertices[1] - f.vertices[0];
-    auto v = f.vertices[2] - f.vertices[0];
+    auto u = f.vertices[1].position - f.vertices[0].position;
+    auto v = f.vertices[2].position - f.vertices[0].position;
     
-    glm::vec3 normal = glm::vec3(0.0f);
-    normal.x = (u.y * v.z) - (u.z * v.y);
-    normal.y = (u.z * v.x) - (u.x * v.z);
-    normal.z = (u.x * v.y) - (u.y * v.x);
+    glm::vec3 normal = glm::normalize(glm::cross(u, v));
     
     return normal;
 }
 
-static void AddFace(model& m, glm::vec3 v1, glm::vec3 v2, glm::vec3 v3)
+static void AddFace(mesh& m, vertex v1, vertex v2, vertex v3)
 {
     if(m.numFaces + 1 >= m.facesSize)
     {
@@ -316,7 +356,8 @@ static void AddFace(model& m, glm::vec3 v1, glm::vec3 v2, glm::vec3 v3)
         }
         else
         {
-            m.faces = (face*)realloc(m.faces, m.facesSize * 2);
+            m.facesSize *= 2;
+            m.faces = (face*)realloc(m.faces, m.facesSize * sizeof(face));
         }
     }
     
@@ -324,12 +365,35 @@ static void AddFace(model& m, glm::vec3 v1, glm::vec3 v2, glm::vec3 v3)
     newFace.vertices[0] = v1;
     newFace.vertices[1] = v2;
     newFace.vertices[2] = v3;
+    newFace.faceNormal = ComputeFaceNormal(newFace);
+    newFace.faceColor = RandomColor();
     m.faces[m.numFaces++] = newFace;
 }
 
-static model& InitEmptyModel(render_context& renderContext)
+static void RemoveFace(mesh& m, face* f)
 {
-    model& object = renderContext.models[renderContext.modelCount++];
+    bool found = false;
+    for(int faceIndex = 0; faceIndex < m.numFaces; faceIndex++)
+    {
+        if(!found && &m.faces[faceIndex] == f)
+        {
+            found = true;
+        }
+        else if(found)
+        {
+            m.faces[faceIndex - 1] = m.faces[faceIndex];
+        }
+    }
+    
+    if(found)
+    {
+        m.numFaces--;
+    }
+}
+
+static mesh& InitEmptyMesh(render_context& renderContext)
+{
+    mesh& object = renderContext.meshes[renderContext.meshCount++];
     
     glGenVertexArrays(1, &object.VAO);
     glBindVertexArray(object.VAO);
@@ -353,9 +417,9 @@ static model& InitEmptyModel(render_context& renderContext)
     return object;
 }
 
-static model& LoadModel(render_context& renderContext, gl_buffer vbo, gl_buffer* uvBuffer = 0, gl_buffer* colorBuffer = 0, gl_buffer* normalBuffer = 0, glm::vec3 diffuseColor = glm::vec3(1.0f))
+static mesh& LoadMesh(render_context& renderContext, gl_buffer vbo, gl_buffer* uvBuffer = 0, gl_buffer* colorBuffer = 0, gl_buffer* normalBuffer = 0, glm::vec3 diffuseColor = glm::vec3(1.0f))
 {
-    model& object = renderContext.models[renderContext.modelCount++];
+    mesh& object = renderContext.meshes[renderContext.meshCount++];
     
     glGenVertexArrays(1, &object.VAO);
     glBindVertexArray(object.VAO);
@@ -441,15 +505,11 @@ static void RenderQuad(render_context& renderContext, glm::vec3 position = glm::
     glBindVertexArray(0);
 }
 
-static glm::vec3 ToObjectCoords()
-{
-}
-
-static void RenderModel(render_context& renderContext, model& m)
+static void RenderMesh(render_context& renderContext, mesh& m)
 {
     auto& material = m.material;
     glUseProgram(material.materialShader.programID);
-    ComputeModelTransformation(m);
+    ComputeMeshTransformation(m);
     SetMatrixUniform(material.materialShader.programID, "M", m.transform);
     SetMatrixUniform(material.materialShader.programID, "V", renderContext.viewMatrix);
     SetMatrixUniform(material.materialShader.programID, "P", renderContext.projectionMatrix);
@@ -479,37 +539,30 @@ static void RenderModel(render_context& renderContext, model& m)
     
     glBindVertexArray(m.VAO);
     
-    glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, m.VBO);
     
     auto vbo = BuildVertexBuffer(m.faces, m.numFaces);
     m.vertexCount = m.numFaces * 3;
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vbo), vbo, GL_DYNAMIC_DRAW);
-    //free(vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex) * m.vertexCount, &vbo[0], GL_STATIC_DRAW);
     
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, position));
     
-    if(m.hasUV)
-    {
-        glBindTexture(GL_TEXTURE_2D, m.material.texture.tex.textureID);
-        glEnableVertexAttribArray(1);
-        glBindBuffer(GL_ARRAY_BUFFER, m.uvBufferHandle);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
-    }
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, normal));
     
-    if(m.hasNormals)
-    {
-        glEnableVertexAttribArray(2);
-        glBindBuffer(GL_ARRAY_BUFFER, m.normalBufferHandle);
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-    }
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*) offsetof(vertex, color));
     
-    printf("%d\n", m.vertexCount);
-    glDrawArrays(GL_TRIANGLES, 0, m.vertexCount * 3);
+    
+    glDrawArrays(GL_TRIANGLES, 0, m.vertexCount * 10);
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
     glBindVertexArray(0);
+    
+    free(vbo);
+    
 }
 
 static void RenderGrid(render_context& renderContext, glm::vec4 color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f), float lineWidth = 2.0f)
@@ -532,9 +585,9 @@ static void RenderGrid(render_context& renderContext, glm::vec4 color = glm::vec
 
 static void Render(render_context& renderContext)
 {
-    for(int modelIndex = 0; modelIndex < renderContext.modelCount; modelIndex++)
+    for(int meshIndex = 0; meshIndex < renderContext.meshCount; meshIndex++)
     {
-        RenderModel(renderContext, renderContext.models[modelIndex]);
+        RenderMesh(renderContext, renderContext.meshes[meshIndex]);
     }
     RenderGrid(renderContext, glm::vec4(0.6f, 0.6f, 0.6f, 1.0f), 1.0f);
 }

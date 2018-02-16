@@ -82,14 +82,21 @@ struct render_material
 };
 
 
-struct face
+struct vertex
 {
-    glm::vec3 vertices[3];
+    glm::vec3 position;
     glm::vec3 normal;
     glm::vec4 color;
 };
 
-struct model
+struct face
+{
+    vertex vertices[3];
+    glm::vec3 faceNormal;
+    glm::vec4 faceColor;
+};
+
+struct mesh
 {
     glm::vec3 position;
     glm::quat orientation;
@@ -146,8 +153,8 @@ struct render_context
     shader colorShader;
     shader basicShader;
     
-    model models[64];
-    int modelCount;
+    mesh meshes[64];
+    int meshCount;
     
     light lights[64];
     int lightCount;
@@ -166,139 +173,6 @@ struct render_context
         0.5, 0.5,
         -0.5, 0.5
     };
-};
-
-static GLfloat uvs[] = {
-    0.0f, 0.0f,
-    1.0f, 0.0f,
-    1.0f, 1.0f,
-    1.0f, 1.0f,
-    0.0f, 1.0f,
-    0.0f, 0.0f,
-    
-    0.0f, 0.0f,
-    1.0f, 0.0f,
-    1.0f, 1.0f,
-    1.0f, 1.0f,
-    0.0f, 1.0f,
-    0.0f, 0.0f,
-    
-    1.0f, 0.0f,
-    1.0f, 1.0f,
-    0.0f, 1.0f,
-    0.0f, 1.0f,
-    0.0f, 0.0f,
-    1.0f, 0.0f,
-    
-    1.0f, 0.0f,
-    1.0f, 1.0f,
-    0.0f, 1.0f,
-    0.0f, 1.0f,
-    0.0f, 0.0f,
-    1.0f, 0.0f,
-    
-    0.0f, 1.0f,
-    1.0f, 1.0f,
-    1.0f, 0.0f,
-    1.0f, 0.0f,
-    0.0f, 0.0f,
-    0.0f, 1.0f,
-    
-    0.0f, 1.0f,
-    1.0f, 1.0f,
-    1.0f, 0.0f,
-    1.0f, 0.0f,
-    0.0f, 0.0f,
-    0.0f, 1.0f
-    
-};
-
-float vertices[] = {
-    -0.5f, -0.5f, -0.5f,
-    0.5f, -0.5f, -0.5f, 
-    0.5f,  0.5f, -0.5f, 
-    0.5f,  0.5f, -0.5f, 
-    -0.5f,  0.5f, -0.5f,
-    -0.5f, -0.5f, -0.5f,
-    
-    -0.5f, -0.5f,  0.5f,
-    0.5f, -0.5f,  0.5f, 
-    0.5f,  0.5f,  0.5f, 
-    0.5f,  0.5f,  0.5f, 
-    -0.5f,  0.5f,  0.5f,
-    -0.5f, -0.5f,  0.5f,
-    
-    -0.5f,  0.5f,  0.5f,
-    -0.5f,  0.5f, -0.5f,
-    -0.5f, -0.5f, -0.5f,
-    -0.5f, -0.5f, -0.5f,
-    -0.5f, -0.5f,  0.5f,
-    -0.5f,  0.5f,  0.5f,
-    
-    0.5f,  0.5f,  0.5f, 
-    0.5f,  0.5f, -0.5f, 
-    0.5f, -0.5f, -0.5f, 
-    0.5f, -0.5f, -0.5f,  
-    0.5f, -0.5f,  0.5f, 
-    0.5f,  0.5f,  0.5f, 
-    
-    -0.5f, -0.5f, -0.5f,
-    0.5f, -0.5f, -0.5f, 
-    0.5f, -0.5f,  0.5f, 
-    0.5f, -0.5f,  0.5f, 
-    -0.5f, -0.5f,  0.5f,
-    -0.5f, -0.5f, -0.5f,
-    
-    -0.5f,  0.5f, -0.5f, 
-    0.5f,  0.5f, -0.5f,  
-    0.5f,  0.5f,  0.5f,  
-    0.5f,  0.5f,  0.5f,  
-    -0.5f,  0.5f,  0.5f, 
-    -0.5f,  0.5f, -0.5f, 
-};
-
-float normals[] = {
-    0.0f,  0.0f, -1.0f,
-    0.0f,  0.0f, -1.0f, 
-    0.0f,  0.0f, -1.0f, 
-    0.0f,  0.0f, -1.0f, 
-    0.0f,  0.0f, -1.0f, 
-    0.0f,  0.0f, -1.0f, 
-    
-    0.0f,  0.0f, 1.0f,
-    0.0f,  0.0f, 1.0f,
-    0.0f,  0.0f, 1.0f,
-    0.0f,  0.0f, 1.0f,
-    0.0f,  0.0f, 1.0f,
-    0.0f,  0.0f, 1.0f,
-    
-    -1.0f,  0.0f,  0.0f,
-    -1.0f,  0.0f,  0.0f,
-    -1.0f,  0.0f,  0.0f,
-    -1.0f,  0.0f,  0.0f,
-    -1.0f,  0.0f,  0.0f,
-    -1.0f,  0.0f,  0.0f,
-    
-    1.0f,  0.0f,  0.0f,
-    1.0f,  0.0f,  0.0f,
-    1.0f,  0.0f,  0.0f,
-    1.0f,  0.0f,  0.0f,
-    1.0f,  0.0f,  0.0f,
-    1.0f,  0.0f,  0.0f,
-    
-    0.0f, -1.0f,  0.0f,
-    0.0f, -1.0f,  0.0f,
-    0.0f, -1.0f,  0.0f,
-    0.0f, -1.0f,  0.0f,
-    0.0f, -1.0f,  0.0f,
-    0.0f, -1.0f,  0.0f,
-    
-    0.0f,  1.0f,  0.0f,
-    0.0f,  1.0f,  0.0f,
-    0.0f,  1.0f,  0.0f,
-    0.0f,  1.0f,  0.0f,
-    0.0f,  1.0f,  0.0f,
-    0.0f,  1.0f,  0.0f
 };
 
 #endif

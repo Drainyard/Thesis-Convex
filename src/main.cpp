@@ -12,6 +12,7 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "util.h"
 #include "keys.h"
 
 static input_state inputState;
@@ -24,21 +25,6 @@ static input_state inputState;
 #define Min(A,B) ((A < B) ? (A) : (B))
 #define Max(A,B) ((A > B) ? (A) : (B))
 #define Abs(x) ((x) < 0 ? -(x) : (x))
-
-static float RandomFloat(float start, float end)
-{
-    return (rand() / (float)RAND_MAX * end) + start;
-}
-
-static int RandomInt(int start, int end)
-{
-    return (rand() % end) + start;
-}
-
-static glm::vec4 RandomColor()
-{
-    return glm::vec4((float)RandomInt(0, 255) / 255, (float)RandomInt(0, 255) / 255, (float)RandomInt(0, 255) / 255, (float)RandomInt(0, 255) / 255);
-}
 
 struct point
 {
@@ -83,32 +69,35 @@ int main()
     inputState.mouseYaw = -90.0f;
     inputState.mousePitch = -45.0f;
     
-    CreateLight(renderContext, glm::vec3(0.0f, 7.5f, 10.0f), glm::vec3(1, 1, 1), 25.0f);
+    CreateLight(renderContext, glm::vec3(0.0f, 7.5f, 10.0f), glm::vec3(1, 1, 1), 250.0f);
     
     int numberOfPoints = 1000;
     
     auto globalScale = 0.2f;
     
-    /////////////// DEBUG
-    auto points = GeneratePoints(renderContext, numberOfPoints);
-    
-    auto c = (points[0].position + points[1].position + points[2].position +points[3].position + points[4].position + points[5].position)/6.0f;
-    auto p1Obj = points[0].position - c;
-    auto p2Obj = points[1].position - c;
-    auto p3Obj = points[2].position - c;
-    auto p4Obj = points[3].position - c;
-    auto p5Obj = points[4].position - c;
-    auto p6Obj = points[5].position - c;
-    
     //auto& m1 = LoadModel(renderContext, vbo, 0, 0, 0, glm::vec3(0.5f, 0.5f, 0.0f));
-    auto& m1 = InitEmptyModel(renderContext);
-    m1.position = c;
+    auto& m1 = InitEmptyMesh(renderContext);
+    m1.position = glm::vec3(0.0f);;
     m1.scale = glm::vec3(globalScale);
     m1.numFaces = 0;
     m1.facesSize = 0;
-    AddFace(m1, glm::vec3(0.0f), glm::vec3(1.0f, 0.0f, 0.0f), p3Obj);
-    AddFace(m1, p4Obj, p5Obj, p6Obj);
-    /////////////// END DEBUG
+    
+    auto points = GeneratePoints(renderContext, numberOfPoints);
+    
+    for(int i = 0; i < 15; i++)
+    {
+        // Create random face
+        vertex v1 = {};
+        v1.position = points[RandomInt(0, numberOfPoints)].position;
+        v1.color = RandomColor();
+        vertex v2 = {};
+        v2.position = points[RandomInt(0, numberOfPoints)].position;
+        v2.color = RandomColor();
+        vertex v3 = {};
+        v3.position = points[RandomInt(0, numberOfPoints)].position;
+        v3.color = RandomColor();
+        AddFace(m1, v1, v2, v3);
+    }
     
     // Check if the ESC key was pressed or the window was closed
     while(glfwGetKey(renderContext.window, Key_Escape ) != GLFW_PRESS &&

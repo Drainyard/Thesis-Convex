@@ -4,6 +4,7 @@ in vec3 normal;
 in vec3 posWorld;
 in vec3 eyeView;
 in vec3 lightDir;
+in vec4 c;
 
 out vec4 color;
 
@@ -29,8 +30,6 @@ void main()
 	float cosTheta = clamp( dot( n,l ), 0,1 );
 	float distance = length(lightPosWorld - posWorld);
 	vec3 ambientColor = vec3(0.3, 0.3, 0.3) * diffuseColor;
-	color.rgb = ambientColor + diffuseColor * lightPower * lightColor * cosTheta / (distance*distance) + specularColor * lightColor * pow(cosAlpha, 5) / (distance*distance);
-	color.a = alpha;
+	color.rgb = ambientColor + c.rgb * lightPower * lightColor * cosTheta / (distance*distance) + specularColor * lightColor * pow(cosAlpha, 5) / (distance*distance);
+	color.a = 1.0f;
 }
-
-
