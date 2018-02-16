@@ -93,9 +93,6 @@ int main()
     /////////////// DEBUG
     auto points = GeneratePoints(renderContext, numberOfPoints);
     
-    gl_buffer vbo = {};
-    vbo.type = BT_vertexBuffer;
-    
     auto c = (points[0].position + points[1].position + points[2].position +points[3].position + points[4].position + points[5].position)/6.0f;
     auto p1Obj = points[0].position - c;
     auto p2Obj = points[1].position - c;
@@ -104,15 +101,14 @@ int main()
     auto p5Obj = points[4].position - c;
     auto p6Obj = points[5].position - c;
     
-    float newVertices[18] = {p1Obj.x, p1Obj.y, p1Obj.z, p2Obj.x, p2Obj.y, p2Obj.z, p3Obj.x, p3Obj.y, p3Obj.z, p4Obj.x, p4Obj.y, p4Obj.z, p5Obj.x, p5Obj.y, p5Obj.z, p6Obj.x, p6Obj.y, p6Obj.z};
-    vbo.data = newVertices;
-    vbo.size = sizeof(newVertices);
-    vbo.count = 6;
-    
-    auto& m1 = LoadModel(renderContext, vbo, 0, 0, 0, glm::vec3(0.5f, 0.5f, 0.0f));
+    //auto& m1 = LoadModel(renderContext, vbo, 0, 0, 0, glm::vec3(0.5f, 0.5f, 0.0f));
+    auto& m1 = InitEmptyModel(renderContext);
     m1.position = c;
-    m1.material.diffuse.diffuseColor = glm::vec3(1.0, 0.0, 0.0);
     m1.scale = glm::vec3(globalScale);
+    m1.numFaces = 0;
+    m1.facesSize = 0;
+    AddFace(m1, p1Obj, p2Obj, p3Obj);
+    AddFace(m1, p4Obj, p5Obj, p6Obj);
     /////////////// END DEBUG
     
     // Check if the ESC key was pressed or the window was closed

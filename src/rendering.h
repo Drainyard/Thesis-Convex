@@ -81,6 +81,14 @@ struct render_material
     shader materialShader;
 };
 
+
+struct face
+{
+    glm::vec3 vertices[3];
+    glm::vec3 normal;
+    glm::vec4 color;
+};
+
 struct model
 {
     glm::vec3 position;
@@ -89,6 +97,10 @@ struct model
     glm::mat4 transform;
     
     render_material material;
+    
+    face* faces;
+    int numFaces;
+    int facesSize;
     
     GLuint VAO;
     GLuint VBO;

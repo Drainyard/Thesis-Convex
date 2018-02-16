@@ -214,7 +214,6 @@ static void InitializeOpenGL(render_context& renderContext)
     
     glBindVertexArray(0);
     
-    
     // Initialize Quad buffers
     glGenVertexArrays(1, &renderContext.quadVAO);
     glBindVertexArray(renderContext.quadVAO);
@@ -277,6 +276,85 @@ static light& CreateLight(render_context& renderContext, glm::vec3 position = gl
     return l;
 }
 
+static float* BuildVertexBuffer(face* faces, int numFaces)
+{
+    float* vertices = (float*)malloc(sizeof(float) * numFaces * 3 * 3);
+    for(int i = 0; i < numFaces; i++)
+    {
+        vertices[i * 9] = faces[i].vertices[0].x;
+        vertices[i * 9 + 1] = faces[i].vertices[0].y;
+        vertices[i * 9 + 2] = faces[i].vertices[0].z;
+        vertices[i * 9 + 3] = faces[i].vertices[1].x;
+        vertices[i * 9 + 4] = faces[i].vertices[1].y;
+        vertices[i * 9 + 5] = faces[i].vertices[1].z;
+        vertices[i * 9 + 6] = faces[i].vertices[2].x;
+        vertices[i * 9 + 7] = faces[i].vertices[2].y;
+        vertices[i * 9 + 8] = faces[i].vertices[2].z;
+    }
+    return vertices;
+}
+
+static glm::vec3 ComputeFaceNormal(face f)
+{
+    auto u = f.vertices[1] - f.vertices[0];
+    auto v = f.vertices[2] - f.vertices[0];
+    
+    glm::vec3 normal = glm::vec3(0.0f);
+    normal.x = (u.y * v.z) - (u.z * v.y);
+    normal.y = (u.z * v.x) - (u.x * v.z);
+    normal.z = (u.x * v.y) - (u.y * v.x);
+    
+    return normal;
+}
+
+static void AddFace(model& m, glm::vec3 v1, glm::vec3 v2, glm::vec3 v3)
+{
+    if(m.numFaces + 1 >= m.facesSize)
+    {
+        if(m.facesSize == 0)
+        {
+            m.facesSize = 2;
+            m.faces = (face*)malloc(sizeof(face) * m.facesSize);
+        }
+        else
+        {
+            m.faces = (face*)realloc(m.faces, m.facesSize * 2);
+        }
+    }
+    
+    face newFace = {};
+    newFace.vertices[0] = v1;
+    newFace.vertices[1] = v2;
+    newFace.vertices[2] = v3;
+    m.faces[m.numFaces++] = newFace;
+}
+
+static model& InitEmptyModel(render_context& renderContext)
+{
+    model& object = renderContext.models[renderContext.modelCount++];
+    
+    glGenVertexArrays(1, &object.VAO);
+    glBindVertexArray(object.VAO);
+    glGenBuffers(1, &object.VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, object.VBO);
+    
+    auto& mat = object.material;
+    mat.specularColor = glm::vec3(1.0f);
+    mat.alpha = 1.0f;
+    mat.type = MT_color;
+    mat.diffuse.diffuseColor = glm::vec3(1.0f);
+    mat.materialShader = renderContext.colorShader;
+    
+    object.vertexCount = 0;
+    object.uvCount = 0;
+    object.colorCount = 0;
+    object.normalCount = 0;
+    
+    glBindVertexArray(0);
+    
+    return object;
+}
+
 static model& LoadModel(render_context& renderContext, gl_buffer vbo, gl_buffer* uvBuffer = 0, gl_buffer* colorBuffer = 0, gl_buffer* normalBuffer = 0, glm::vec3 diffuseColor = glm::vec3(1.0f))
 {
     model& object = renderContext.models[renderContext.modelCount++];
@@ -334,6 +412,7 @@ static model& LoadModel(render_context& renderContext, gl_buffer vbo, gl_buffer*
         object.hasNormals = true;
         object.normalCount = normalBuffer->count;
     }
+    glBindVertexArray(0);
     
     return object;
 }
@@ -364,6 +443,10 @@ static void RenderQuad(render_context& renderContext, glm::vec3 position = glm::
     glBindVertexArray(0);
 }
 
+static glm::vec3 ToObjectCoords()
+{
+}
+
 static void RenderModel(render_context& renderContext, model& m)
 {
     auto& material = m.material;
@@ -376,6 +459,7 @@ static void RenderModel(render_context& renderContext, model& m)
     auto lightPos = glm::vec3(1, 1, 1);
     auto lightColor = glm::vec3(1, 1, 1);
     auto lightPower = 2.0f;
+    
     if(renderContext.lightCount > 0)
     {
         auto& light = renderContext.lights[0];
@@ -399,6 +483,12 @@ static void RenderModel(render_context& renderContext, model& m)
     
     glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, m.VBO);
+    
+    auto vbo = BuildVertexBuffer(m.faces, m.numFaces);
+    m.vertexCount = m.numFaces * 3;
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vbo), vbo, GL_STATIC_DRAW);
+    //free(vbo);
+    
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
     
     if(m.hasUV)
