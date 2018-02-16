@@ -151,7 +151,6 @@ static shader LoadShaders(const char* vertexFilePath, const char* fragmentFilePa
     return newShader;
 }
 
-
 static void InitializeOpenGL(render_context& renderContext)
 {
     if(!glfwInit())
@@ -198,7 +197,6 @@ static void InitializeOpenGL(render_context& renderContext)
     // Enable debug output
     glEnable              (GL_DEBUG_OUTPUT);
     glDebugMessageCallback((GLDEBUGPROC) MessageCallback, 0);
-    
     
     glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
@@ -486,7 +484,7 @@ static void RenderModel(render_context& renderContext, model& m)
     
     auto vbo = BuildVertexBuffer(m.faces, m.numFaces);
     m.vertexCount = m.numFaces * 3;
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vbo), vbo, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vbo), vbo, GL_DYNAMIC_DRAW);
     //free(vbo);
     
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
@@ -506,6 +504,7 @@ static void RenderModel(render_context& renderContext, model& m)
         glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
     }
     
+    printf("%d\n", m.vertexCount);
     glDrawArrays(GL_TRIANGLES, 0, m.vertexCount * 3);
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);

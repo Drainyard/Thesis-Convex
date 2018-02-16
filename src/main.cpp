@@ -1,4 +1,3 @@
-
 #include <ctime>
 #include <random>
 #include <cstdio>
@@ -107,7 +106,7 @@ int main()
     m1.scale = glm::vec3(globalScale);
     m1.numFaces = 0;
     m1.facesSize = 0;
-    AddFace(m1, p1Obj, p2Obj, p3Obj);
+    AddFace(m1, glm::vec3(0.0f), glm::vec3(1.0f, 0.0f, 0.0f), p3Obj);
     AddFace(m1, p4Obj, p5Obj, p6Obj);
     /////////////// END DEBUG
     

@@ -31,7 +31,6 @@ void main()
 	vec3 ambientColor = vec3(0.3, 0.3, 0.3) * diffuseColor;
 	color.rgb = ambientColor + diffuseColor * lightPower * lightColor * cosTheta / (distance*distance) + specularColor * lightColor * pow(cosAlpha, 5) / (distance*distance);
 	color.a = alpha;
-	color = vec4(1.0, 1.0, 1.0, 1.0);
 }
 
 
