@@ -1,3 +1,6 @@
+#ifndef KEYS_H
+#define KEYS_H
+
 #define Key_Left GLFW_KEY_LEFT
 #define Key_Right GLFW_KEY_RIGHT
 #define Key_Up GLFW_KEY_UP
@@ -144,3 +147,4 @@ struct input_state
     bool firstMouse;
 };
 
+#endif

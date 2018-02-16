@@ -1,3 +1,6 @@
+#ifndef RENDERING_H
+#define RENDERING_H
+
 struct texture
 {
     int textureID;
@@ -24,6 +27,7 @@ struct gl_buffer
     Buffer_Type type;
     GLfloat* data;
     size_t size;
+    int count;
     
     union
     {
@@ -88,13 +92,18 @@ struct model
     
     GLuint VAO;
     GLuint VBO;
+    int vertexCount;
+    
     GLuint uvBufferHandle;
+    int uvCount;
     bool hasUV;
     
     GLuint colorBufferHandle;
+    int colorCount;
     bool hasColor;
     
     GLuint normalBufferHandle;
+    int normalCount;
     bool hasNormals;
 };
 
@@ -110,6 +119,11 @@ struct render_context
     glm::vec3 direction;
     glm::vec3 up;
     glm::vec3 right;
+    
+    float near;
+    float far;
+    
+    glm::vec3 originOffset;
     
     int screenWidth;
     int screenHeight;
@@ -128,6 +142,18 @@ struct render_context
     
     GLuint primitiveVAO;
     GLuint primitiveVBO;
+    
+    GLuint quadVAO;
+    GLuint quadVBO;
+    GLuint quadIndexBuffer;
+    GLuint quadIndices[6] = {0, 1, 2, 0, 2, 3};
+    GLfloat quadVertices[8] = 
+    {
+        -0.5, -0.5,
+        0.5, -0.5,
+        0.5, 0.5,
+        -0.5, 0.5
+    };
 };
 
 static GLfloat uvs[] = {
@@ -262,3 +288,5 @@ float normals[] = {
     0.0f,  1.0f,  0.0f,
     0.0f,  1.0f,  0.0f
 };
+
+#endif

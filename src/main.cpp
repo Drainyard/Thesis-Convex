@@ -1,6 +1,8 @@
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <ctime>
+#include <random>
+#include <cstdio>
+#include <cstdlib>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <glad/glad.h>
@@ -9,7 +11,7 @@
 #include <glm/gtc/matrix_transform.hpp> 
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/transform.hpp>
-
+#include <glm/gtc/type_ptr.hpp>
 
 #include "keys.h"
 
@@ -24,42 +26,55 @@ static input_state inputState;
 #define Max(A,B) ((A > B) ? (A) : (B))
 #define Abs(x) ((x) < 0 ? -(x) : (x))
 
+static float RandomFloat(float start, float end)
+{
+    return (rand() / (float)RAND_MAX * end) + start;
+}
+
+static int RandomInt(int start, int end)
+{
+    return (rand() % end) + start;
+}
+
+static glm::vec4 RandomColor()
+{
+    return glm::vec4((float)RandomInt(0, 255) / 255, (float)RandomInt(0, 255) / 255, (float)RandomInt(0, 255) / 255, (float)RandomInt(0, 255) / 255);
+}
+
+struct point
+{
+    glm::vec3 position;
+    glm::vec4 color;
+};
+
+static point* GeneratePoints(render_context& renderContext, int numberOfPoints)
+{
+    auto res = (point*)malloc(sizeof(point) * numberOfPoints);
+    for(int i = 0; i < numberOfPoints; i++)
+    {
+        float x = RandomFloat(0, 100);
+        float y = RandomFloat(0, 100);
+        float z = RandomFloat(0, 100);
+        
+        res[i].position = glm::vec3(x, y, z) - renderContext.originOffset;
+        res[i].color = RandomColor();
+    }
+    return res;
+}
+
 int main()
 {
+    srand(time(NULL));
     render_context renderContext = {};
     renderContext.FoV = 45.0f;
-    renderContext.position = glm::vec3(0.0f, 7.5f, 10.0f);
+    renderContext.position = glm::vec3(0.0f, 30.5f, 30.0f);
     renderContext.direction = glm::vec3(0.0f, -0.75f, -1.0f);
     renderContext.up = glm::vec3(0.0f, 1.0f, 0.0f);
+    renderContext.near = 0.1f;
+    renderContext.far =  1000.0f;
+    renderContext.originOffset = glm::vec3(5.0f, 0.0f, 5.0f);
     
     InitializeOpenGL(renderContext);
-    
-    gl_buffer vbo = {};
-    vbo.type = BT_vertexBuffer;
-    vbo.data = vertices;
-    vbo.size = sizeof(vertices);
-    
-    gl_buffer uvBuffer = {};
-    uvBuffer.type = BT_uvBuffer;
-    uvBuffer.data = uvs;
-    uvBuffer.size = sizeof(uvs);
-    uvBuffer.uv.tex = LoadTexture("../assets/textures/container.jpg");
-    
-    gl_buffer normalBuffer = {};
-    normalBuffer.type = BT_normalBuffer;
-    normalBuffer.data = normals;
-    normalBuffer.size = sizeof(normals);
-    
-    auto& m1 = LoadModel(renderContext, vbo, 0, 0, &normalBuffer, glm::vec3(0.5f, 0.5f, 0.0f));
-    auto& m2 = LoadModel(renderContext, vbo, 0, 0, &normalBuffer, glm::vec3(0.5f, 0.5f, 0.0f));
-    
-    m1.position = glm::vec3(0, 0, 0);
-    m1.material.diffuse.diffuseColor = glm::vec3(1.0, 0.0, 0.0);
-    m1.scale = glm::vec3(5.0f, 1.0f, 1.0f);
-    m2.position = glm::vec3(0, 2, 0);
-    m2.material.diffuse.diffuseColor = glm::vec3(0.0, 1.0, 0.0);
-    m2.scale = glm::vec3(5.0f, 3.0f, 3.0f);
-    m2.orientation = glm::normalize(glm::quat(glm::radians(23.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
     
     glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
     
@@ -70,6 +85,35 @@ int main()
     inputState.mousePitch = -45.0f;
     
     CreateLight(renderContext, glm::vec3(0.0f, 7.5f, 10.0f), glm::vec3(1, 1, 1), 25.0f);
+    
+    int numberOfPoints = 1000;
+    
+    auto globalScale = 0.2f;
+    
+    /////////////// DEBUG
+    auto points = GeneratePoints(renderContext, numberOfPoints);
+    
+    gl_buffer vbo = {};
+    vbo.type = BT_vertexBuffer;
+    
+    auto c = (points[0].position + points[1].position + points[2].position +points[3].position + points[4].position + points[5].position)/6.0f;
+    auto p1Obj = points[0].position - c;
+    auto p2Obj = points[1].position - c;
+    auto p3Obj = points[2].position - c;
+    auto p4Obj = points[3].position - c;
+    auto p5Obj = points[4].position - c;
+    auto p6Obj = points[5].position - c;
+    
+    float newVertices[18] = {p1Obj.x, p1Obj.y, p1Obj.z, p2Obj.x, p2Obj.y, p2Obj.z, p3Obj.x, p3Obj.y, p3Obj.z, p4Obj.x, p4Obj.y, p4Obj.z, p5Obj.x, p5Obj.y, p5Obj.z, p6Obj.x, p6Obj.y, p6Obj.z};
+    vbo.data = newVertices;
+    vbo.size = sizeof(newVertices);
+    vbo.count = 6;
+    
+    auto& m1 = LoadModel(renderContext, vbo, 0, 0, 0, glm::vec3(0.5f, 0.5f, 0.0f));
+    m1.position = c;
+    m1.material.diffuse.diffuseColor = glm::vec3(1.0, 0.0, 0.0);
+    m1.scale = glm::vec3(globalScale);
+    /////////////// END DEBUG
     
     // Check if the ESC key was pressed or the window was closed
     while(glfwGetKey(renderContext.window, Key_Escape ) != GLFW_PRESS &&
@@ -82,6 +126,11 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         ComputeMatrices(renderContext, deltaTime);
+        
+        for(int p = 0; p < numberOfPoints; p++)
+        {
+            RenderQuad(renderContext, points[p].position, glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(globalScale), points[p].color);
+        }
         
         Render(renderContext);
         

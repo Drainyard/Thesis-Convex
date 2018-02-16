@@ -213,6 +213,28 @@ static void InitializeOpenGL(render_context& renderContext)
     glBindBuffer(GL_ARRAY_BUFFER, renderContext.primitiveVBO);
     
     glBindVertexArray(0);
+    
+    
+    // Initialize Quad buffers
+    glGenVertexArrays(1, &renderContext.quadVAO);
+    glBindVertexArray(renderContext.quadVAO);
+    
+    glGenBuffers(1, &renderContext.quadVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, renderContext.quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(renderContext.quadVertices),renderContext.quadVertices, GL_STATIC_DRAW);
+    
+    glGenBuffers(1, &renderContext.quadIndexBuffer);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderContext.quadIndexBuffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(renderContext.quadIndices), renderContext.quadIndices, GL_STATIC_DRAW);
+    
+    glUseProgram(renderContext.basicShader.programID);
+    
+    auto pos = glGetAttribLocation(renderContext.basicShader.programID, "position");
+    
+    glEnableVertexAttribArray(pos);
+    glVertexAttribPointer(pos, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    
+    glBindVertexArray(0);
 }
 
 static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec3(0.0f), glm::vec3 end = glm::vec3(0.0f), glm::vec4 color = glm::vec4(1.0f), float lineWidth = 2.0f)
@@ -269,6 +291,11 @@ static model& LoadModel(render_context& renderContext, gl_buffer vbo, gl_buffer*
     mat.specularColor = glm::vec3(1, 1, 1);
     mat.alpha = 1.0f;
     
+    object.vertexCount = vbo.count;
+    object.uvCount = 0;
+    object.colorCount = 0;
+    object.normalCount = 0;
+    
     if(uvBuffer)
     {
         glGenBuffers(1, &object.uvBufferHandle);
@@ -278,6 +305,7 @@ static model& LoadModel(render_context& renderContext, gl_buffer vbo, gl_buffer*
         mat.type = MT_texture;
         mat.texture.tex = uvBuffer->uv.tex;
         mat.materialShader = renderContext.textureShader;
+        object.uvCount = uvBuffer->count;
     }
     else
     {
@@ -295,6 +323,7 @@ static model& LoadModel(render_context& renderContext, gl_buffer vbo, gl_buffer*
         mat.type = MT_color;
         mat.diffuse.diffuseColor = glm::vec3(1, 1, 1);
         mat.materialShader = renderContext.colorShader;
+        object.colorCount = colorBuffer->count;
     }
     
     if(normalBuffer)
@@ -303,6 +332,7 @@ static model& LoadModel(render_context& renderContext, gl_buffer vbo, gl_buffer*
         glBindBuffer(GL_ARRAY_BUFFER, object.normalBufferHandle);
         glBufferData(GL_ARRAY_BUFFER, normalBuffer->size, normalBuffer->data, GL_STATIC_DRAW);
         object.hasNormals = true;
+        object.normalCount = normalBuffer->count;
     }
     
     return object;
@@ -315,6 +345,23 @@ static void UpdateBuffer(gl_buffer newBuffer, int bufferHandle)
         glBindBuffer(GL_ARRAY_BUFFER, bufferHandle);
         glBufferData(GL_ARRAY_BUFFER, newBuffer.size, newBuffer.data, GL_STATIC_DRAW);
     }
+}
+
+static void RenderQuad(render_context& renderContext, glm::vec3 position = glm::vec3(0.0f), glm::quat orientation = glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3 scale = glm::vec3(1.0f), glm::vec4 color = glm::vec4(1.0f))
+{
+    glBindVertexArray(renderContext.quadVAO);
+    
+    renderContext.right = glm::normalize(glm::cross(renderContext.direction, renderContext.up));
+    
+    auto m = ComputeTransformation(scale, orientation, position);
+    
+    SetMatrixUniform(renderContext.basicShader.programID, "M", m);
+    SetMatrixUniform(renderContext.basicShader.programID, "V", renderContext.viewMatrix);
+    SetMatrixUniform(renderContext.basicShader.programID, "P", renderContext.projectionMatrix);
+    SetVec4Uniform(renderContext.basicShader.programID, "c", color);
+    
+    glDrawElements(GL_TRIANGLES, sizeof(renderContext.quadIndices), GL_UNSIGNED_INT, (void*)0);
+    glBindVertexArray(0);
 }
 
 static void RenderModel(render_context& renderContext, model& m)
@@ -369,7 +416,7 @@ static void RenderModel(render_context& renderContext, model& m)
         glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
     }
     
-    glDrawArrays(GL_TRIANGLES, 0, 12 * 3);
+    glDrawArrays(GL_TRIANGLES, 0, m.vertexCount * 3);
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
@@ -378,8 +425,8 @@ static void RenderModel(render_context& renderContext, model& m)
 
 static void RenderGrid(render_context& renderContext, glm::vec4 color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f), float lineWidth = 2.0f)
 {
-    float gridSize = 10.0f;
-    glm::vec3 offset = glm::vec3(5.0f, 0.0f, 5.0f);
+    float gridSize = 15.0f;
+    glm::vec3 offset = renderContext.originOffset;
     for(int x = 0; x < gridSize; x++)
     {
         for(int y = 0; y < gridSize; y++)
@@ -412,7 +459,7 @@ static void ComputeMatrices(render_context& renderContext, double deltaTime)
     if(renderContext.FoV >= 45.0f)
         renderContext.FoV = 45.0f;
     
-    renderContext.projectionMatrix = glm::perspective(glm::radians(renderContext.FoV), (float)renderContext.screenWidth / (float)renderContext.screenHeight, 0.1f, 100.0f);
+    renderContext.projectionMatrix = glm::perspective(glm::radians(renderContext.FoV), (float)renderContext.screenWidth / (float)renderContext.screenHeight, renderContext.near, renderContext.far);
     
     float panSpeed = 7.0f * (float)deltaTime;
     if(glfwGetKey(renderContext.window, Key_W) == GLFW_PRESS)
@@ -446,8 +493,10 @@ static void ComputeMatrices(render_context& renderContext, double deltaTime)
         renderContext.position += right * panSpeed * (float)-inputState.xDelta;
         auto up = glm::normalize(glm::cross(right, renderContext.direction));
         renderContext.position += glm::normalize(up) * panSpeed * (float)-inputState.yDelta;
-        
     }
+    
+    renderContext.right = glm::normalize(glm::cross(renderContext.direction, renderContext.up));
+    
     renderContext.viewMatrix = glm::lookAt(renderContext.position, renderContext.position + renderContext.direction, renderContext.up);
 }
 
