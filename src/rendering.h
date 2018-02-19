@@ -81,7 +81,6 @@ struct render_material
     shader materialShader;
 };
 
-
 struct vertex
 {
     glm::vec3 position;
@@ -104,6 +103,9 @@ struct mesh
     glm::mat4 transform;
     
     render_material material;
+    
+    bool dirty;
+    GLfloat* currentVBO;
     
     face* faces;
     int numFaces;

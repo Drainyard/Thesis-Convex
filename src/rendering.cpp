@@ -253,11 +253,13 @@ static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec
     auto v3 = end - normal;
     auto v4 = end + normal;
     
-    GLfloat points[18] = {v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, v3.x, v3.y, v3.z, v4.x, v4.y, v4.z, v2.x, v2.y, v2.z};
+    GLfloat points[18] = {v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, v3.x, v3.y, v3.z, v2.x, v2.y, v2.z, v4.x, v4.y, v4.z};
     glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(GLfloat), &points[0], GL_DYNAMIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void*)0);
     
-    SetMatrixUniform(renderContext.basicShader.programID, "M", glm::mat4(1.0f));
+    auto m = glm::scale(glm::mat4(1.0f), glm::vec3(globalScale));
+    
+    SetMatrixUniform(renderContext.basicShader.programID, "M", m);
     SetMatrixUniform(renderContext.basicShader.programID, "V", renderContext.viewMatrix);
     SetMatrixUniform(renderContext.basicShader.programID, "P", renderContext.projectionMatrix);
     SetVec4Uniform(renderContext.basicShader.programID, "c", color);
@@ -335,7 +337,7 @@ static GLfloat* BuildVertexBuffer(face* faces, int numFaces)
     return vertices;
 }
 
-static glm::vec3 ComputeFaceNormal(face f)
+static glm::vec3 ComputeFaceNormal(render_context& renderContext, face f)
 {
     auto u = f.vertices[1].position - f.vertices[0].position;
     auto v = f.vertices[2].position - f.vertices[0].position;
@@ -345,7 +347,7 @@ static glm::vec3 ComputeFaceNormal(face f)
     return normal;
 }
 
-static void AddFace(mesh& m, vertex v1, vertex v2, vertex v3)
+static face& AddFace(render_context& renderContext, mesh& m, vertex v1, vertex v2, vertex v3)
 {
     if(m.numFaces + 1 >= m.facesSize)
     {
@@ -365,9 +367,29 @@ static void AddFace(mesh& m, vertex v1, vertex v2, vertex v3)
     newFace.vertices[0] = v1;
     newFace.vertices[1] = v2;
     newFace.vertices[2] = v3;
-    newFace.faceNormal = ComputeFaceNormal(newFace);
+    newFace.faceNormal = ComputeFaceNormal(renderContext, newFace);
+    
+    
+    auto centerPoint = (newFace.vertices[0].position + newFace.vertices[1].position + newFace.vertices[2].position)/3.0f;
+    
+    auto v1v3 = newFace.vertices[0].position - centerPoint;
+    auto v2v3 = newFace.vertices[1].position - centerPoint;
+    
+    auto counterclockwise = glm::dot(newFace.faceNormal, glm::cross(v1v3, v2v3)) >= 0.0f;
+    //normal *= (counterclockwise ? 1.0f : -1.0f);
+    if(!counterclockwise)
+    {
+        auto temp1 = newFace.vertices[0];
+        newFace.vertices[0] = newFace.vertices[1];
+        newFace.vertices[1] = temp1;
+    }
+    newFace.faceNormal = ComputeFaceNormal(renderContext, newFace);
+    
     newFace.faceColor = RandomColor();
+    newFace.faceColor.w = 0.5f;
     m.faces[m.numFaces++] = newFace;
+    m.dirty = true;
+    return m.faces[m.numFaces - 1];
 }
 
 static void RemoveFace(mesh& m, face* f)
@@ -411,6 +433,7 @@ static mesh& InitEmptyMesh(render_context& renderContext)
     object.uvCount = 0;
     object.colorCount = 0;
     object.normalCount = 0;
+    object.dirty = true;
     
     glBindVertexArray(0);
     
@@ -521,7 +544,7 @@ static void RenderMesh(render_context& renderContext, mesh& m)
     if(renderContext.lightCount > 0)
     {
         auto& light = renderContext.lights[0];
-        lightPos = renderContext.position; //light.position;
+        lightPos = light.position;
         lightColor = light.color;
         lightPower = light.power;
     }
@@ -540,10 +563,15 @@ static void RenderMesh(render_context& renderContext, mesh& m)
     glBindVertexArray(m.VAO);
     
     glBindBuffer(GL_ARRAY_BUFFER, m.VBO);
+    if(m.dirty)
+    {
+        free(m.currentVBO);
+        m.dirty = false;
+        m.currentVBO = BuildVertexBuffer(m.faces, m.numFaces);
+    }
     
-    auto vbo = BuildVertexBuffer(m.faces, m.numFaces);
     m.vertexCount = m.numFaces * 3;
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex) * m.vertexCount, &vbo[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex) * m.vertexCount, &m.currentVBO[0], GL_STATIC_DRAW);
     
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, position));
@@ -561,8 +589,27 @@ static void RenderMesh(render_context& renderContext, mesh& m)
     glDisableVertexAttribArray(2);
     glBindVertexArray(0);
     
-    free(vbo);
+    auto lineColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    auto lineWidth = 5.0f;
+    auto normalColor = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
+    auto faceNormalColor = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
     
+    auto lineLength = 15.0f;
+    
+    for(int i = 0; i < 3 * m.numFaces; i++)
+    {
+        auto& f = m.faces[i];
+        RenderLine(renderContext, f.vertices[0].position, f.vertices[0].position + f.faceNormal * lineLength, normalColor, lineWidth);
+        RenderLine(renderContext, f.vertices[1].position, f.vertices[1].position + f.faceNormal * lineLength, normalColor, lineWidth);
+        RenderLine(renderContext, f.vertices[2].position, f.vertices[2].position + f.faceNormal * lineLength, normalColor, lineWidth);
+        RenderLine(renderContext, f.vertices[0].position, f.vertices[1].position, lineColor, lineWidth);
+        RenderLine(renderContext, f.vertices[0].position, f.vertices[2].position, lineColor, lineWidth);
+        RenderLine(renderContext, f.vertices[1].position, f.vertices[2].position, lineColor, lineWidth);
+        
+        auto centerPoint = (f.vertices[0].position + f.vertices[1].position + f.vertices[2].position)/3.0f;
+        
+        RenderLine(renderContext, centerPoint, centerPoint + lineLength * f.faceNormal, faceNormalColor, lineWidth);
+    }
 }
 
 static void RenderGrid(render_context& renderContext, glm::vec4 color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f), float lineWidth = 2.0f)
@@ -603,7 +650,7 @@ static void ComputeMatrices(render_context& renderContext, double deltaTime)
     
     renderContext.projectionMatrix = glm::perspective(glm::radians(renderContext.FoV), (float)renderContext.screenWidth / (float)renderContext.screenHeight, renderContext.near, renderContext.far);
     
-    float panSpeed = 7.0f * (float)deltaTime;
+    float panSpeed = 10.0f * (float)deltaTime;
     if(glfwGetKey(renderContext.window, Key_W) == GLFW_PRESS)
     {
         renderContext.position += panSpeed * renderContext.direction;
