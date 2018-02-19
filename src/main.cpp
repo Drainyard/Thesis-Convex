@@ -39,7 +39,7 @@ static vertex* GeneratePoints(render_context& renderContext, int numberOfPoints)
         float z = RandomFloat(0, 200);
         
         res[i].position = glm::vec3(x, y, z) - renderContext.originOffset;
-        res[i].color = RandomColor();
+        res[i].color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
     }
     return res;
 }

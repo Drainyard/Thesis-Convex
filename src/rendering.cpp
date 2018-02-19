@@ -369,21 +369,31 @@ static face& AddFace(render_context& renderContext, mesh& m, vertex v1, vertex v
     newFace.vertices[2] = v3;
     newFace.faceNormal = ComputeFaceNormal(renderContext, newFace);
     
-    
+    /*
     auto centerPoint = (newFace.vertices[0].position + newFace.vertices[1].position + newFace.vertices[2].position)/3.0f;
     
-    auto v1v3 = newFace.vertices[0].position - centerPoint;
-    auto v2v3 = newFace.vertices[1].position - centerPoint;
+    auto v1C = v1.position - centerPoint;
+    auto v2C = v2.position - centerPoint;
     
-    auto counterclockwise = glm::dot(newFace.faceNormal, glm::cross(v1v3, v2v3)) >= 0.0f;
-    //normal *= (counterclockwise ? 1.0f : -1.0f);
+    auto counterclockwise = glm::dot(newFace.faceNormal, glm::cross(v1C, v2C)) >= 0.0f;
+    
     if(!counterclockwise)
     {
-        auto temp1 = newFace.vertices[0];
-        newFace.vertices[0] = newFace.vertices[1];
-        newFace.vertices[1] = temp1;
+        newFace.vertices[0] = v2;
+        newFace.vertices[1] = v1;
     }
     newFace.faceNormal = ComputeFaceNormal(renderContext, newFace);
+    auto v3C = v3.position - centerPoint;
+    
+    counterclockwise = glm::dot(newFace.faceNormal, glm::cross(v1C, v2C)) >= 0.0f;
+    
+    if(!counterclockwise)
+    {
+        newFace.vertices[1] = v3;
+        newFace.vertices[2] = v2;
+    }
+    newFace.faceNormal = ComputeFaceNormal(renderContext, newFace);
+    */
     
     newFace.faceColor = RandomColor();
     newFace.faceColor.w = 0.5f;
@@ -590,11 +600,11 @@ static void RenderMesh(render_context& renderContext, mesh& m)
     glBindVertexArray(0);
     
     auto lineColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    auto lineWidth = 5.0f;
+    auto lineWidth = 10.0f;
     auto normalColor = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
     auto faceNormalColor = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
     
-    auto lineLength = 15.0f;
+    auto lineLength = 20.0f;
     
     for(int i = 0; i < 3 * m.numFaces; i++)
     {
