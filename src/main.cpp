@@ -68,7 +68,7 @@ int main()
     
     CreateLight(renderContext, glm::vec3(0.0f, 75.0f, 10.0f), glm::vec3(1, 1, 1), 2500.0f);
     
-    int numberOfPoints = 1500;
+    int numberOfPoints = 500;
     
     auto points = GeneratePoints(renderContext, numberOfPoints);
     
@@ -88,8 +88,10 @@ int main()
         
         for(int p = 0; p < numberOfPoints; p++)
         {
-            RenderQuad(renderContext, points[p].position, glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(globalScale), points[p].color);
+            //RenderQuad(renderContext, points[p].position, glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(globalScale), points[p].color);
         }
+        
+        RenderPointCloud(renderContext, 5000);
         
         Render(renderContext);
         

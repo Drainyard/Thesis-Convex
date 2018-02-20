@@ -117,7 +117,7 @@ void GenerateInitialSimplex(render_context& renderContext, vertex* points, int n
         }
     }
     
-    auto f = AddFace(renderContext, m, points[extremePoints[0]], points[extremePoints[extremePointCurrentIndex]], points[extremePoints[1]]);
+    auto f = AddFace(renderContext, m, points[extremePoints[0]], points[extremePoints[1]], points[extremePoints[extremePointCurrentIndex]]);
     
     auto currentFurthest = 0.0f;
     auto currentIndex = 0;
@@ -135,9 +135,9 @@ void GenerateInitialSimplex(render_context& renderContext, vertex* points, int n
         }
     }
     
-    AddFace(renderContext, m, points[extremePoints[0]], points[extremePoints[extremePointCurrentIndex]], points[currentIndex]);
-    AddFace(renderContext, m, points[extremePoints[extremePointCurrentIndex]], points[extremePoints[1]], points[currentIndex]);
     AddFace(renderContext, m, points[extremePoints[0]], points[currentIndex], points[extremePoints[extremePointCurrentIndex]]);
+    AddFace(renderContext, m, points[extremePoints[extremePointCurrentIndex]], points[extremePoints[1]], points[currentIndex]);
+    AddFace(renderContext, m, points[extremePoints[0]], points[extremePoints[1]], points[currentIndex]);
     
 }
 

@@ -154,6 +154,7 @@ struct render_context
     shader textureShader;
     shader colorShader;
     shader basicShader;
+    shader particleShader;
     
     mesh meshes[64];
     int meshCount;
@@ -167,14 +168,18 @@ struct render_context
     GLuint quadVAO;
     GLuint quadVBO;
     GLuint quadIndexBuffer;
-    GLuint quadIndices[6] = {0, 1, 2, 0, 2, 3};
+    GLuint quadIndices[6] = {0, 1, 2, 2, 1, 3};
     GLfloat quadVertices[8] = 
     {
-        -0.5, -0.5,
-        0.5, -0.5,
-        0.5, 0.5,
-        -0.5, 0.5
+        0.0f, 0.0f,
+        1.0f, 0.0f,
+        0.0f, 1.0f,
+        1.0f, 1.0f
     };
+    
+    GLuint pointCloudVAO;
+    GLuint particlesVBO;
+    GLuint billboardVBO;
 };
 
 #endif

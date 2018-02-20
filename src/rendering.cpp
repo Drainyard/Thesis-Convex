@@ -205,6 +205,7 @@ static void InitializeOpenGL(render_context& renderContext)
     renderContext.textureShader = LoadShaders("../shaders/texture.vert", "../shaders/texture.frag");
     renderContext.colorShader = LoadShaders("../shaders/color.vert", "../shaders/color.frag");
     renderContext.basicShader = LoadShaders("../shaders/basic.vert", "../shaders/basic.frag");
+    renderContext.particleShader = LoadShaders("../shaders/particle.vert", "../shaders/particle.frag");
     
     // Initialize line buffer
     glGenVertexArrays(1, &renderContext.primitiveVAO);
@@ -234,6 +235,23 @@ static void InitializeOpenGL(render_context& renderContext)
     glVertexAttribPointer(pos, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
     
     glBindVertexArray(0);
+    
+    // Initialize point cloud
+    glGenVertexArrays(1, &renderContext.pointCloudVAO);
+    glBindVertexArray(renderContext.pointCloudVAO);
+    
+    static const GLfloat g_vertex_buffer_data[] = {
+        -0.5f, -0.5f, 0.0f,
+        0.5f, -0.5f, 0.0f,
+        -0.5f, 0.5f, 0.0f,
+        0.5f, 0.5f, 0.0f,
+    };
+    
+    glGenBuffers(1, &renderContext.billboardVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, renderContext.billboardVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
+    glGenBuffers(1, &renderContext.particlesVBO);
+    
 }
 
 static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec3(0.0f), glm::vec3 end = glm::vec3(0.0f), glm::vec4 color = glm::vec4(1.0f), float lineWidth = 2.0f)
@@ -339,12 +357,21 @@ static GLfloat* BuildVertexBuffer(face* faces, int numFaces)
 
 static glm::vec3 ComputeFaceNormal(render_context& renderContext, face f)
 {
-    auto u = f.vertices[1].position - f.vertices[0].position;
-    auto v = f.vertices[2].position - f.vertices[0].position;
+    // Newell's Method
+    // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
+    glm::vec3 normal = glm::vec3(0.0f);
     
-    glm::vec3 normal = glm::normalize(glm::cross(u, v));
+    for(int i = 0; i < 3; i++)
+    {
+        auto& current = f.vertices[i].position;
+        auto& next = f.vertices[(i + 1) % 3].position;
+        
+        normal.x = normal.x + (current.y - next.y) * (current.z + next.z);
+        normal.y = normal.y + (current.z - next.z) * (current.x + next.x);
+        normal.z = normal.z + (current.x - next.x) * (current.y + next.y);
+    }
     
-    return normal;
+    return glm::normalize(normal);
 }
 
 static face& AddFace(render_context& renderContext, mesh& m, vertex v1, vertex v2, vertex v3)
@@ -519,6 +546,51 @@ static void UpdateBuffer(gl_buffer newBuffer, int bufferHandle)
         glBindBuffer(GL_ARRAY_BUFFER, bufferHandle);
         glBufferData(GL_ARRAY_BUFFER, newBuffer.size, newBuffer.data, GL_STATIC_DRAW);
     }
+}
+
+static void SetupPointCloud()
+{
+    
+}
+
+static void RenderPointCloud(render_context& renderContext, int numQuads)
+{
+    glBindVertexArray(renderContext.pointCloudVAO);
+    glUseProgram(renderContext.particleShader.programID);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, renderContext.particlesVBO);
+    glBufferData(GL_ARRAY_BUFFER, numQuads * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+    
+    GLfloat* positions = (GLfloat*)malloc(numQuads * sizeof(GLfloat) * 4);
+    
+    for(int i = 0; i < numQuads; i++)
+    {
+        positions[4 * i + 0] = RandomFloat(0.0f, 50.0f);
+        positions[4 * i + 1] = RandomFloat(0.0f, 50.0f);
+        positions[4 * i + 2] = RandomFloat(0.0f, 50.0f);
+        positions[4 * i + 3] = 50.0f;
+    }
+    
+    glBufferSubData(GL_ARRAY_BUFFER, 0, numQuads * sizeof(GLfloat) * 4, positions);
+    
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, renderContext.billboardVBO);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, renderContext.particlesVBO);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    
+    glVertexAttribDivisor(0, 0);
+    glVertexAttribDivisor(1, 1);
+    glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, numQuads);
+    
+    
+    SetMatrixUniform(renderContext.basicShader.programID, "M", glm::mat4(1.0f));
+    SetMatrixUniform(renderContext.basicShader.programID, "V", renderContext.viewMatrix);
+    SetMatrixUniform(renderContext.basicShader.programID, "P", renderContext.projectionMatrix);
+    
+    glBindVertexArray(0);
 }
 
 static void RenderQuad(render_context& renderContext, glm::vec3 position = glm::vec3(0.0f), glm::quat orientation = glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3 scale = glm::vec3(1.0f), glm::vec4 color = glm::vec4(1.0f))
