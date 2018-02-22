@@ -78,8 +78,7 @@
 #define Key_9 GLFW_KEY_9
 #define Key_Add GLFW_KEY_ADD
 #define Key_Subtract GLFW_KEY_SUBTRACT
-#define Key_MouseLeft GLFW_MOUSE_BUTTON_LEFT
-#define Key_MouseRight GLFW_MOUSE_BUTTON_RIGHT
+
 #define Key_Unknown GLFW_KEY_UNKNOWN
 #define Key_Apostrophe GLFW_KEY_APOSTROPHE
 #define Key_Comma GLFW_KEY_COMMA
@@ -128,6 +127,18 @@
 #define Key_Last Key_KPEqual
 
 
+#define MouseLeft GLFW_MOUSE_BUTTON_LEFT
+#define MouseRight GLFW_MOUSE_BUTTON_RIGHT
+#define MouseMiddle GLFW_MOUSE_BUTTON_MIDDLE
+
+enum Key_State
+{
+    Key_NotPressed,
+    Key_Pressed,
+    Key_JustPressed,
+    Key_Invalid
+};
+
 struct input_state
 {
     double xPos;
@@ -145,6 +156,11 @@ struct input_state
     float mousePitch;
     
     bool firstMouse;
+    
+    Key_State keys[GLFW_KEY_LAST];
+    Key_State mouseButtons[GLFW_MOUSE_BUTTON_LAST]; // For now. Add more later?
+    bool keysDown[GLFW_KEY_LAST];
+    bool mouseButtonsDown[GLFW_MOUSE_BUTTON_LAST];
 };
 
 #endif

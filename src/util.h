@@ -13,7 +13,7 @@ static int RandomInt(int start, int end)
 
 static glm::vec4 RandomColor()
 {
-    return glm::vec4((float)RandomInt(100, 255) / 255.0f, (float)RandomInt(100, 255) / 255.0f, (float)RandomInt(100, 255) / 255.0f, (float)RandomInt(100, 255) / 255.0f);
+    return glm::vec4((float)RandomInt(0, 255) / 255.0f, (float)RandomInt(0, 255) / 255.0f, (float)RandomInt(0, 255) / 255.0f, (float)RandomInt(100, 255) / 255.0f);
 }
 
 #endif

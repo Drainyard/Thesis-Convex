@@ -182,6 +182,8 @@ static void InitializeOpenGL(render_context& renderContext)
     
     glfwSetCursorPosCallback(renderContext.window, MousePositionCallback);
     glfwSetScrollCallback(renderContext.window, MouseScrollCallback);
+    glfwSetKeyCallback(renderContext.window, KeyCallback);
+    glfwSetMouseButtonCallback(renderContext.window, MouseButtonCallback);
     
     printf("%s\n", glGetString(GL_VERSION));
     printf("Shading language supported: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
@@ -199,8 +201,10 @@ static void InitializeOpenGL(render_context& renderContext)
     glEnable              (GL_DEBUG_OUTPUT);
     glDebugMessageCallback((GLDEBUGPROC) MessageCallback, 0);
     
-    glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    //glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+    //glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    
+    glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+    
     
     renderContext.textureShader = LoadShaders("../shaders/texture.vert", "../shaders/texture.frag");
     renderContext.colorShader = LoadShaders("../shaders/color.vert", "../shaders/color.frag");
@@ -240,7 +244,7 @@ static void InitializeOpenGL(render_context& renderContext)
     glGenVertexArrays(1, &renderContext.pointCloudVAO);
     glBindVertexArray(renderContext.pointCloudVAO);
     
-    static const GLfloat g_vertex_buffer_data[] = {
+    static const GLfloat vbData[] = {
         -0.5f, -0.5f, 0.0f,
         0.5f, -0.5f, 0.0f,
         -0.5f, 0.5f, 0.0f,
@@ -249,9 +253,9 @@ static void InitializeOpenGL(render_context& renderContext)
     
     glGenBuffers(1, &renderContext.billboardVBO);
     glBindBuffer(GL_ARRAY_BUFFER, renderContext.billboardVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vbData), vbData, GL_STATIC_DRAW);
     glGenBuffers(1, &renderContext.particlesVBO);
-    
+    glGenBuffers(1, &renderContext.particlesColorVBO);
 }
 
 static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec3(0.0f), glm::vec3 end = glm::vec3(0.0f), glm::vec4 color = glm::vec4(1.0f), float lineWidth = 2.0f)
@@ -298,7 +302,7 @@ static light& CreateLight(render_context& renderContext, glm::vec3 position = gl
 
 static GLfloat* BuildVertexBuffer(face* faces, int numFaces)
 {
-    GLfloat* vertices = (GLfloat*)malloc(numFaces * 3 * sizeof(vertex));
+    GLfloat* vertices = (GLfloat*)malloc(numFaces * 3 * sizeof(vertex_info));
     for(int i = 0; i < numFaces; i++)
     {
         auto v1 = faces[i].vertices[0];
@@ -374,7 +378,7 @@ static glm::vec3 ComputeFaceNormal(render_context& renderContext, face f)
     return glm::normalize(normal);
 }
 
-static face& AddFace(render_context& renderContext, mesh& m, vertex v1, vertex v2, vertex v3)
+static face& AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex& v2, vertex& v3)
 {
     if(m.numFaces + 1 >= m.facesSize)
     {
@@ -391,12 +395,48 @@ static face& AddFace(render_context& renderContext, mesh& m, vertex v1, vertex v
     }
     
     face newFace = {};
+    newFace.neighbours = (face*)malloc(sizeof(face) * 3);
+    
+    //!!!TODO: This is extremely slow now, but naive solution is fine for vertical slice!!!
+    // Find face neighbours: i.e. faces sharing two vertices
+    for(int v1FaceIndex = 0; v1FaceIndex < v1.numFaceHandles; v1FaceIndex++)
+    {
+        for(int v2FaceIndex = 0; v2FaceIndex < v2.numFaceHandles; v2FaceIndex++)
+        {
+            if(v1.faceHandles[v1FaceIndex] == v2.faceHandles[v2FaceIndex])
+            {
+                newFace.neighbours[0] = m.faces[v1.faceHandles[v1FaceIndex]];
+            }
+        }
+        
+        for(int v3FaceIndex = 0; v3FaceIndex < v3.numFaceHandles; v3FaceIndex++)
+        {
+            if(v1.faceHandles[v1FaceIndex] == v3.faceHandles[v3FaceIndex])
+            {
+                newFace.neighbours[1] = m.faces[v1.faceHandles[v1FaceIndex]];
+            }
+        }
+    }
+    
+    for(int v2FaceIndex = 0; v2FaceIndex < v2.numFaceHandles; v2FaceIndex++)
+    {
+        for(int v3FaceIndex = 0; v3FaceIndex < v3.numFaceHandles; v3FaceIndex++)
+        {
+            if(v1.faceHandles[v2FaceIndex] == v3.faceHandles[v3FaceIndex])
+            {
+                newFace.neighbours[2] = m.faces[v2.faceHandles[v2FaceIndex]];
+            }
+        }
+    }
+    
+    v1.faceHandles[v1.numFaceHandles++] = m.numFaces;
+    v2.faceHandles[v2.numFaceHandles++] = m.numFaces;
+    v3.faceHandles[v3.numFaceHandles++] = m.numFaces;
     newFace.vertices[0] = v1;
     newFace.vertices[1] = v2;
     newFace.vertices[2] = v3;
     newFace.faceNormal = ComputeFaceNormal(renderContext, newFace);
     
-    /*
     auto centerPoint = (newFace.vertices[0].position + newFace.vertices[1].position + newFace.vertices[2].position)/3.0f;
     
     auto v1C = v1.position - centerPoint;
@@ -406,32 +446,24 @@ static face& AddFace(render_context& renderContext, mesh& m, vertex v1, vertex v
     
     if(!counterclockwise)
     {
-        newFace.vertices[0] = v2;
-        newFace.vertices[1] = v1;
+        newFace.faceNormal = -newFace.faceNormal;
     }
-    newFace.faceNormal = ComputeFaceNormal(renderContext, newFace);
-    auto v3C = v3.position - centerPoint;
-    
-    counterclockwise = glm::dot(newFace.faceNormal, glm::cross(v1C, v2C)) >= 0.0f;
-    
-    if(!counterclockwise)
-    {
-        newFace.vertices[1] = v3;
-        newFace.vertices[2] = v2;
-    }
-    newFace.faceNormal = ComputeFaceNormal(renderContext, newFace);
-    */
     
     newFace.faceColor = RandomColor();
     newFace.faceColor.w = 0.5f;
+    newFace.indexInMesh = m.numFaces;
+    
     m.faces[m.numFaces++] = newFace;
+    
     m.dirty = true;
     return m.faces[m.numFaces - 1];
 }
 
 static void RemoveFace(mesh& m, face* f)
 {
+    //TODO: Remove face index from vertices
     bool found = false;
+    //free(f->neighbours);
     for(int faceIndex = 0; faceIndex < m.numFaces; faceIndex++)
     {
         if(!found && &m.faces[faceIndex] == f)
@@ -548,30 +580,38 @@ static void UpdateBuffer(gl_buffer newBuffer, int bufferHandle)
     }
 }
 
-static void SetupPointCloud()
-{
-    
-}
-
-static void RenderPointCloud(render_context& renderContext, int numQuads)
+static void RenderPointCloud(render_context& renderContext, vertex* inputPoints, int numPoints)
 {
     glBindVertexArray(renderContext.pointCloudVAO);
     glUseProgram(renderContext.particleShader.programID);
     
     glBindBuffer(GL_ARRAY_BUFFER, renderContext.particlesVBO);
-    glBufferData(GL_ARRAY_BUFFER, numQuads * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, numPoints * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
     
-    GLfloat* positions = (GLfloat*)malloc(numQuads * sizeof(GLfloat) * 4);
+    GLfloat* positions = (GLfloat*)malloc(numPoints * sizeof(GLfloat) * 4);
+    GLfloat* colors = (GLfloat*)malloc(numPoints * sizeof(GLfloat) * 4);
     
-    for(int i = 0; i < numQuads; i++)
+    for(int i = 0; i < numPoints; i++)
     {
-        positions[4 * i + 0] = RandomFloat(0.0f, 50.0f);
-        positions[4 * i + 1] = RandomFloat(0.0f, 50.0f);
-        positions[4 * i + 2] = RandomFloat(0.0f, 50.0f);
+        positions[4 * i + 0] = inputPoints[i].position.x;
+        positions[4 * i + 1] = inputPoints[i].position.y;
+        positions[4 * i + 2] = inputPoints[i].position.z;
         positions[4 * i + 3] = 50.0f;
+        auto c = inputPoints[i].color;
+        colors[4 * i + 0] = c.x;
+        colors[4 * i + 1] = c.y;
+        colors[4 * i + 2] = c.z;
+        colors[4 * i + 3] = c.w;
     }
     
-    glBufferSubData(GL_ARRAY_BUFFER, 0, numQuads * sizeof(GLfloat) * 4, positions);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, numPoints * sizeof(GLfloat) * 4, positions);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, renderContext.particlesColorVBO);
+    glBufferData(GL_ARRAY_BUFFER, numPoints * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+    
+    glBufferSubData(GL_ARRAY_BUFFER, 0, numPoints * sizeof(GLfloat) * 4, colors);
+    
+    
     
     glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, renderContext.billboardVBO);
@@ -581,16 +621,24 @@ static void RenderPointCloud(render_context& renderContext, int numQuads)
     glBindBuffer(GL_ARRAY_BUFFER, renderContext.particlesVBO);
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
     
+    glEnableVertexAttribArray(2);
+    glBindBuffer(GL_ARRAY_BUFFER, renderContext.particlesColorVBO);
+    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    
     glVertexAttribDivisor(0, 0);
     glVertexAttribDivisor(1, 1);
-    glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, numQuads);
+    glVertexAttribDivisor(2, 1);
     
-    
-    SetMatrixUniform(renderContext.basicShader.programID, "M", glm::mat4(1.0f));
+    auto m = glm::scale(glm::mat4(1.0f), glm::vec3(globalScale));
+    SetMatrixUniform(renderContext.basicShader.programID, "M", m);
     SetMatrixUniform(renderContext.basicShader.programID, "V", renderContext.viewMatrix);
     SetMatrixUniform(renderContext.basicShader.programID, "P", renderContext.projectionMatrix);
     
+    glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, numPoints);
+    
     glBindVertexArray(0);
+    free(positions);
+    free(colors);
 }
 
 static void RenderQuad(render_context& renderContext, glm::vec3 position = glm::vec3(0.0f), glm::quat orientation = glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3 scale = glm::vec3(1.0f), glm::vec4 color = glm::vec4(1.0f))
@@ -653,16 +701,16 @@ static void RenderMesh(render_context& renderContext, mesh& m)
     }
     
     m.vertexCount = m.numFaces * 3;
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex) * m.vertexCount, &m.currentVBO[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_info) * m.vertexCount, &m.currentVBO[0], GL_STATIC_DRAW);
     
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, position));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_info), (void*)offsetof(vertex, position));
     
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*)offsetof(vertex, normal));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_info), (void*)offsetof(vertex, normal));
     
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(vertex), (void*) offsetof(vertex, color));
+    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(vertex_info), (void*) offsetof(vertex, color));
     
     
     glDrawArrays(GL_TRIANGLES, 0, m.vertexCount * 10);
@@ -678,20 +726,46 @@ static void RenderMesh(render_context& renderContext, mesh& m)
     
     auto lineLength = 20.0f;
     
-    for(int i = 0; i < 3 * m.numFaces; i++)
+    auto c1 = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    auto c2 = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    auto c3 = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    
+    auto vertexSum = glm::vec3(0.0f);
+    
+    if(renderContext.renderNormals)
     {
-        auto& f = m.faces[i];
-        RenderLine(renderContext, f.vertices[0].position, f.vertices[0].position + f.faceNormal * lineLength, normalColor, lineWidth);
-        RenderLine(renderContext, f.vertices[1].position, f.vertices[1].position + f.faceNormal * lineLength, normalColor, lineWidth);
-        RenderLine(renderContext, f.vertices[2].position, f.vertices[2].position + f.faceNormal * lineLength, normalColor, lineWidth);
-        RenderLine(renderContext, f.vertices[0].position, f.vertices[1].position, lineColor, lineWidth);
-        RenderLine(renderContext, f.vertices[0].position, f.vertices[2].position, lineColor, lineWidth);
-        RenderLine(renderContext, f.vertices[1].position, f.vertices[2].position, lineColor, lineWidth);
         
-        auto centerPoint = (f.vertices[0].position + f.vertices[1].position + f.vertices[2].position)/3.0f;
-        
-        RenderLine(renderContext, centerPoint, centerPoint + lineLength * f.faceNormal, faceNormalColor, lineWidth);
+        for(int i = 0; i < m.numFaces; i++)
+        {
+            auto& f = m.faces[i];
+            
+            RenderLine(renderContext, f.vertices[0].position, f.vertices[0].position + f.faceNormal * lineLength, normalColor, lineWidth);
+            RenderLine(renderContext, f.vertices[1].position, f.vertices[1].position + f.faceNormal * lineLength, normalColor, lineWidth);
+            RenderLine(renderContext, f.vertices[2].position, f.vertices[2].position + f.faceNormal * lineLength, normalColor, lineWidth);
+            RenderLine(renderContext, f.vertices[0].position, f.vertices[1].position, c1, lineWidth);
+            RenderLine(renderContext, f.vertices[1].position, f.vertices[2].position, c2, lineWidth);
+            RenderLine(renderContext, f.vertices[2].position, f.vertices[0].position, c3, lineWidth);
+            
+            auto centerPoint = (f.vertices[0].position + f.vertices[1].position + f.vertices[2].position)/3.0f;
+            
+            RenderLine(renderContext, centerPoint, centerPoint + lineLength * f.faceNormal, faceNormalColor, lineWidth);
+        }
     }
+    else
+    {
+        for(int i = 0; i < m.numFaces; i++)
+        {
+            auto& f = m.faces[i];
+            if(i == 0)
+            {
+                RenderLine(renderContext, f.vertices[0].position, f.vertices[1].position, c1, lineWidth);
+                RenderLine(renderContext, f.vertices[1].position, f.vertices[2].position, c2, lineWidth);
+                RenderLine(renderContext, f.vertices[2].position, f.vertices[0].position, c3, lineWidth);
+            }
+            
+        }
+    }
+    
 }
 
 static void RenderGrid(render_context& renderContext, glm::vec4 color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f), float lineWidth = 2.0f)
@@ -733,24 +807,24 @@ static void ComputeMatrices(render_context& renderContext, double deltaTime)
     renderContext.projectionMatrix = glm::perspective(glm::radians(renderContext.FoV), (float)renderContext.screenWidth / (float)renderContext.screenHeight, renderContext.near, renderContext.far);
     
     float panSpeed = 10.0f * (float)deltaTime;
-    if(glfwGetKey(renderContext.window, Key_W) == GLFW_PRESS)
+    if(Key(Key_W))
     {
         renderContext.position += panSpeed * renderContext.direction;
     }
-    if(glfwGetKey(renderContext.window, Key_S) == GLFW_PRESS)
+    if(Key(Key_S))
     {
         renderContext.position -= panSpeed * renderContext.direction;
     }
-    if(glfwGetKey(renderContext.window, Key_A) == GLFW_PRESS)
+    if(Key(Key_A))
     {
         renderContext.position -= glm::normalize(glm::cross(renderContext.direction, renderContext.up)) * panSpeed;
     }
-    if(glfwGetKey(renderContext.window, Key_D) == GLFW_PRESS)
+    if(Key(Key_D))
     {
         renderContext.position += glm::normalize(glm::cross(renderContext.direction, renderContext.up)) * panSpeed;
     }
     
-    if(glfwGetMouseButton(renderContext.window, Key_MouseLeft) == GLFW_PRESS)
+    if(Mouse(MouseLeft))
     {
         glm::vec3 front;
         front.x = (float)(cos(glm::radians(inputState.mousePitch)) * cos(glm::radians(inputState.mouseYaw)));
@@ -758,7 +832,7 @@ static void ComputeMatrices(render_context& renderContext, double deltaTime)
         front.z = (float)(cos(glm::radians(inputState.mousePitch)) * sin(glm::radians(inputState.mouseYaw)));
         renderContext.direction = glm::normalize(front);
     }
-    if(glfwGetMouseButton(renderContext.window, Key_MouseRight) == GLFW_PRESS)
+    if(Mouse(MouseRight))
     {
         auto right = glm::normalize(glm::cross(renderContext.direction, renderContext.up));
         renderContext.position += right * panSpeed * (float)-inputState.xDelta;

@@ -135,9 +135,63 @@ void GenerateInitialSimplex(render_context& renderContext, vertex* points, int n
         }
     }
     
-    AddFace(renderContext, m, points[extremePoints[0]], points[currentIndex], points[extremePoints[extremePointCurrentIndex]]);
-    AddFace(renderContext, m, points[extremePoints[extremePointCurrentIndex]], points[extremePoints[1]], points[currentIndex]);
-    AddFace(renderContext, m, points[extremePoints[0]], points[extremePoints[1]], points[currentIndex]);
+    AddFace(renderContext, m, points[currentIndex], points[extremePoints[0]], points[extremePoints[extremePointCurrentIndex]]);
+    AddFace(renderContext, m, points[extremePoints[1]], points[currentIndex], points[extremePoints[extremePointCurrentIndex]]);
+    AddFace(renderContext, m, points[extremePoints[1]], points[extremePoints[0]], points[currentIndex]);
+    
+}
+
+bool IsAbove(vertex v, face f)
+{
+    auto A = (f.vertices[0].position + f.vertices[1].position + f.vertices[2].position)/3.0f;
+    
+    auto B = v.position;
+    auto AB = B - A;
+    auto dot = glm::dot(AB, f.faceNormal);
+    
+    return dot > 0;
+}
+
+void AddToOutsideSet(face& f, vertex& v)
+{
+    if(f.outsideSetCount + 1 >= f.outsideSetSize)
+    {
+        if(f.outsideSetSize == 0)
+        {
+            f.outsideSetSize = 2;
+            f.outsideSet = (vertex*)malloc(sizeof(vertex) * f.outsideSetSize);
+        }
+        else
+        {
+            f.outsideSetSize *= 2;
+            f.outsideSet = (vertex*)realloc(f.outsideSet, f.outsideSetSize * sizeof(vertex));
+        }
+    }
+    f.outsideSet[f.outsideSetCount++] = v;
+}
+
+void AssignToOutsideSets(vertex* vertices, int numVertices, face* faces, int numFaces)
+{
+    vertex* unassigned = (vertex*)malloc(sizeof(vertex) * numVertices);
+    memcpy(unassigned, vertices, sizeof(vertex) * numVertices);
+    int unassignedCount = numVertices;
+    
+    
+    for(int faceIndex = 0; faceIndex < numFaces; faceIndex++)
+    {
+        auto& f = faces[faceIndex];
+        for(int vertexIndex = 0; vertexIndex < unassignedCount; vertexIndex++)
+        {
+            if(IsAbove(unassigned[vertexIndex], f))
+            {
+                vertex v = vertices[vertexIndex];
+                AddToOutsideSet(f, v);
+                memmove(&unassigned[vertexIndex], &unassigned[vertexIndex + 1], sizeof(vertex) * (unassignedCount - vertexIndex + 1));
+                unassignedCount--;
+            }
+        }
+    }
+    free(unassigned);
     
 }
 
@@ -149,6 +203,64 @@ void QuickHull(render_context& renderContext, vertex* points, int numberOfPoints
     m.numFaces = 0;
     m.facesSize = 0;
     GenerateInitialSimplex(renderContext, points, numberOfPoints, m);
+    AssignToOutsideSets(points, numberOfPoints, m.faces,  m.numFaces);
+    
+    // TODO: Optimize for less faces than going through all
+    for(int i = 0; i < 5; i++)
+    {
+        auto& f = m.faces[i];
+        f.visited = true;
+        if(f.outsideSetCount > 0)
+        {
+            // TODO: Optimize, save distance for each vertex and sort?
+            float furthestDistance = 0.0f;
+            int currentFurthest = 0;
+            for(int vertexIndex = 0; vertexIndex < f.outsideSetCount; vertexIndex++)
+            {
+                auto dist = DistancePointToFace(f, f.outsideSet[vertexIndex]);
+                if(dist > furthestDistance)
+                {
+                    currentFurthest = vertexIndex;
+                    furthestDistance = dist;
+                }
+            }
+            face v[32];
+            int inV = 0;
+            
+            auto& p = f.outsideSet[currentFurthest];
+            
+            //TODO: for all unvisited neighbours -> What is unvisited exactly in this case?
+            for(int neighbourIndex = 0; neighbourIndex < 3; neighbourIndex++)
+            {
+                if(!f.neighbours[neighbourIndex].visited)
+                {
+                    if(IsAbove(p, f.neighbours[neighbourIndex]))
+                    {
+                        v[inV++] = f.neighbours[neighbourIndex];
+                    }
+                }
+            }
+            
+            //TODO: What is the boundary of V?
+            for(int vIndex = 0; vIndex < inV; vIndex)
+            {
+                // Definitely not every edge of faces in V, because that would never really do anything
+                auto& f = v[vIndex];
+                f.vertices[0];
+                f.vertices[1];
+                f.vertices[2];
+                
+                AddFace(renderContext, m, f.vertices[0], f.vertices[1], p);
+                AddFace(renderContext, m, f.vertices[1], f.vertices[2], p);
+                AddFace(renderContext, m, f.vertices[2], f.vertices[0], p);
+            }
+            
+            for(int vIndex = 0; vIndex < inV; vIndex++)
+            {
+                RemoveFace(m, &v[vIndex]);
+            }
+        }
+    }
 }
 
 

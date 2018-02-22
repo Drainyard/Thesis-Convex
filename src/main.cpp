@@ -39,7 +39,8 @@ static vertex* GeneratePoints(render_context& renderContext, int numberOfPoints)
         float z = RandomFloat(0, 200);
         
         res[i].position = glm::vec3(x, y, z) - renderContext.originOffset;
-        res[i].color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+        res[i].color = RandomColor(); //glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+        res[i].numFaceHandles = 0;
     }
     return res;
 }
@@ -55,6 +56,8 @@ int main()
     renderContext.near = 0.1f;
     renderContext.far =  10000.0f;
     renderContext.originOffset = glm::vec3(5.0f, 0.0f, 5.0f);
+    renderContext.renderPoints = true;
+    renderContext.renderNormals = true;
     
     InitializeOpenGL(renderContext);
     
@@ -68,14 +71,14 @@ int main()
     
     CreateLight(renderContext, glm::vec3(0.0f, 75.0f, 10.0f), glm::vec3(1, 1, 1), 2500.0f);
     
-    int numberOfPoints = 500;
+    int numberOfPoints = 15000;
     
     auto points = GeneratePoints(renderContext, numberOfPoints);
     
     QuickHull(renderContext, points, numberOfPoints);
     
     // Check if the ESC key was pressed or the window was closed
-    while(glfwGetKey(renderContext.window, Key_Escape ) != GLFW_PRESS &&
+    while(!KeyDown(Key_Escape) &&
           glfwWindowShouldClose(renderContext.window) == 0 )
     {
         currentFrame = glfwGetTime();
@@ -86,12 +89,19 @@ int main()
         
         ComputeMatrices(renderContext, deltaTime);
         
-        for(int p = 0; p < numberOfPoints; p++)
+        if(KeyDown(Key_P))
         {
-            //RenderQuad(renderContext, points[p].position, glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(globalScale), points[p].color);
+            renderContext.renderPoints = !renderContext.renderPoints;
+        }
+        if(KeyDown(Key_N))
+        {
+            renderContext.renderNormals = !renderContext.renderNormals;
         }
         
-        RenderPointCloud(renderContext, 5000);
+        if(renderContext.renderPoints)
+        {
+            RenderPointCloud(renderContext, points, numberOfPoints);
+        }
         
         Render(renderContext);
         
@@ -102,6 +112,7 @@ int main()
         inputState.yScroll = 0;
         inputState.xDelta = 0;
         inputState.yDelta = 0;
+        SetInvalidKeys();
         
         glfwPollEvents();
     }

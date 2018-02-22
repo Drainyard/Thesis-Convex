@@ -81,11 +81,27 @@ struct render_material
     shader materialShader;
 };
 
-struct vertex
+struct vertex_info
 {
     glm::vec3 position;
     glm::vec3 normal;
     glm::vec4 color;
+};
+
+struct vertex
+{
+    union
+    {
+        vertex_info info;
+        struct
+        {
+            glm::vec3 position;
+            glm::vec3 normal;
+            glm::vec4 color;
+        };
+    };
+    int faceHandles[64]; // Try with 64 for now. Optimize if less or more
+    int numFaceHandles;
 };
 
 struct face
@@ -93,6 +109,13 @@ struct face
     vertex vertices[3];
     glm::vec3 faceNormal;
     glm::vec4 faceColor;
+    vertex* outsideSet;
+    int outsideSetCount;
+    int outsideSetSize;
+    
+    face* neighbours;
+    int indexInMesh;
+    bool visited;
 };
 
 struct mesh
@@ -162,6 +185,9 @@ struct render_context
     light lights[64];
     int lightCount;
     
+    bool renderPoints;
+    bool renderNormals;
+    
     GLuint primitiveVAO;
     GLuint primitiveVBO;
     
@@ -179,6 +205,7 @@ struct render_context
     
     GLuint pointCloudVAO;
     GLuint particlesVBO;
+    GLuint particlesColorVBO;
     GLuint billboardVBO;
 };
 
