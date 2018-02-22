@@ -88,6 +88,13 @@ struct vertex_info
     glm::vec4 color;
 };
 
+struct neighbour
+{
+    int faceHandle;
+    int originVertex;
+    int endVertex;
+};
+
 struct vertex
 {
     union
@@ -102,18 +109,19 @@ struct vertex
     };
     int faceHandles[64]; // Try with 64 for now. Optimize if less or more
     int numFaceHandles;
+    int vertexIndex;
 };
 
 struct face
 {
-    vertex vertices[3];
+    int vertices[3];
     glm::vec3 faceNormal;
     glm::vec4 faceColor;
-    vertex* outsideSet;
+    int* outsideSet;
     int outsideSetCount;
     int outsideSetSize;
     
-    face* neighbours;
+    neighbour neighbours[3];
     int indexInMesh;
     bool visited;
 };

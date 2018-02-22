@@ -41,6 +41,7 @@ static vertex* GeneratePoints(render_context& renderContext, int numberOfPoints)
         res[i].position = glm::vec3(x, y, z) - renderContext.originOffset;
         res[i].color = RandomColor(); //glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
         res[i].numFaceHandles = 0;
+        res[i].vertexIndex = i;
     }
     return res;
 }
@@ -73,9 +74,9 @@ int main()
     
     int numberOfPoints = 15000;
     
-    auto points = GeneratePoints(renderContext, numberOfPoints);
+    auto vertices = GeneratePoints(renderContext, numberOfPoints);
     
-    QuickHull(renderContext, points, numberOfPoints);
+    QuickHull(renderContext, vertices, numberOfPoints);
     
     // Check if the ESC key was pressed or the window was closed
     while(!KeyDown(Key_Escape) &&
@@ -100,10 +101,10 @@ int main()
         
         if(renderContext.renderPoints)
         {
-            RenderPointCloud(renderContext, points, numberOfPoints);
+            RenderPointCloud(renderContext, vertices, numberOfPoints);
         }
         
-        Render(renderContext);
+        Render(renderContext, vertices);
         
         // Swap buffers
         glfwSwapBuffers(renderContext.window);

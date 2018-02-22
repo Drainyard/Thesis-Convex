@@ -201,9 +201,9 @@ static void InitializeOpenGL(render_context& renderContext)
     glEnable              (GL_DEBUG_OUTPUT);
     glDebugMessageCallback((GLDEBUGPROC) MessageCallback, 0);
     
-    //glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
-    glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+    //glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     
     
     renderContext.textureShader = LoadShaders("../shaders/texture.vert", "../shaders/texture.frag");
@@ -300,14 +300,14 @@ static light& CreateLight(render_context& renderContext, glm::vec3 position = gl
     return l;
 }
 
-static GLfloat* BuildVertexBuffer(face* faces, int numFaces)
+static GLfloat* BuildVertexBuffer(face* faces, int numFaces, vertex* input)
 {
     GLfloat* vertices = (GLfloat*)malloc(numFaces * 3 * sizeof(vertex_info));
     for(int i = 0; i < numFaces; i++)
     {
-        auto v1 = faces[i].vertices[0];
-        auto v2 = faces[i].vertices[1];
-        auto v3 = faces[i].vertices[2];
+        auto v1 = input[faces[i].vertices[0]];
+        auto v2 = input[faces[i].vertices[1]];
+        auto v3 = input[faces[i].vertices[2]];
         // First vertex
         vertices[i * 30] = v1.position.x;
         vertices[i * 30 + 1] = v1.position.y;
@@ -359,7 +359,7 @@ static GLfloat* BuildVertexBuffer(face* faces, int numFaces)
     return vertices;
 }
 
-static glm::vec3 ComputeFaceNormal(render_context& renderContext, face f)
+static glm::vec3 ComputeFaceNormal(render_context& renderContext, face f, vertex* vertices)
 {
     // Newell's Method
     // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
@@ -367,8 +367,8 @@ static glm::vec3 ComputeFaceNormal(render_context& renderContext, face f)
     
     for(int i = 0; i < 3; i++)
     {
-        auto& current = f.vertices[i].position;
-        auto& next = f.vertices[(i + 1) % 3].position;
+        auto& current = vertices[f.vertices[i]].position;
+        auto& next = vertices[f.vertices[(i + 1) % 3]].position;
         
         normal.x = normal.x + (current.y - next.y) * (current.z + next.z);
         normal.y = normal.y + (current.z - next.z) * (current.x + next.x);
@@ -378,7 +378,7 @@ static glm::vec3 ComputeFaceNormal(render_context& renderContext, face f)
     return glm::normalize(normal);
 }
 
-static face& AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex& v2, vertex& v3)
+static face& AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex& v2, vertex& v3, vertex* vertices)
 {
     if(m.numFaces + 1 >= m.facesSize)
     {
@@ -395,7 +395,6 @@ static face& AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex&
     }
     
     face newFace = {};
-    newFace.neighbours = (face*)malloc(sizeof(face) * 3);
     
     //!!!TODO: This is extremely slow now, but naive solution is fine for vertical slice!!!
     // Find face neighbours: i.e. faces sharing two vertices
@@ -405,7 +404,10 @@ static face& AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex&
         {
             if(v1.faceHandles[v1FaceIndex] == v2.faceHandles[v2FaceIndex])
             {
-                newFace.neighbours[0] = m.faces[v1.faceHandles[v1FaceIndex]];
+                newFace.neighbours[0].faceHandle = v1.faceHandles[v1FaceIndex];
+                newFace.neighbours[0].originVertex = v1.vertexIndex;
+                newFace.neighbours[0].endVertex = v2.vertexIndex;
+                m.faces[newFace.neighbours[0].faceHandle].visited = false;
             }
         }
         
@@ -413,7 +415,10 @@ static face& AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex&
         {
             if(v1.faceHandles[v1FaceIndex] == v3.faceHandles[v3FaceIndex])
             {
-                newFace.neighbours[1] = m.faces[v1.faceHandles[v1FaceIndex]];
+                newFace.neighbours[1].faceHandle = v1.faceHandles[v1FaceIndex];
+                newFace.neighbours[1].originVertex = v1.vertexIndex;
+                newFace.neighbours[1].endVertex = v3.vertexIndex;
+                m.faces[newFace.neighbours[1].faceHandle].visited = false;
             }
         }
     }
@@ -422,9 +427,12 @@ static face& AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex&
     {
         for(int v3FaceIndex = 0; v3FaceIndex < v3.numFaceHandles; v3FaceIndex++)
         {
-            if(v1.faceHandles[v2FaceIndex] == v3.faceHandles[v3FaceIndex])
+            if(v2.faceHandles[v2FaceIndex] == v3.faceHandles[v3FaceIndex])
             {
-                newFace.neighbours[2] = m.faces[v2.faceHandles[v2FaceIndex]];
+                newFace.neighbours[2].faceHandle = v2.faceHandles[v2FaceIndex];
+                newFace.neighbours[2].originVertex = v2.vertexIndex;
+                newFace.neighbours[2].endVertex = v3.vertexIndex;
+                m.faces[newFace.neighbours[2].faceHandle].visited = false;
             }
         }
     }
@@ -432,12 +440,12 @@ static face& AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex&
     v1.faceHandles[v1.numFaceHandles++] = m.numFaces;
     v2.faceHandles[v2.numFaceHandles++] = m.numFaces;
     v3.faceHandles[v3.numFaceHandles++] = m.numFaces;
-    newFace.vertices[0] = v1;
-    newFace.vertices[1] = v2;
-    newFace.vertices[2] = v3;
-    newFace.faceNormal = ComputeFaceNormal(renderContext, newFace);
+    newFace.vertices[0] = v1.vertexIndex;
+    newFace.vertices[1] = v2.vertexIndex;
+    newFace.vertices[2] = v3.vertexIndex;
+    newFace.faceNormal = ComputeFaceNormal(renderContext, newFace, vertices);
     
-    auto centerPoint = (newFace.vertices[0].position + newFace.vertices[1].position + newFace.vertices[2].position)/3.0f;
+    auto centerPoint = (vertices[newFace.vertices[0]].position + vertices[newFace.vertices[1]].position + vertices[newFace.vertices[2]].position)/3.0f;
     
     auto v1C = v1.position - centerPoint;
     auto v2C = v2.position - centerPoint;
@@ -611,8 +619,6 @@ static void RenderPointCloud(render_context& renderContext, vertex* inputPoints,
     
     glBufferSubData(GL_ARRAY_BUFFER, 0, numPoints * sizeof(GLfloat) * 4, colors);
     
-    
-    
     glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, renderContext.billboardVBO);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
@@ -658,7 +664,7 @@ static void RenderQuad(render_context& renderContext, glm::vec3 position = glm::
     glBindVertexArray(0);
 }
 
-static void RenderMesh(render_context& renderContext, mesh& m)
+static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
 {
     auto& material = m.material;
     glUseProgram(material.materialShader.programID);
@@ -697,7 +703,7 @@ static void RenderMesh(render_context& renderContext, mesh& m)
     {
         free(m.currentVBO);
         m.dirty = false;
-        m.currentVBO = BuildVertexBuffer(m.faces, m.numFaces);
+        m.currentVBO = BuildVertexBuffer(m.faces, m.numFaces, vertices);
     }
     
     m.vertexCount = m.numFaces * 3;
@@ -739,14 +745,18 @@ static void RenderMesh(render_context& renderContext, mesh& m)
         {
             auto& f = m.faces[i];
             
-            RenderLine(renderContext, f.vertices[0].position, f.vertices[0].position + f.faceNormal * lineLength, normalColor, lineWidth);
-            RenderLine(renderContext, f.vertices[1].position, f.vertices[1].position + f.faceNormal * lineLength, normalColor, lineWidth);
-            RenderLine(renderContext, f.vertices[2].position, f.vertices[2].position + f.faceNormal * lineLength, normalColor, lineWidth);
-            RenderLine(renderContext, f.vertices[0].position, f.vertices[1].position, c1, lineWidth);
-            RenderLine(renderContext, f.vertices[1].position, f.vertices[2].position, c2, lineWidth);
-            RenderLine(renderContext, f.vertices[2].position, f.vertices[0].position, c3, lineWidth);
+            auto v1 = vertices[f.vertices[0]];
+            auto v2 = vertices[f.vertices[1]];
+            auto v3 = vertices[f.vertices[2]];
             
-            auto centerPoint = (f.vertices[0].position + f.vertices[1].position + f.vertices[2].position)/3.0f;
+            RenderLine(renderContext, v1.position, v1.position + f.faceNormal * lineLength, normalColor, lineWidth);
+            RenderLine(renderContext, v2.position, v2.position + f.faceNormal * lineLength, normalColor, lineWidth);
+            RenderLine(renderContext, v3.position, v3.position + f.faceNormal * lineLength, normalColor, lineWidth);
+            RenderLine(renderContext, v1.position, v2.position, c1, lineWidth);
+            RenderLine(renderContext, v2.position, v3.position, c2, lineWidth);
+            RenderLine(renderContext, v3.position, v1.position, c3, lineWidth);
+            
+            auto centerPoint = (v1.position + v2.position + v3.position)/3.0f;
             
             RenderLine(renderContext, centerPoint, centerPoint + lineLength * f.faceNormal, faceNormalColor, lineWidth);
         }
@@ -756,11 +766,16 @@ static void RenderMesh(render_context& renderContext, mesh& m)
         for(int i = 0; i < m.numFaces; i++)
         {
             auto& f = m.faces[i];
+            
+            auto v1 = vertices[f.vertices[0]];
+            auto v2 = vertices[f.vertices[1]];
+            auto v3 = vertices[f.vertices[2]];
+            
             if(i == 0)
             {
-                RenderLine(renderContext, f.vertices[0].position, f.vertices[1].position, c1, lineWidth);
-                RenderLine(renderContext, f.vertices[1].position, f.vertices[2].position, c2, lineWidth);
-                RenderLine(renderContext, f.vertices[2].position, f.vertices[0].position, c3, lineWidth);
+                RenderLine(renderContext, v1.position, v2.position, c1, lineWidth);
+                RenderLine(renderContext, v2.position, v3.position, c2, lineWidth);
+                RenderLine(renderContext, v3.position, v1.position, c3, lineWidth);
             }
             
         }
@@ -786,11 +801,11 @@ static void RenderGrid(render_context& renderContext, glm::vec4 color = glm::vec
 }
 
 
-static void Render(render_context& renderContext)
+static void Render(render_context& renderContext, vertex* vertices)
 {
     for(int meshIndex = 0; meshIndex < renderContext.meshCount; meshIndex++)
     {
-        RenderMesh(renderContext, renderContext.meshes[meshIndex]);
+        RenderMesh(renderContext, renderContext.meshes[meshIndex], vertices);
     }
     RenderGrid(renderContext, glm::vec4(0.6f, 0.6f, 0.6f, 1.0f), 1.0f);
 }
