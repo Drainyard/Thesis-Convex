@@ -29,14 +29,14 @@ static input_state inputState;
 #define Max(A,B) ((A > B) ? (A) : (B))
 #define Abs(x) ((x) < 0 ? -(x) : (x))
 
-static vertex* GeneratePoints(render_context& renderContext, int numberOfPoints)
+static vertex* GeneratePoints(render_context& renderContext, int numberOfPoints, float min = 0.0f, float max = 200.0f)
 {
     auto res = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
     for(int i = 0; i < numberOfPoints; i++)
     {
-        float x = RandomFloat(0, 200);
-        float y = RandomFloat(0, 200);
-        float z = RandomFloat(0, 200);
+        float x = RandomFloat(min, max);
+        float y = RandomFloat(min, max);
+        float z = RandomFloat(min, max);
         
         res[i].position = glm::vec3(x, y, z) - renderContext.originOffset;
         res[i].color = RandomColor(); //glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
@@ -72,9 +72,9 @@ int main()
     
     CreateLight(renderContext, glm::vec3(0.0f, 75.0f, 10.0f), glm::vec3(1, 1, 1), 2500.0f);
     
-    int numberOfPoints = 500;
+    int numberOfPoints = 20;
     
-    auto vertices = GeneratePoints(renderContext, numberOfPoints);
+    auto vertices = GeneratePoints(renderContext, numberOfPoints, 0.0f, 100.0f);
     
     QuickHull(renderContext, vertices, numberOfPoints);
     

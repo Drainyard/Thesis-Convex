@@ -87,44 +87,85 @@ float SquareDistancePointToSegment(vertex& a, vertex& b, vertex& c)
     return Dot(ac, ac) - e * e / f;
 }
 
+bool IsPointOnPositiveSide(face& f, vertex& v, vertex* vertices)
+{
+    auto c = (vertices[f.vertices[0]].position + vertices[f.vertices[1]].position + vertices[f.vertices[2]].position) / 3.0f;
+    auto distanceToOrigin = glm::distance(c, glm::vec3(0.0f));
+    auto d = glm::dot(f.faceNormal, v.position) + distanceToOrigin;
+    return d >= 0;
+}
+
 // t=nn·v1−nn·p
 // p0=p+t·nn
 float DistancePointToFace(face& f, vertex& v, vertex* vertices)
 {
-    /*auto t = f.faceNormal * f.vertices[0].position - f.faceNormal * v.position;
-    auto p0 = v.position + t * f.faceNormal;
-    return Distance(p0, v.position);*/
+    auto c = (vertices[f.vertices[0]].position + vertices[f.vertices[1]].position + vertices[f.vertices[2]].position) / 3.0f;
+    auto distanceToOrigin = glm::distance(c, glm::vec3(0.0f));
     
-    auto d1 = Distance(vertices[f.vertices[0]].position, v.position);
-    auto d2 = Distance(vertices[f.vertices[1]].position, v.position);
-    auto d3 = Distance(vertices[f.vertices[2]].position, v.position);
-    return d1 + d2 + d3;
+    return glm::dot(f.faceNormal, v.position) + distanceToOrigin;
 }
+
+struct vertex_pair
+{
+    vertex first;
+    vertex second;
+};
 
 void GenerateInitialSimplex(render_context& renderContext, vertex* vertices, int numberOfPoints, mesh& m)
 {
+    // First we find all 6 extreme points in the whole point set
     auto extremePoints = FindExtremePoints(vertices, numberOfPoints);
+    
+    vertex_pair mostDistantPair = {};
+    auto dist = 0.0f;
+    auto mostDist1 = -1;
+    auto mostDist2 = -1;
+    
+    // Now look through the extreme points to find the two
+    // points furthest away from each other
+    for(int i = 0; i < 6; i++)
+    {
+        for(int j = 0; j < 6; j++)
+        {
+            auto newDist = glm::distance(vertices[extremePoints[i]].position, vertices[extremePoints[j]].position);
+            if(dist < newDist)
+            {
+                dist = newDist;
+                mostDistantPair.first = vertices[extremePoints[i]];
+                mostDistantPair.second = vertices[extremePoints[j]];
+                
+                // Save indices for use later
+                mostDist1 = extremePoints[i];
+                mostDist2 = extremePoints[j];
+            }
+        }
+    }
     
     auto extremePointCurrentFurthest = 0.0f;
     auto extremePointCurrentIndex = 0;
     
-    for(int i = 2; i < 6; i++)
+    // Find the poin that is furthest away from the segment 
+    // spanned by the two extreme points
+    for(int i = 0; i < numberOfPoints; i++)
     {
-        auto distance = SquareDistancePointToSegment(vertices[extremePoints[0]], vertices[extremePoints[1]], vertices[extremePoints[i]]);
+        auto distance = SquareDistancePointToSegment(mostDistantPair.first, mostDistantPair.second, vertices[i]);
         if(distance > extremePointCurrentFurthest)
         {
             extremePointCurrentIndex = i;
         }
     }
     
-    auto f = AddFace(renderContext, m, vertices[extremePoints[0]], vertices[extremePoints[1]], vertices[extremePoints[extremePointCurrentIndex]], vertices);
+    auto f = AddFace(renderContext, m, mostDistantPair.first, mostDistantPair.second, vertices[extremePointCurrentIndex], vertices);
+    
+    
     
     auto currentFurthest = 0.0f;
     auto currentIndex = 0;
     
+    // Now find the points furthest away from the face
     for(int i = 0; i < numberOfPoints; i++)
     {
-        if(i == extremePoints[0] || i == extremePoints[1] || i == extremePoints[extremePointCurrentIndex])
+        if(i == mostDist1 || i == mostDist2 || i == extremePointCurrentIndex)
         {
             continue;
         }
@@ -135,21 +176,17 @@ void GenerateInitialSimplex(render_context& renderContext, vertex* vertices, int
         }
     }
     
-    AddFace(renderContext, m, vertices[currentIndex], vertices[extremePoints[0]], vertices[extremePoints[extremePointCurrentIndex]], vertices);
-    AddFace(renderContext, m, vertices[extremePoints[1]], vertices[currentIndex], vertices[extremePoints[extremePointCurrentIndex]], vertices);
-    AddFace(renderContext, m, vertices[extremePoints[1]], vertices[extremePoints[0]], vertices[currentIndex], vertices);
+    if(IsPointOnPositiveSide(f, vertices[currentIndex], vertices))
+    {
+        auto t = f.vertices[0];
+        f.vertices[0] = f.vertices[1];
+        f.vertices[1] = t;
+    }
     
-}
-
-bool IsAbove(vertex& v, face f, vertex* vertices)
-{
-    auto A = (vertices[f.vertices[0]].position + vertices[f.vertices[1]].position + vertices[f.vertices[2]].position)/3.0f;
+    AddFace(renderContext, m, vertices[currentIndex], mostDistantPair.first, vertices[extremePointCurrentIndex], vertices);
+    AddFace(renderContext, m, mostDistantPair.second, vertices[currentIndex], vertices[extremePointCurrentIndex], vertices);
+    AddFace(renderContext, m, mostDistantPair.second, mostDistantPair.first, vertices[currentIndex], vertices);
     
-    auto B = v.position;
-    auto AB = B - A;
-    auto dot = glm::dot(AB, f.faceNormal);
-    
-    return dot > 0;
 }
 
 void AddToOutsideSet(face& f, vertex& v)
@@ -181,7 +218,7 @@ void AssignToOutsideSets(vertex* vertices, int numVertices, face* faces, int num
         auto& f = faces[faceIndex];
         for(int vertexIndex = 0; vertexIndex < unassignedCount - 1; vertexIndex++)
         {
-            if(IsAbove(unassigned[vertexIndex], f, vertices))
+            if(IsPointOnPositiveSide(f, unassigned[vertexIndex], vertices))
             {
                 vertex v = vertices[vertexIndex];
                 AddToOutsideSet(f, v);
@@ -212,7 +249,7 @@ edge_list FindConvexHorizon(vertex& viewPoint, face* faces, int numFaces, vertex
         for(int neighbourIndex = 0; neighbourIndex < faces[faceIndex].neighbourCount; neighbourIndex++)
         {
             auto& neighbour = faces[faceIndex].neighbours[neighbourIndex];
-            if(!IsAbove(viewPoint, m.faces[neighbour.faceHandle], vertices))
+            if(!IsPointOnPositiveSide(m.faces[neighbour.faceHandle], viewPoint, vertices))
             {
                 edge newEdge = {};
                 newEdge.origin = neighbour.originVertex;
@@ -253,6 +290,7 @@ void QuickHull(render_context& renderContext, vertex* vertices, int numberOfPoin
                     furthestDistance = dist;
                 }
             }
+            
             face v[32];
             int inV = 0;
             v[inV++] = f;
@@ -265,7 +303,7 @@ void QuickHull(render_context& renderContext, vertex* vertices, int numberOfPoin
                 auto& neighbour = m.faces[f.neighbours[neighbourIndex].faceHandle];
                 if(!neighbour.visited)
                 {
-                    if(IsAbove(p, neighbour, vertices))
+                    if(IsPointOnPositiveSide(neighbour, p, vertices))
                     {
                         v[inV++] = neighbour;
                     }
@@ -274,7 +312,6 @@ void QuickHull(render_context& renderContext, vertex* vertices, int numberOfPoin
             }
             
             auto numFaces = m.numFaces;
-            
             auto edgeList = FindConvexHorizon(p, v, inV, vertices, m);
             
             for(int edgeIndex = 0; edgeIndex < edgeList.count; edgeIndex++)
@@ -294,7 +331,7 @@ void QuickHull(render_context& renderContext, vertex* vertices, int numberOfPoin
                     for(int osIndex = 0; osIndex < f.outsideSetCount; osIndex++)
                     {
                         auto& q = vertices[f.outsideSet[osIndex]];
-                        if(IsAbove(q, m.faces[newFaceIndex], vertices))
+                        if(IsPointOnPositiveSide(m.faces[newFaceIndex], q, vertices))
                         {
                             AddToOutsideSet(m.faces[newFaceIndex], q);
                         }
@@ -306,9 +343,12 @@ void QuickHull(render_context& renderContext, vertex* vertices, int numberOfPoin
             {
                 printf("Removing face\n");
                 RemoveFace(m, &v[vIndex], vertices);
+                i = glm::max(i, 0);
             }
         }
     }
+    printf("Number of faces: %d\n", m.numFaces);
+    
 }
 
 

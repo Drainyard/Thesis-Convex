@@ -402,7 +402,7 @@ static void FindNeighbours(vertex& v1, vertex& v2, mesh& m, face& f)
                 for(int n = 0; n < m.faces[v1Face].neighbourCount; n++)
                 {
                     auto& neighbour = m.faces[m.faces[v1Face].neighbours[n].faceHandle];
-                    if(neighbour.indexInMesh == v1Face)
+                    if(neighbour.indexInMesh == f.indexInMesh)
                     {
                         alreadyAdded = true;
                     }
@@ -420,7 +420,7 @@ static void FindNeighbours(vertex& v1, vertex& v2, mesh& m, face& f)
                     auto& neighbour = m.faces[v1Face];
                     
                     auto neighbourIndex = neighbour.neighbourCount++;
-                    neighbour.neighbours[neighbourIndex].faceHandle = m.numFaces;
+                    neighbour.neighbours[neighbourIndex].faceHandle = f.indexInMesh;
                     neighbour.neighbours[neighbourIndex].endVertex = v1.vertexIndex;
                     neighbour.neighbours[neighbourIndex].originVertex = v2.vertexIndex;
                     neighbour.visited = false;
@@ -460,26 +460,14 @@ static face& AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex&
     FindNeighbours(v1, v3, m, newFace);
     FindNeighbours(v2, v3, m, newFace);
     
-    v1.faceHandles[v1.numFaceHandles++] = m.numFaces;
-    v2.faceHandles[v2.numFaceHandles++] = m.numFaces;
-    v3.faceHandles[v3.numFaceHandles++] = m.numFaces;
+    v1.faceHandles[v1.numFaceHandles++] = newFace.indexInMesh;
+    v2.faceHandles[v2.numFaceHandles++] = newFace.indexInMesh;
+    v3.faceHandles[v3.numFaceHandles++] = newFace.indexInMesh;
     
     newFace.vertices[0] = v1.vertexIndex;
     newFace.vertices[1] = v2.vertexIndex;
     newFace.vertices[2] = v3.vertexIndex;
     newFace.faceNormal = ComputeFaceNormal(renderContext, newFace, vertices);
-    
-    auto centerPoint = (vertices[newFace.vertices[0]].position + vertices[newFace.vertices[1]].position + vertices[newFace.vertices[2]].position)/3.0f;
-    
-    auto v1C = v1.position - centerPoint;
-    auto v2C = v2.position - centerPoint;
-    
-    auto counterclockwise = glm::dot(newFace.faceNormal, glm::cross(v1C, v2C)) >= 0.0f;
-    
-    if(!counterclockwise)
-    {
-        newFace.faceNormal = -newFace.faceNormal;
-    }
     
     newFace.faceColor = RandomColor();
     newFace.faceColor.w = 0.5f;
@@ -504,7 +492,7 @@ static void RemoveFace(mesh& m, face* f, vertex* vertices)
         // go through the neighbours of the neighbour to find f
         for(int i = 0; i < neighbourFace.neighbourCount - 1; i++)
         {
-            if(neighbourFace.neighbours[i].faceHandle == f->indexInMesh)
+            if(!neighbourFound && neighbourFace.neighbours[i].faceHandle == f->indexInMesh)
             {
                 // Found the neighbour
                 neighbourFound = true;
@@ -521,20 +509,21 @@ static void RemoveFace(mesh& m, face* f, vertex* vertices)
     bool found = false;
     for(int faceIndex = 0; faceIndex < m.numFaces - 1; faceIndex++)
     {
-        
         if(!found && m.faces[faceIndex].indexInMesh == f->indexInMesh)
         {
             found = true;
         }
         else if(found)
         {
+            // This should be a copy and thus changed values on face are not real changes
+            auto oldF = m.faces[faceIndex];
             // Shift to the left once
             m.faces[faceIndex] = m.faces[faceIndex + 1];
             m.faces[faceIndex].indexInMesh = faceIndex;
             
             auto& fesh = m.faces[faceIndex];
             
-            // Now that whole array is shifted from faceIndex -> numFaces
+            // Now that whole array is shifted one to the left from faceIndex
             // We need to shift all neighbour face handle references
             // by one if their neighbour had a face handle greater than 
             // the face Index of the old face
@@ -542,12 +531,15 @@ static void RemoveFace(mesh& m, face* f, vertex* vertices)
             {
                 if(fesh.neighbours[i].faceHandle > faceIndex)
                 {
-                    fesh.neighbours[i].faceHandle -= 1;
+                    if(fesh.neighbours[i].faceHandle != m.faces[fesh.neighbours[i].faceHandle].indexInMesh)
+                    {
+                        fesh.neighbours[i].faceHandle -= 1;
+                    }
                 }
             }
             
             // Remove face handle from vertices
-            auto& v1 = vertices[m.faces[faceIndex + 1].vertices[0]];
+            auto& v1 = vertices[oldF.vertices[0]];
             for(int fIndex = 0; fIndex < v1.numFaceHandles; fIndex++)
             {
                 if(v1.faceHandles[fIndex] == faceIndex)
@@ -560,7 +552,7 @@ static void RemoveFace(mesh& m, face* f, vertex* vertices)
                 }
             }
             
-            auto& v2 = vertices[m.faces[faceIndex + 1].vertices[1]];
+            auto& v2 = vertices[oldF.vertices[1]];
             for(int fIndex = 0; fIndex < v2.numFaceHandles; fIndex++)
             {
                 if(v2.faceHandles[fIndex] == faceIndex)
@@ -573,7 +565,7 @@ static void RemoveFace(mesh& m, face* f, vertex* vertices)
                 }
             }
             
-            auto& v3 = vertices[m.faces[faceIndex + 1].vertices[2]];
+            auto& v3 = vertices[oldF.vertices[2]];
             for(int fIndex = 0; fIndex < v3.numFaceHandles; fIndex++)
             {
                 if(v3.faceHandles[fIndex] == faceIndex)
