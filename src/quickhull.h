@@ -223,7 +223,7 @@ void AssignToOutsideSets(vertex* vertices, int numVertices, face* faces, int num
                 vertex v = vertices[vertexIndex];
                 AddToOutsideSet(f, v);
                 // Swap last into current effectively "deleting"
-                // We can do this since we throw away this list afterwards after all
+                // We can do this since we throw away this list afterwards anyway
                 unassigned[vertexIndex] = unassigned[unassignedCount - 1];
                 unassignedCount--;
             }
@@ -261,7 +261,13 @@ edge_list FindConvexHorizon(vertex& viewPoint, face* faces, int numFaces, vertex
     return list;
 }
 
-void QuickHull(render_context& renderContext, vertex* vertices, int numberOfPoints)
+struct stack
+{
+    face* begin;
+    int size;
+};
+
+mesh& InitQuickHull(render_context& renderContext, vertex* vertices, int numberOfPoints, stack& faceStack)
 {
     auto& m = InitEmptyMesh(renderContext);
     m.position = glm::vec3(0.0f);
@@ -271,83 +277,107 @@ void QuickHull(render_context& renderContext, vertex* vertices, int numberOfPoin
     GenerateInitialSimplex(renderContext, vertices, numberOfPoints, m);
     AssignToOutsideSets(vertices, numberOfPoints, m.faces,  m.numFaces);
     
+    faceStack.begin = (face*)malloc(sizeof(face) * m.numFaces);
+    faceStack.size = m.numFaces;
+    memcpy(faceStack.begin, m.faces, sizeof(face) * m.numFaces);
+    return m;
+}
+
+void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices, stack& faceStack)
+{
+    if(faceStack.size <= 0)
+        return;
     // TODO: Optimize for less faces than going through all
-    for(int i = 0; i < m.numFaces; i++)
+    
+    auto& f = faceStack.begin[faceStack.size--];
+    //f.visited = true;
+    if(f.outsideSetCount > 0)
     {
-        auto& f = m.faces[i];
-        //f.visited = true;
-        if(f.outsideSetCount > 0)
+        // TODO: Optimize, save distance for each vertex and sort?
+        
+        float furthestDistance = 0.0f;
+        int currentFurthest = 0;
+        for(int vertexIndex = 0; vertexIndex < f.outsideSetCount; vertexIndex++)
         {
-            // TODO: Optimize, save distance for each vertex and sort?
-            float furthestDistance = 0.0f;
-            int currentFurthest = 0;
-            for(int vertexIndex = 0; vertexIndex < f.outsideSetCount; vertexIndex++)
+            auto dist = DistancePointToFace(f, vertices[f.outsideSet[vertexIndex]], vertices);
+            if(dist > furthestDistance)
             {
-                auto dist = DistancePointToFace(f, vertices[f.outsideSet[vertexIndex]], vertices);
-                if(dist > furthestDistance)
-                {
-                    currentFurthest = vertexIndex;
-                    furthestDistance = dist;
-                }
+                currentFurthest = vertexIndex;
+                furthestDistance = dist;
             }
-            
-            face v[32];
-            int inV = 0;
-            v[inV++] = f;
-            
-            auto& p = vertices[f.outsideSet[currentFurthest]];
-            
-            //TODO: for all unvisited neighbours -> What is unvisited exactly in this case?
-            for(int neighbourIndex = 0; neighbourIndex < f.neighbourCount; neighbourIndex++)
+        }
+        
+        
+        face v[32];
+        int inV = 0;
+        v[inV++] = f;
+        
+        auto& p = vertices[f.outsideSet[currentFurthest]];
+        
+        
+        renderContext.debugContext.currentFaceIndex = f.indexInMesh;
+        renderContext.debugContext.currentDistantPoint = p.vertexIndex;
+        
+        //TODO: for all unvisited neighbours -> What is unvisited exactly in this case?
+        for(int neighbourIndex = 0; neighbourIndex < f.neighbourCount; neighbourIndex++)
+        {
+            auto& neighbour = m.faces[f.neighbours[neighbourIndex].faceHandle];
+            if(!neighbour.visited)
             {
-                auto& neighbour = m.faces[f.neighbours[neighbourIndex].faceHandle];
-                if(!neighbour.visited)
+                if(IsPointOnPositiveSide(neighbour, p, vertices))
                 {
-                    if(IsPointOnPositiveSide(neighbour, p, vertices))
+                    v[inV++] = neighbour;
+                }
+                neighbour.visited = true;
+            }
+        }
+        
+        auto numFaces = m.numFaces;
+        auto edgeList = FindConvexHorizon(p, v, inV, vertices, m);
+        
+        for(int edgeIndex = 0; edgeIndex < edgeList.count; edgeIndex++)
+        {
+            auto edge = edgeList[edgeIndex];
+            auto newF = AddFace(renderContext, m, vertices[edge.origin], vertices[edge.end], p, vertices);
+            faceStack.begin[faceStack.size++] = newF;
+        }
+        
+        // The way we understand this, is that unassigned now means any point that was
+        // assigned in the first round, but is part of a face that is about to be
+        // removed. Thus about to be unassigned.
+        for(int newFaceIndex = numFaces; newFaceIndex < m.numFaces; newFaceIndex++)
+        {
+            for(int oldFaceIndex = 0; oldFaceIndex < inV; oldFaceIndex++)
+            {
+                auto& f = v[oldFaceIndex];
+                for(int osIndex = 0; osIndex < f.outsideSetCount; osIndex++)
+                {
+                    auto& q = vertices[f.outsideSet[osIndex]];
+                    if(IsPointOnPositiveSide(m.faces[newFaceIndex], q, vertices))
                     {
-                        v[inV++] = neighbour;
-                    }
-                    neighbour.visited = true;
-                }
-            }
-            
-            auto numFaces = m.numFaces;
-            auto edgeList = FindConvexHorizon(p, v, inV, vertices, m);
-            
-            for(int edgeIndex = 0; edgeIndex < edgeList.count; edgeIndex++)
-            {
-                auto edge = edgeList[edgeIndex];
-                AddFace(renderContext, m, vertices[edge.origin], vertices[edge.end], p, vertices);
-            }
-            
-            // The way we understand this, is that unassigned now means any point that was
-            // assigned in the first round, but is part of a face that is about to be
-            // removed. Thus about to be unassigned.
-            for(int newFaceIndex = numFaces; newFaceIndex < m.numFaces; newFaceIndex++)
-            {
-                for(int oldFaceIndex = 0; oldFaceIndex < inV; oldFaceIndex++)
-                {
-                    auto& f = v[oldFaceIndex];
-                    for(int osIndex = 0; osIndex < f.outsideSetCount; osIndex++)
-                    {
-                        auto& q = vertices[f.outsideSet[osIndex]];
-                        if(IsPointOnPositiveSide(m.faces[newFaceIndex], q, vertices))
-                        {
-                            AddToOutsideSet(m.faces[newFaceIndex], q);
-                        }
+                        AddToOutsideSet(m.faces[newFaceIndex], q);
                     }
                 }
             }
-            
-            for(int vIndex = 0; vIndex < inV; vIndex++)
-            {
-                printf("Removing face\n");
-                RemoveFace(m, &v[vIndex], vertices);
-                i = glm::max(i, 0);
-            }
+        }
+        
+        for(int vIndex = 0; vIndex < inV; vIndex++)
+        {
+            printf("Removing face\n");
+            RemoveFace(m, &v[vIndex], vertices);
         }
     }
     printf("Number of faces: %d\n", m.numFaces);
+}
+
+
+void QuickHull(render_context& renderContext, vertex* vertices, int numberOfPoints, mesh& m, stack& faceStack)
+{
+    while(faceStack.size > 0)
+    {
+        QuickHullIteration(renderContext, m, vertices, faceStack);
+    }
+    
     
 }
 

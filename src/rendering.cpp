@@ -299,11 +299,18 @@ static light& CreateLight(render_context& renderContext, glm::vec3 position = gl
     return l;
 }
 
-static GLfloat* BuildVertexBuffer(face* faces, int numFaces, vertex* input)
+static GLfloat* BuildVertexBuffer(render_context& renderContext, face* faces, int numFaces, vertex* input)
 {
     GLfloat* vertices = (GLfloat*)malloc(numFaces * 3 * sizeof(vertex_info));
+    
     for(int i = 0; i < numFaces; i++)
     {
+        auto currentColor = faces[i].faceColor;
+        if(i == renderContext.debugContext.currentFaceIndex)
+        {
+            currentColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        }
+        
         auto v1 = input[faces[i].vertices[0]];
         auto v2 = input[faces[i].vertices[1]];
         auto v3 = input[faces[i].vertices[2]];
@@ -317,11 +324,12 @@ static GLfloat* BuildVertexBuffer(face* faces, int numFaces, vertex* input)
         vertices[i * 30 + 4] = faces[i].faceNormal.y;
         vertices[i * 30 + 5] = faces[i].faceNormal.z;
         
+        
         // First color
-        vertices[i * 30 + 6] = faces[i].faceColor.x;//v1.color.x;
-        vertices[i * 30 + 7] = faces[i].faceColor.y;//v1.color.y;
-        vertices[i * 30 + 8] = faces[i].faceColor.z;//v1.color.z;
-        vertices[i * 30 + 9] = faces[i].faceColor.w;//v1.color.w;
+        vertices[i * 30 + 6] = currentColor.x;//v1.color.x;
+        vertices[i * 30 + 7] = currentColor.y;//v1.color.y;
+        vertices[i * 30 + 8] = currentColor.z;//v1.color.z;
+        vertices[i * 30 + 9] = currentColor.w;//v1.color.w;
         
         // Second vertex
         vertices[i * 30 + 10] = v2.position.x;
@@ -334,10 +342,10 @@ static GLfloat* BuildVertexBuffer(face* faces, int numFaces, vertex* input)
         vertices[i * 30 + 15] = faces[i].faceNormal.z;
         
         // Second color
-        vertices[i * 30 + 16] = faces[i].faceColor.x;//v2.color.x;
-        vertices[i * 30 + 17] = faces[i].faceColor.y;//v2.color.y;
-        vertices[i * 30 + 18] = faces[i].faceColor.z;//v2.color.z;
-        vertices[i * 30 + 19] = faces[i].faceColor.w;//v2.color.w;
+        vertices[i * 30 + 16] = currentColor.x;//v2.color.x;
+        vertices[i * 30 + 17] = currentColor.y;//v2.color.y;
+        vertices[i * 30 + 18] = currentColor.z;//v2.color.z;
+        vertices[i * 30 + 19] = currentColor.w;//v2.color.w;
         
         // Third vertex
         vertices[i * 30 + 20] = v3.position.x;
@@ -350,10 +358,10 @@ static GLfloat* BuildVertexBuffer(face* faces, int numFaces, vertex* input)
         vertices[i * 30 + 25] = faces[i].faceNormal.z;
         
         // Third color
-        vertices[i * 30 + 26] = faces[i].faceColor.x;//v3.color.x;
-        vertices[i * 30 + 27] = faces[i].faceColor.y;//v3.color.y;
-        vertices[i * 30 + 28] = faces[i].faceColor.z;//v3.color.z;
-        vertices[i * 30 + 29] = faces[i].faceColor.w;//v3.color.w;
+        vertices[i * 30 + 26] = currentColor.x;//v3.color.x;
+        vertices[i * 30 + 27] = currentColor.y;//v3.color.y;
+        vertices[i * 30 + 28] = currentColor.z;//v3.color.z;
+        vertices[i * 30 + 29] = currentColor.w;//v3.color.w;
     }
     return vertices;
 }
@@ -801,7 +809,7 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
     {
         free(m.currentVBO);
         m.dirty = false;
-        m.currentVBO = BuildVertexBuffer(m.faces, m.numFaces, vertices);
+        m.currentVBO = BuildVertexBuffer(renderContext, m.faces, m.numFaces, vertices);
     }
     
     m.vertexCount = m.numFaces * 3;
@@ -877,6 +885,8 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
             }
         }
     }
+    
+    RenderQuad(renderContext, vertices[renderContext.debugContext.currentDistantPoint].position, glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(globalScale), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
 }
 
 static void RenderGrid(render_context& renderContext, glm::vec4 color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f), float lineWidth = 2.0f)

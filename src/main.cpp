@@ -76,9 +76,11 @@ int main()
     
     auto vertices = GeneratePoints(renderContext, numberOfPoints, 0.0f, 100.0f);
     
-    QuickHull(renderContext, vertices, numberOfPoints);
-    
     auto disableMouse = false;
+    
+    stack faceStack;
+    auto& m = InitQuickHull(renderContext, vertices, numberOfPoints, faceStack);
+    
     
     // Check if the ESC key was pressed or the window was closed
     while(!KeyDown(Key_Escape) &&
@@ -91,6 +93,16 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         ComputeMatrices(renderContext, deltaTime);
+        
+        if(KeyDown(Key_Q))
+        {
+            QuickHull(renderContext, vertices, numberOfPoints, m, faceStack);
+        }
+        
+        if(KeyDown(Key_J))
+        {
+            QuickHullIteration(renderContext, m, vertices, faceStack);
+        }
         
         if(KeyDown(Key_P))
         {

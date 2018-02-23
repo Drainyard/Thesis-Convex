@@ -160,11 +160,18 @@ struct mesh
     bool hasNormals;
 };
 
+struct debug_context
+{
+    int currentFaceIndex;
+    int currentDistantPoint;
+};
 
 struct render_context
 {
     glm::mat4 projectionMatrix;
     glm::mat4 viewMatrix;
+    
+    debug_context debugContext;
     
     float FoV;
     
