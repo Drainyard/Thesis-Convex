@@ -201,10 +201,9 @@ static void InitializeOpenGL(render_context& renderContext)
     glEnable              (GL_DEBUG_OUTPUT);
     glDebugMessageCallback((GLDEBUGPROC) MessageCallback, 0);
     
-    glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    //glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
-    //glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
-    
+    glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     
     renderContext.textureShader = LoadShaders("../shaders/texture.vert", "../shaders/texture.frag");
     renderContext.colorShader = LoadShaders("../shaders/color.vert", "../shaders/color.frag");
@@ -378,6 +377,64 @@ static glm::vec3 ComputeFaceNormal(render_context& renderContext, face f, vertex
     return glm::normalize(normal);
 }
 
+//!!!TODO: This is extremely slow now, but naive solution is fine for vertical slice!!!
+// Find face neighbours: i.e. faces sharing two vertices
+static void FindNeighbours(vertex& v1, vertex& v2, mesh& m, face& f)
+{
+    for(int v1FaceIndex = 0; v1FaceIndex < v1.numFaceHandles; v1FaceIndex++)
+    {
+        auto v1Face = v1.faceHandles[v1FaceIndex];
+        if(v1Face == -1)
+        {
+            continue;
+        }
+        for(int v2FaceIndex = 0; v2FaceIndex < v2.numFaceHandles; v2FaceIndex++)
+        {
+            auto v2Face = v2.faceHandles[v2FaceIndex];
+            if(v2Face == -1)
+            {
+                continue;
+            }
+            if(v1Face == v2Face)
+            {
+                bool alreadyAdded = false;
+                
+                for(int n = 0; n < m.faces[v1Face].neighbourCount; n++)
+                {
+                    auto& neighbour = m.faces[m.faces[v1Face].neighbours[n].faceHandle];
+                    if(neighbour.indexInMesh == v1Face)
+                    {
+                        alreadyAdded = true;
+                    }
+                }
+                
+                if(!alreadyAdded)
+                {
+                    // Set neighbour on current face
+                    auto index = f.neighbourCount++;
+                    f.neighbours[index].faceHandle = v1Face;
+                    f.neighbours[index].originVertex = v1.vertexIndex;
+                    f.neighbours[index].endVertex = v2.vertexIndex;
+                    
+                    // Set neighbour on other face
+                    auto& neighbour = m.faces[v1Face];
+                    
+                    auto neighbourIndex = neighbour.neighbourCount++;
+                    neighbour.neighbours[neighbourIndex].faceHandle = m.numFaces;
+                    neighbour.neighbours[neighbourIndex].endVertex = v1.vertexIndex;
+                    neighbour.neighbours[neighbourIndex].originVertex = v2.vertexIndex;
+                    neighbour.visited = false;
+                    
+                    // Can we have 3+ neighbours while we're constructing?
+                    // Meaning: Can we temporarily have malformed triangles?
+                    //Assert(neighbour.neighbourCount <= 3);
+                    //Assert(f.neighbourCount <= 3);
+                }
+            }
+        }
+    }
+}
+
 static face& AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex& v2, vertex& v3, vertex* vertices)
 {
     if(m.numFaces + 1 >= m.facesSize)
@@ -395,51 +452,18 @@ static face& AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex&
     }
     
     face newFace = {};
+    newFace.neighbourCount = 0;
+    newFace.neighbours = (neighbour*)malloc(sizeof(neighbour) * 16);
+    newFace.indexInMesh = m.numFaces;
     
-    //!!!TODO: This is extremely slow now, but naive solution is fine for vertical slice!!!
-    // Find face neighbours: i.e. faces sharing two vertices
-    for(int v1FaceIndex = 0; v1FaceIndex < v1.numFaceHandles; v1FaceIndex++)
-    {
-        for(int v2FaceIndex = 0; v2FaceIndex < v2.numFaceHandles; v2FaceIndex++)
-        {
-            if(v1.faceHandles[v1FaceIndex] == v2.faceHandles[v2FaceIndex])
-            {
-                newFace.neighbours[0].faceHandle = v1.faceHandles[v1FaceIndex];
-                newFace.neighbours[0].originVertex = v1.vertexIndex;
-                newFace.neighbours[0].endVertex = v2.vertexIndex;
-                m.faces[newFace.neighbours[0].faceHandle].visited = false;
-            }
-        }
-        
-        for(int v3FaceIndex = 0; v3FaceIndex < v3.numFaceHandles; v3FaceIndex++)
-        {
-            if(v1.faceHandles[v1FaceIndex] == v3.faceHandles[v3FaceIndex])
-            {
-                newFace.neighbours[1].faceHandle = v1.faceHandles[v1FaceIndex];
-                newFace.neighbours[1].originVertex = v1.vertexIndex;
-                newFace.neighbours[1].endVertex = v3.vertexIndex;
-                m.faces[newFace.neighbours[1].faceHandle].visited = false;
-            }
-        }
-    }
-    
-    for(int v2FaceIndex = 0; v2FaceIndex < v2.numFaceHandles; v2FaceIndex++)
-    {
-        for(int v3FaceIndex = 0; v3FaceIndex < v3.numFaceHandles; v3FaceIndex++)
-        {
-            if(v2.faceHandles[v2FaceIndex] == v3.faceHandles[v3FaceIndex])
-            {
-                newFace.neighbours[2].faceHandle = v2.faceHandles[v2FaceIndex];
-                newFace.neighbours[2].originVertex = v2.vertexIndex;
-                newFace.neighbours[2].endVertex = v3.vertexIndex;
-                m.faces[newFace.neighbours[2].faceHandle].visited = false;
-            }
-        }
-    }
+    FindNeighbours(v1, v2, m, newFace);
+    FindNeighbours(v1, v3, m, newFace);
+    FindNeighbours(v2, v3, m, newFace);
     
     v1.faceHandles[v1.numFaceHandles++] = m.numFaces;
     v2.faceHandles[v2.numFaceHandles++] = m.numFaces;
     v3.faceHandles[v3.numFaceHandles++] = m.numFaces;
+    
     newFace.vertices[0] = v1.vertexIndex;
     newFace.vertices[1] = v2.vertexIndex;
     newFace.vertices[2] = v3.vertexIndex;
@@ -459,7 +483,7 @@ static face& AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex&
     
     newFace.faceColor = RandomColor();
     newFace.faceColor.w = 0.5f;
-    newFace.indexInMesh = m.numFaces;
+    
     
     m.faces[m.numFaces++] = newFace;
     
@@ -467,20 +491,102 @@ static face& AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex&
     return m.faces[m.numFaces - 1];
 }
 
-static void RemoveFace(mesh& m, face* f)
+static void RemoveFace(mesh& m, face* f, vertex* vertices)
 {
-    //TODO: Remove face index from vertices
-    bool found = false;
-    //free(f->neighbours);
-    for(int faceIndex = 0; faceIndex < m.numFaces; faceIndex++)
+    // Go through all of f's neighbours to remove itself
+    for(int n = 0; n < f->neighbourCount; n++)
     {
-        if(!found && &m.faces[faceIndex] == f)
+        // Get the neighbour of f and corresponding face
+        auto& neighbour = f->neighbours[n];
+        auto& neighbourFace = m.faces[neighbour.faceHandle];
+        bool neighbourFound = false;
+        
+        // go through the neighbours of the neighbour to find f
+        for(int i = 0; i < neighbourFace.neighbourCount - 1; i++)
+        {
+            if(neighbourFace.neighbours[i].faceHandle == f->indexInMesh)
+            {
+                // Found the neighbour
+                neighbourFound = true;
+            }
+            else if(neighbourFound)
+            {
+                // neighbour found: Now shift
+                neighbourFace.neighbours[i] = neighbourFace.neighbours[i + 1];
+            }
+        }
+        neighbourFace.neighbourCount--;
+    }
+    
+    bool found = false;
+    for(int faceIndex = 0; faceIndex < m.numFaces - 1; faceIndex++)
+    {
+        
+        if(!found && m.faces[faceIndex].indexInMesh == f->indexInMesh)
         {
             found = true;
         }
         else if(found)
         {
-            m.faces[faceIndex - 1] = m.faces[faceIndex];
+            // Shift to the left once
+            m.faces[faceIndex] = m.faces[faceIndex + 1];
+            m.faces[faceIndex].indexInMesh = faceIndex;
+            
+            auto& fesh = m.faces[faceIndex];
+            
+            // Now that whole array is shifted from faceIndex -> numFaces
+            // We need to shift all neighbour face handle references
+            // by one if their neighbour had a face handle greater than 
+            // the face Index of the old face
+            for(int i = 0; i < fesh.neighbourCount; i++)
+            {
+                if(fesh.neighbours[i].faceHandle > faceIndex)
+                {
+                    fesh.neighbours[i].faceHandle -= 1;
+                }
+            }
+            
+            // Remove face handle from vertices
+            auto& v1 = vertices[m.faces[faceIndex + 1].vertices[0]];
+            for(int fIndex = 0; fIndex < v1.numFaceHandles; fIndex++)
+            {
+                if(v1.faceHandles[fIndex] == faceIndex)
+                {
+                    v1.faceHandles[fIndex] = -1;
+                }
+                else if(v1.faceHandles[fIndex] == faceIndex + 1)
+                {
+                    v1.faceHandles[fIndex] = faceIndex;
+                }
+            }
+            
+            auto& v2 = vertices[m.faces[faceIndex + 1].vertices[1]];
+            for(int fIndex = 0; fIndex < v2.numFaceHandles; fIndex++)
+            {
+                if(v2.faceHandles[fIndex] == faceIndex)
+                {
+                    v2.faceHandles[fIndex] = -1;
+                }
+                else if(v2.faceHandles[fIndex] == faceIndex + 1)
+                {
+                    v2.faceHandles[fIndex] = faceIndex;
+                }
+            }
+            
+            auto& v3 = vertices[m.faces[faceIndex + 1].vertices[2]];
+            for(int fIndex = 0; fIndex < v3.numFaceHandles; fIndex++)
+            {
+                if(v3.faceHandles[fIndex] == faceIndex)
+                {
+                    v3.faceHandles[fIndex] = -1;
+                }
+                else if(v3.faceHandles[fIndex] == faceIndex + 1)
+                {
+                    v3.faceHandles[fIndex] = faceIndex;
+                }
+            }
+            
+            
         }
     }
     
@@ -777,10 +883,8 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
                 RenderLine(renderContext, v2.position, v3.position, c2, lineWidth);
                 RenderLine(renderContext, v3.position, v1.position, c3, lineWidth);
             }
-            
         }
     }
-    
 }
 
 static void RenderGrid(render_context& renderContext, glm::vec4 color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f), float lineWidth = 2.0f)
@@ -807,7 +911,7 @@ static void Render(render_context& renderContext, vertex* vertices)
     {
         RenderMesh(renderContext, renderContext.meshes[meshIndex], vertices);
     }
-    RenderGrid(renderContext, glm::vec4(0.6f, 0.6f, 0.6f, 1.0f), 1.0f);
+    //RenderGrid(renderContext, glm::vec4(0.6f, 0.6f, 0.6f, 1.0f), 1.0f);
 }
 
 static void ComputeMatrices(render_context& renderContext, double deltaTime)

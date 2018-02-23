@@ -161,7 +161,7 @@ void AddToOutsideSet(face& f, vertex& v)
             f.outsideSetSize = 2;
             f.outsideSet = (int*)malloc(sizeof(int) * f.outsideSetSize);
         }
-        else
+        else if(f.outsideSet)
         {
             f.outsideSetSize *= 2;
             f.outsideSet = (int*)realloc(f.outsideSet, f.outsideSetSize * sizeof(int));
@@ -176,7 +176,6 @@ void AssignToOutsideSets(vertex* vertices, int numVertices, face* faces, int num
     memcpy(unassigned, vertices, sizeof(vertex) * numVertices);
     int unassignedCount = numVertices;
     
-    
     for(int faceIndex = 0; faceIndex < numFaces; faceIndex++)
     {
         auto& f = faces[faceIndex];
@@ -186,14 +185,14 @@ void AssignToOutsideSets(vertex* vertices, int numVertices, face* faces, int num
             {
                 vertex v = vertices[vertexIndex];
                 AddToOutsideSet(f, v);
+                // Swap last into current effectively "deleting"
+                // We can do this since we throw away this list afterwards after all
                 unassigned[vertexIndex] = unassigned[unassignedCount - 1];
-                //unassigned = (vertex*)memmove(&unassigned[vertexIndex], &unassigned[vertexIndex + 1], sizeof(vertex) * (unassignedCount - vertexIndex + 1));
                 unassignedCount--;
             }
         }
     }
     free(unassigned);
-    
 }
 
 struct edge
@@ -202,35 +201,23 @@ struct edge
     int end;
 };
 
-struct edge_list
-{
-    edge* edges;
-    int count;
-    
-    edge& operator[](int index)
-    {
-        return this->edges[index];
-    }
-};
+list(edge)
 
 edge_list FindConvexHorizon(vertex& viewPoint, face* faces, int numFaces, vertex* vertices, mesh& m)
 {
-    //TODO: 16 is an arbitrary number/size
     edge_list list = {};
-    list.edges = (edge*)malloc(sizeof(edge) * 16);
-    list.count = 0;
+    InitedgeList(&list);
     for(int faceIndex = 0; faceIndex < numFaces; faceIndex++)
     {
-        for(int neighbourIndex = 0; neighbourIndex < 3; neighbourIndex++)
+        for(int neighbourIndex = 0; neighbourIndex < faces[faceIndex].neighbourCount; neighbourIndex++)
         {
             auto& neighbour = faces[faceIndex].neighbours[neighbourIndex];
             if(!IsAbove(viewPoint, m.faces[neighbour.faceHandle], vertices))
             {
-                printf("ECH\n");
                 edge newEdge = {};
                 newEdge.origin = neighbour.originVertex;
                 newEdge.end = neighbour.endVertex;
-                list.edges[list.count++] = newEdge;
+                Add(&list, newEdge);
             }
         }
     }
@@ -268,11 +255,12 @@ void QuickHull(render_context& renderContext, vertex* vertices, int numberOfPoin
             }
             face v[32];
             int inV = 0;
+            v[inV++] = f;
             
             auto& p = vertices[f.outsideSet[currentFurthest]];
             
             //TODO: for all unvisited neighbours -> What is unvisited exactly in this case?
-            for(int neighbourIndex = 0; neighbourIndex < 3; neighbourIndex++)
+            for(int neighbourIndex = 0; neighbourIndex < f.neighbourCount; neighbourIndex++)
             {
                 auto& neighbour = m.faces[f.neighbours[neighbourIndex].faceHandle];
                 if(!neighbour.visited)
@@ -317,7 +305,7 @@ void QuickHull(render_context& renderContext, vertex* vertices, int numberOfPoin
             for(int vIndex = 0; vIndex < inV; vIndex++)
             {
                 printf("Removing face\n");
-                RemoveFace(m, &v[vIndex]);
+                RemoveFace(m, &v[vIndex], vertices);
             }
         }
     }

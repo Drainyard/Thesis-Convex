@@ -72,11 +72,13 @@ int main()
     
     CreateLight(renderContext, glm::vec3(0.0f, 75.0f, 10.0f), glm::vec3(1, 1, 1), 2500.0f);
     
-    int numberOfPoints = 15000;
+    int numberOfPoints = 500;
     
     auto vertices = GeneratePoints(renderContext, numberOfPoints);
     
     QuickHull(renderContext, vertices, numberOfPoints);
+    
+    auto disableMouse = false;
     
     // Check if the ESC key was pressed or the window was closed
     while(!KeyDown(Key_Escape) &&
@@ -105,6 +107,19 @@ int main()
         }
         
         Render(renderContext, vertices);
+        
+        if(KeyDown(Key_9))
+        {
+            disableMouse = !disableMouse;
+            if(disableMouse)
+            {
+                glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            }
+            else
+            {
+                glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+            }
+        }
         
         // Swap buffers
         glfwSwapBuffers(renderContext.window);
