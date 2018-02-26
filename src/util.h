@@ -67,4 +67,13 @@ void Init##type##List(type## _list* list, int initSize = 16)\
 }
 
 
+struct edge
+{
+    int origin;
+    int end;
+};
+
+list(edge)
+
+
 #endif

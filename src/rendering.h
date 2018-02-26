@@ -164,6 +164,7 @@ struct debug_context
 {
     int currentFaceIndex;
     int currentDistantPoint;
+    std::vector<edge> horizon;
 };
 
 struct render_context

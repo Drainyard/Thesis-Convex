@@ -1,5 +1,6 @@
 #include <ctime>
 #include <random>
+#include <vector>
 #include <cstdio>
 #include <cstdlib>
 #define STB_IMAGE_IMPLEMENTATION
@@ -81,6 +82,10 @@ int main()
     stack faceStack;
     auto& m = InitQuickHull(renderContext, vertices, numberOfPoints, faceStack);
     
+    QHIteration nextIter = QHIteration::findNextIter;
+    face* currentFace = nullptr;
+    std::vector<face> v;
+    int previousIteration = 0;
     
     // Check if the ESC key was pressed or the window was closed
     while(!KeyDown(Key_Escape) &&
@@ -101,7 +106,39 @@ int main()
         
         if(KeyDown(Key_J))
         {
-            QuickHullIteration(renderContext, m, vertices, faceStack);
+            switch(nextIter)
+            {
+                case QHIteration::findNextIter:
+                {
+                    printf("Finding next iteration\n");
+                    currentFace = QuickHullFindNextIteration(renderContext, m, vertices, faceStack);
+                    nextIter = QHIteration::findHorizon;
+                }
+                break;
+                case QHIteration::findHorizon:
+                {
+                    if(currentFace)
+                    {
+                        printf("Finding horizon\n");
+                        QuickHullHorizon(renderContext, m, vertices, *currentFace, v, faceStack,  &previousIteration);
+                        nextIter = QHIteration::doIter;
+                    }
+                    
+                }
+                break;
+                case QHIteration::doIter:
+                {
+                    if(currentFace)
+                    {
+                        printf("Doing iteration\n");
+                        QuickHullIteration(renderContext, m, vertices, faceStack, *currentFace, v, previousIteration);
+                        nextIter = QHIteration::findNextIter;
+                        v.clear();
+                    }
+                }
+                break;
+            }
+            
         }
         
         if(KeyDown(Key_P))
