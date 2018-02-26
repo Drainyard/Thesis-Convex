@@ -1,6 +1,7 @@
 #include <ctime>
 #include <random>
 #include <vector>
+#include <stack>
 #include <cstdio>
 #include <cstdlib>
 #define STB_IMAGE_IMPLEMENTATION
@@ -79,12 +80,12 @@ int main()
     
     auto disableMouse = false;
     
-    stack faceStack;
+    std::stack<face*> faceStack;
     auto& m = InitQuickHull(renderContext, vertices, numberOfPoints, faceStack);
     
     QHIteration nextIter = QHIteration::findNextIter;
     face* currentFace = nullptr;
-    std::vector<face> v;
+    std::vector<face*> v;
     int previousIteration = 0;
     
     // Check if the ESC key was pressed or the window was closed
@@ -98,11 +99,6 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         ComputeMatrices(renderContext, deltaTime);
-        
-        if(KeyDown(Key_Q))
-        {
-            QuickHull(renderContext, vertices, numberOfPoints, m, faceStack);
-        }
         
         if(KeyDown(Key_J))
         {

@@ -303,6 +303,7 @@ static GLfloat* BuildVertexBuffer(render_context& renderContext, face* faces, in
 {
     GLfloat* vertices = (GLfloat*)malloc(numFaces * 3 * sizeof(vertex_info));
     
+    printf("Num faces in renderer: %d\n", numFaces);
     for(int i = 0; i < numFaces; i++)
     {
         auto currentColor = faces[i].faceColor;
@@ -416,7 +417,9 @@ static void FindNeighbours(vertex& v1, vertex& v2, mesh& m, face& f)
                     }
                 }
                 
-                if(!alreadyAdded && f.neighbourCount < 16)
+                auto& neighbour = m.faces[v1Face];
+                
+                if(!alreadyAdded && f.neighbourCount < 15 && neighbour.neighbourCount < 15)
                 {
                     // Set neighbour on current face
                     auto index = f.neighbourCount++;
@@ -461,12 +464,18 @@ static face& AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex&
     
     face newFace = {};
     newFace.neighbourCount = 0;
-    newFace.neighbours = (neighbour*)calloc(16, sizeof(neighbour));
+    //newFace.neighbours = (neighbour*)calloc(16, sizeof(neighbour));
     newFace.indexInMesh = m.numFaces;
     
     FindNeighbours(v1, v2, m, newFace);
     FindNeighbours(v1, v3, m, newFace);
     FindNeighbours(v2, v3, m, newFace);
+    
+    printf("Added neighbours: %d\n", newFace.neighbourCount);
+    
+    Assert(v1.numFaceHandles < 64);
+    Assert(v2.numFaceHandles < 64);
+    Assert(v3.numFaceHandles < 64);
     
     v1.faceHandles[v1.numFaceHandles++] = newFace.indexInMesh;
     v2.faceHandles[v2.numFaceHandles++] = newFace.indexInMesh;
@@ -493,6 +502,8 @@ static void RemoveFace(mesh& m, face* f, vertex* vertices)
         return;
     }
     
+    m.dirty = true;
+    
     printf("Neighbours: %d\n", f->neighbourCount);
     // Go through all of f's neighbours to remove itself
     for(int n = 0; n < f->neighbourCount; n++)
@@ -518,6 +529,10 @@ static void RemoveFace(mesh& m, face* f, vertex* vertices)
     auto indexInMesh = f->indexInMesh;
     // Invalidates the f pointer
     // But we only need to swap two faces to make this work
+    auto& v1 = vertices[f->vertices[0]];
+    auto& v2 = vertices[f->vertices[1]];
+    auto& v3 = vertices[f->vertices[2]];
+    
     m.faces[f->indexInMesh] = m.faces[--m.numFaces];
     
     auto& newFace = m.faces[indexInMesh];
@@ -537,34 +552,45 @@ static void RemoveFace(mesh& m, face* f, vertex* vertices)
         }
     }
     
-    auto& oldFace = m.faces[newFace.indexInMesh];
+    printf("before faces: %d\n", v1.numFaceHandles);
+    printf("before faces: %d\n", v2.numFaceHandles);
+    printf("before faces: %d\n", v3.numFaceHandles);
     
-    auto& v1 = vertices[oldFace.vertices[0]];
+    //auto& oldFace = m.faces[newFace.indexInMesh];
+    
     for(int fIndex = 0; fIndex < v1.numFaceHandles; fIndex++)
     {
         if(v1.faceHandles[fIndex] == indexInMesh)
         {
-            v1.faceHandles[fIndex] = -1;
+            printf("BIBQWIBDQWOIBDQW\n");
+            v1.faceHandles[fIndex] = v1.faceHandles[v1.numFaceHandles - 1];
+            v1.numFaceHandles--;
         }
     }
     
-    auto& v2 = vertices[oldFace.vertices[1]];
     for(int fIndex = 0; fIndex < v2.numFaceHandles; fIndex++)
     {
         if(v2.faceHandles[fIndex] == indexInMesh)
         {
-            v2.faceHandles[fIndex] = -1;
+            printf("BIBQWIBDQWOIBDQW\n");
+            v2.faceHandles[fIndex] = v2.faceHandles[v2.numFaceHandles - 1];
+            v2.numFaceHandles--;
         }
     }
     
-    auto& v3 = vertices[oldFace.vertices[2]];
     for(int fIndex = 0; fIndex < v3.numFaceHandles; fIndex++)
     {
         if(v3.faceHandles[fIndex] == indexInMesh)
         {
-            v3.faceHandles[fIndex] = -1;
+            printf("BIBQWIBDQWOIBDQW\n");
+            v3.faceHandles[fIndex] = v3.faceHandles[v3.numFaceHandles - 1];
+            v3.numFaceHandles--;
         }
     }
+    
+    printf("faces: %d\n", v1.numFaceHandles);
+    printf("faces: %d\n", v2.numFaceHandles);
+    printf("faces: %d\n", v3.numFaceHandles);
     
     auto& v1new = vertices[newFace.vertices[0]];
     for(int fIndex = 0; fIndex < v1.numFaceHandles; fIndex++)
@@ -574,7 +600,6 @@ static void RemoveFace(mesh& m, face* f, vertex* vertices)
             v1.faceHandles[fIndex] = indexInMesh;
         }
     }
-    
     
     auto& v2new = vertices[newFace.vertices[1]];
     for(int fIndex = 0; fIndex < v2.numFaceHandles; fIndex++)
@@ -595,7 +620,6 @@ static void RemoveFace(mesh& m, face* f, vertex* vertices)
     }
     
     newFace.indexInMesh = indexInMesh;
-    
 }
 
 static mesh& InitEmptyMesh(render_context& renderContext)
@@ -899,15 +923,14 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
     {
         RenderQuad(renderContext, vertices[currentFace.outsideSet[i]].position, glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(globalScale), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
     }
-    /*
+    
     auto& edgeList = renderContext.debugContext.horizon;
     for(const auto& e : edgeList)
     {
         auto v1 = vertices[e.origin];
         auto v2 = vertices[e.end];
         RenderLine(renderContext, v1.position, v2.position, glm::vec4(1.0f), 30.0f);
-    }*/
-    
+    }
 }
 
 static void RenderGrid(render_context& renderContext, glm::vec4 color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f), float lineWidth = 2.0f)

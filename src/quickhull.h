@@ -228,34 +228,37 @@ void AddToOutsideSet(face& f, vertex& v)
 
 void AssignToOutsideSets(vertex* vertices, int numVertices, face* faces, int numFaces)
 {
-    vertex* unassigned = (vertex*)malloc(sizeof(vertex) * numVertices);
-    memcpy(unassigned, vertices, sizeof(vertex) * numVertices);
-    int unassignedCount = numVertices;
+    std::vector<vertex> unassigned(vertices, vertices + numVertices);
     
     for(int faceIndex = 0; faceIndex < numFaces; faceIndex++)
     {
         auto& f = faces[faceIndex];
-        for(int vertexIndex = 0; vertexIndex < unassignedCount - 1; vertexIndex++)
+        for(int vertexIndex = 0; vertexIndex < unassigned.size() - 1; vertexIndex++)
         {
+            auto& vert = vertices[unassigned[vertexIndex].vertexIndex];
+            
+            if(vert.numFaceHandles > 0)
+            {
+                continue;
+            }
+            
             if(IsPointOnPositiveSide(f, unassigned[vertexIndex], vertices))
             {
                 vertex v = unassigned[vertexIndex];
                 AddToOutsideSet(f, v);
                 // Swap last into current effectively "deleting"
                 // We can do this since we throw away this list afterwards anyway
-                unassigned[vertexIndex] = unassigned[unassignedCount - 1];
-                unassignedCount--;
+                unassigned.erase(unassigned.begin() + vertexIndex);
             }
         }
     }
-    free(unassigned);
 }
 
-void FindConvexHorizon(vertex& viewPoint, std::vector<face>& faces, vertex* vertices, mesh& m, std::vector<edge>& list)
+void FindConvexHorizon(vertex& viewPoint, std::vector<face*>& faces, vertex* vertices, mesh& m, std::vector<edge>& list)
 {
     for(int faceIndex = 0; faceIndex < faces.size(); faceIndex++)
     {
-        auto& f = faces[faceIndex];
+        auto& f = *faces[faceIndex];
         for(int neighbourIndex = 0; neighbourIndex < f.neighbourCount; neighbourIndex++)
         {
             auto& neighbour = f.neighbours[neighbourIndex];
@@ -270,13 +273,7 @@ void FindConvexHorizon(vertex& viewPoint, std::vector<face>& faces, vertex* vert
     }
 }
 
-struct stack
-{
-    face* begin;
-    int size;
-};
-
-mesh& InitQuickHull(render_context& renderContext, vertex* vertices, int numberOfPoints, stack& faceStack)
+mesh& InitQuickHull(render_context& renderContext, vertex* vertices, int numberOfPoints, std::stack<face*>& faceStack)
 {
     auto& m = InitEmptyMesh(renderContext);
     m.position = glm::vec3(0.0f);
@@ -286,27 +283,28 @@ mesh& InitQuickHull(render_context& renderContext, vertex* vertices, int numberO
     GenerateInitialSimplex(renderContext, vertices, numberOfPoints, m);
     AssignToOutsideSets(vertices, numberOfPoints, m.faces,  m.numFaces);
     
-    faceStack.begin = (face*)malloc(sizeof(face) * m.numFaces * 2);
-    faceStack.size = m.numFaces;
-    memcpy(faceStack.begin, m.faces, sizeof(face) * m.numFaces);
+    for(int i = 0; i < m.numFaces; i++)
+    {
+        faceStack.push(&m.faces[i]);
+    }
     return m;
 }
 
-face* QuickHullFindNextIteration(render_context& renderContext, mesh& m, vertex* vertices, stack& faceStack)
+face* QuickHullFindNextIteration(render_context& renderContext, mesh& m, vertex* vertices, std::stack<face*>& faceStack)
 {
-    if(faceStack.size <= 0)
+    if(faceStack.size() <= 0)
         return nullptr;
     
-    auto& f = faceStack.begin[--faceStack.size];
+    auto f = faceStack.top();
     
-    if(f.outsideSetCount > 0)
+    if(f->outsideSetCount > 0)
     {
         // TODO: Optimize, save distance for each vertex and sort?
         float furthestDistance = 0.0f;
         int currentFurthest = 0;
-        for(int vertexIndex = 0; vertexIndex < f.outsideSetCount; vertexIndex++)
+        for(int vertexIndex = 0; vertexIndex < f->outsideSetCount; vertexIndex++)
         {
-            auto dist = DistancePointToFace(f, vertices[f.outsideSet[vertexIndex]], vertices);
+            auto dist = DistancePointToFace(*f, vertices[f->outsideSet[vertexIndex]], vertices);
             if(dist > furthestDistance)
             {
                 currentFurthest = vertexIndex;
@@ -314,17 +312,19 @@ face* QuickHullFindNextIteration(render_context& renderContext, mesh& m, vertex*
             }
         }
         
-        auto& p = vertices[f.outsideSet[currentFurthest]];
+        auto& p = vertices[f->outsideSet[currentFurthest]];
         
-        renderContext.debugContext.currentFaceIndex = f.indexInMesh;
+        renderContext.debugContext.currentFaceIndex = f->indexInMesh;
         renderContext.debugContext.currentDistantPoint = p.vertexIndex;
     }
-    return &m.faces[f.indexInMesh];
+    
+    faceStack.pop();
+    return &m.faces[f->indexInMesh];
 }
 
-void QuickHullHorizon(render_context& renderContext, mesh& m, vertex* vertices, face& f, std::vector<face>& v, stack& faceStack, int* prevIterationFaces)
+void QuickHullHorizon(render_context& renderContext, mesh& m, vertex* vertices, face& f, std::vector<face*>& v, std::stack<face*>& faceStack, int* prevIterationFaces)
 {
-    v.push_back(f);
+    v.push_back(&f);
     
     auto& p = vertices[renderContext.debugContext.currentDistantPoint];
     
@@ -334,41 +334,52 @@ void QuickHullHorizon(render_context& renderContext, mesh& m, vertex* vertices, 
     for(int neighbourIndex = 0; neighbourIndex < f.neighbourCount; neighbourIndex++)
     {
         auto& neighbour = m.faces[f.neighbours[neighbourIndex].faceHandle];
-        if(!neighbour.visited)
+        if(true)
         {
             if(IsPointOnPositiveSide(neighbour, p, vertices))
             {
-                v.push_back(neighbour);
+                v.push_back(&neighbour);
             }
             neighbour.visited = true;
         }
     }
-    
+    printf("V size: %d\n", v.size());
     *prevIterationFaces = m.numFaces;
     
     std::vector<edge> horizon;
-    FindConvexHorizon(p, v, vertices, m, horizon);
-    
-    for(const auto& e : horizon)
-    {
-        auto newF = AddFace(renderContext, m, vertices[e.origin], vertices[e.end], p, vertices);
-        //faceStack.begin[faceStack.size++] = newF;
-    }
+    renderContext.debugContext.horizon.clear();
+    FindConvexHorizon(p, v, vertices, m, renderContext.debugContext.horizon);
 }
 
-void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices, stack& faceStack, face& f, std::vector<face>& v, int prevIterationFaces)
+void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices, std::stack<face*>& faceStack, face& f, std::vector<face*>& v, int prevIterationFaces)
 {
+    auto& p = vertices[renderContext.debugContext.currentDistantPoint];
+    for(const auto& e : renderContext.debugContext.horizon)
+    {
+        auto& newF = AddFace(renderContext, m, vertices[e.origin], vertices[e.end], p, vertices);
+        auto dot = glm::dot(f.faceNormal, newF.faceNormal);
+        if(dot < 0)
+        {
+            auto t = newF.vertices[0];
+            newF.vertices[0] = newF.vertices[1];
+            newF.vertices[1] = t;
+            newF.faceNormal = ComputeFaceNormal(renderContext, newF, vertices);
+        }
+        
+        faceStack.push(&newF);
+    }
     
     // The way we understand this, is that unassigned now means any point that was
     // assigned in the first round, but is part of a face that is about to be
     // removed. Thus about to be unassigned.
     for(int newFaceIndex = prevIterationFaces; newFaceIndex < m.numFaces; newFaceIndex++)
     {
-        for(auto& f : v)
+        for(auto f : v)
         {
-            for(int osIndex = 0; osIndex < f.outsideSetCount; osIndex++)
+            for(int osIndex = 0; osIndex < f->outsideSetCount; osIndex++)
             {
-                auto& q = vertices[f.outsideSet[osIndex]];
+                printf("ITS MA FUCKING BOI\n");
+                auto& q = vertices[f->outsideSet[osIndex]];
                 if(IsPointOnPositiveSide(m.faces[newFaceIndex], q, vertices))
                 {
                     AddToOutsideSet(m.faces[newFaceIndex], q);
@@ -377,19 +388,19 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
         }
     }
     
-    for(auto& f : v)
+    for(auto f : v)
     {
         printf("Removing face\n");
-        RemoveFace(m, &f, vertices);
+        RemoveFace(m, f, vertices);
     }
     printf("Number of faces: %d\n", m.numFaces);
 }
 
 
-void QuickHull(render_context& renderContext, vertex* vertices, int numberOfPoints, mesh& m, stack& faceStack)
+void QuickHull(render_context& renderContext, vertex* vertices, int numberOfPoints, mesh& m, std::stack<face*>& faceStack)
 {
     //face* currentFace = nullptr;
-    while(faceStack.size > 0)
+    while(faceStack.size() > 0)
     {
         //QuickHullIteration(renderContext, m, vertices, faceStack);
     }
