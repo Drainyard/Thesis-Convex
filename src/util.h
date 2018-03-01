@@ -62,7 +62,7 @@ void Remove(type ## _list* list, type* item)\
 void Init##type##List(type## _list* list, int initSize = 16)\
 {\
     list->count = 0;\
-    list->listSize = 16;\
+    list->listSize = initSize;\
     list->data = (type*)malloc(sizeof(type) * list->listSize);\
 }
 

@@ -114,6 +114,7 @@ struct vertex
 
 struct face
 {
+    int id;
     int vertices[3];
     glm::vec3 faceNormal;
     glm::vec4 faceColor;
@@ -169,6 +170,7 @@ struct debug_context
 
 struct render_context
 {
+    int faceCounter;
     glm::mat4 projectionMatrix;
     glm::mat4 viewMatrix;
     

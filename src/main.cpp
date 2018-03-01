@@ -4,6 +4,8 @@
 #include <stack>
 #include <cstdio>
 #include <cstdlib>
+#include <cmath>
+#include <algorithm>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <glad/glad.h>
@@ -26,6 +28,7 @@ static input_state inputState;
 #include "rendering.h"
 #include "rendering.cpp"
 #include "quickhull.h"
+#include "naive.h"
 
 #define Min(A,B) ((A < B) ? (A) : (B))
 #define Max(A,B) ((A > B) ? (A) : (B))
@@ -48,9 +51,10 @@ static vertex* GeneratePoints(render_context& renderContext, int numberOfPoints,
     return res;
 }
 
+
 int main()
 {
-    srand(time(NULL));
+    srand((unsigned int)time(NULL));
     render_context renderContext = {};
     renderContext.FoV = 45.0f;
     renderContext.position = glm::vec3(0.0f, 50.5f, 30.0f);
@@ -61,6 +65,7 @@ int main()
     renderContext.originOffset = glm::vec3(5.0f, 0.0f, 5.0f);
     renderContext.renderPoints = true;
     renderContext.renderNormals = true;
+    renderContext.faceCounter = 0;
     
     InitializeOpenGL(renderContext);
     
@@ -74,19 +79,29 @@ int main()
     
     CreateLight(renderContext, glm::vec3(0.0f, 75.0f, 10.0f), glm::vec3(1, 1, 1), 2500.0f);
     
-    int numberOfPoints = 20;
+    int numberOfPoints = 10;
     
     auto vertices = GeneratePoints(renderContext, numberOfPoints, 0.0f, 100.0f);
     
+    auto naiveVertices = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
+    memcpy(naiveVertices, vertices, sizeof(vertex) * numberOfPoints);
+    
+    auto quickHullVertices = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
+    memcpy(quickHullVertices, vertices, sizeof(vertex) * numberOfPoints);
+    
     auto disableMouse = false;
     
-    std::stack<face*> faceStack;
-    auto& m = InitQuickHull(renderContext, vertices, numberOfPoints, faceStack);
+    std::stack<int> faceStack;
+    auto& mq = InitQuickHull(renderContext, quickHullVertices, numberOfPoints, faceStack);
     
     QHIteration nextIter = QHIteration::findNextIter;
     face* currentFace = nullptr;
-    std::vector<face*> v;
+    std::vector<int> v;
     int previousIteration = 0;
+    
+    auto& mn = NaiveConvexHull(renderContext, naiveVertices, numberOfPoints);
+    
+    mesh* currentMesh = &mq;
     
     // Check if the ESC key was pressed or the window was closed
     while(!KeyDown(Key_Escape) &&
@@ -102,39 +117,43 @@ int main()
         
         if(KeyDown(Key_J))
         {
-            switch(nextIter)
+            if(faceStack.size() > 0)
             {
-                case QHIteration::findNextIter:
+                switch(nextIter)
                 {
-                    printf("Finding next iteration\n");
-                    currentFace = QuickHullFindNextIteration(renderContext, m, vertices, faceStack);
-                    nextIter = QHIteration::findHorizon;
-                }
-                break;
-                case QHIteration::findHorizon:
-                {
-                    if(currentFace)
+                    case QHIteration::findNextIter:
                     {
-                        printf("Finding horizon\n");
-                        QuickHullHorizon(renderContext, m, vertices, *currentFace, v, faceStack,  &previousIteration);
-                        nextIter = QHIteration::doIter;
+                        printf("Finding next iteration\n");
+                        currentFace = QuickHullFindNextIteration(renderContext, mq, quickHullVertices, faceStack);
+                        if(currentFace)
+                        {
+                            nextIter = QHIteration::findHorizon;
+                        }
                     }
-                    
-                }
-                break;
-                case QHIteration::doIter:
-                {
-                    if(currentFace)
+                    break;
+                    case QHIteration::findHorizon:
                     {
-                        printf("Doing iteration\n");
-                        QuickHullIteration(renderContext, m, vertices, faceStack, *currentFace, v, previousIteration);
-                        nextIter = QHIteration::findNextIter;
-                        v.clear();
+                        if(currentFace)
+                        {
+                            printf("Finding horizon\n");
+                            QuickHullHorizon(renderContext, mq, quickHullVertices, *currentFace, v, &previousIteration);
+                            nextIter = QHIteration::doIter;
+                        }
                     }
+                    break;
+                    case QHIteration::doIter:
+                    {
+                        if(currentFace)
+                        {
+                            printf("Doing iteration\n");
+                            QuickHullIteration(renderContext, mq, quickHullVertices, faceStack, *currentFace, v, previousIteration);
+                            nextIter = QHIteration::findNextIter;
+                            v.clear();
+                        }
+                    }
+                    break;
                 }
-                break;
             }
-            
         }
         
         if(KeyDown(Key_P))
@@ -151,7 +170,20 @@ int main()
             RenderPointCloud(renderContext, vertices, numberOfPoints);
         }
         
-        Render(renderContext, vertices);
+        if(KeyDown(Key_Q))
+        {
+            currentMesh = &mq;
+        }
+        
+        if(KeyDown(Key_B))
+        {
+            currentMesh = &mn;
+        }
+        
+        if(currentMesh)
+        {
+            RenderMesh(renderContext, *currentMesh, vertices);
+        }
         
         if(KeyDown(Key_9))
         {

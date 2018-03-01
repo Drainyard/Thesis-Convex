@@ -35,8 +35,6 @@ void MessageCallback(GLenum source,
     }
 }
 
-
-
 static glm::mat4 ComputeTransformation(glm::vec3 scale = glm::vec3(1.0f), glm::quat orientation = glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3 position = glm::vec3(0.0f))
 {
     glm::mat4 t;
@@ -50,8 +48,6 @@ static void ComputeMeshTransformation(mesh& object)
 {
     object.transform = ComputeTransformation(object.scale, object.orientation, object.position);
 }
-
-
 
 static char* LoadShaderFromFile(const char* Path)
 {
@@ -304,12 +300,35 @@ static GLfloat* BuildVertexBuffer(render_context& renderContext, face* faces, in
     GLfloat* vertices = (GLfloat*)malloc(numFaces * 3 * sizeof(vertex_info));
     
     printf("Num faces in renderer: %d\n", numFaces);
+    int ns[3];
     for(int i = 0; i < numFaces; i++)
     {
         auto currentColor = faces[i].faceColor;
         if(i == renderContext.debugContext.currentFaceIndex)
         {
             currentColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+            ns[0] = faces[i].neighbours[0].faceHandle;
+            ns[1] = faces[i].neighbours[1].faceHandle;
+            ns[2] = faces[i].neighbours[2].faceHandle;
+            
+            if(faces[i].neighbourCount == 1)
+            {
+                printf("Neighbours: %d\n", ns[0]);
+            }
+            else if(faces[i].neighbourCount == 2)
+            {
+                printf("Neighbours: %d, %d\n", ns[0], ns[1]);
+            }
+            else if(faces[i].neighbourCount == 3)
+            {
+                printf("Neighbours: %d, %d, %d\n", ns[0], ns[1], ns[2]);
+            }
+            
+        }
+        
+        if(i == ns[0] || i == ns[1] || i == ns[2])
+        {
+            currentColor = glm::vec4(1.0f, 0.0f, 1.0f, 1.0f);
         }
         
         auto v1 = input[faces[i].vertices[0]];
@@ -367,7 +386,24 @@ static GLfloat* BuildVertexBuffer(render_context& renderContext, face* faces, in
     return vertices;
 }
 
-static glm::vec3 ComputeFaceNormal(render_context& renderContext, face f, vertex* vertices)
+static bool IsPointOnPositiveSide(face& f, vertex& v, vertex* vertices)
+{
+    auto c = (vertices[f.vertices[0]].position + vertices[f.vertices[1]].position + vertices[f.vertices[2]].position) / 3.0f;
+    auto d = glm::dot(f.faceNormal, v.position - c);
+    return d >= 0;
+}
+
+static face* GetFaceById(int id, mesh& m)
+{
+    for(int i = 0; i < m.numFaces; i++)
+    {
+        if(m.faces[i].id == id)
+            return &m.faces[i];
+    }
+    return nullptr;
+}
+
+static glm::vec3 ComputeFaceNormal(face f, vertex* vertices)
 {
     // Newell's Method
     // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
@@ -393,24 +429,20 @@ static void FindNeighbours(vertex& v1, vertex& v2, mesh& m, face& f)
     for(int v1FaceIndex = 0; v1FaceIndex < v1.numFaceHandles; v1FaceIndex++)
     {
         auto v1Face = v1.faceHandles[v1FaceIndex];
-        if(v1Face == -1)
-        {
-            continue;
-        }
+        
         for(int v2FaceIndex = 0; v2FaceIndex < v2.numFaceHandles; v2FaceIndex++)
         {
             auto v2Face = v2.faceHandles[v2FaceIndex];
-            if(v2Face == -1)
-            {
-                continue;
-            }
+            
             if(v1Face == v2Face)
             {
                 bool alreadyAdded = false;
                 
-                for(int n = 0; n < m.faces[v1Face].neighbourCount; n++)
+                auto& fe = m.faces[v1Face];
+                for(int n = 0; n < fe.neighbourCount; n++)
                 {
-                    auto& neighbour = m.faces[m.faces[v1Face].neighbours[n].faceHandle];
+                    auto& neigh = fe.neighbours[n];
+                    auto& neighbour = m.faces[neigh.faceHandle];
                     if(neighbour.indexInMesh == f.indexInMesh)
                     {
                         alreadyAdded = true;
@@ -428,8 +460,6 @@ static void FindNeighbours(vertex& v1, vertex& v2, mesh& m, face& f)
                     f.neighbours[index].endVertex = v2.vertexIndex;
                     
                     // Set neighbour on other face
-                    auto& neighbour = m.faces[v1Face];
-                    
                     auto neighbourIndex = neighbour.neighbourCount++;
                     neighbour.neighbours[neighbourIndex].faceHandle = f.indexInMesh;
                     neighbour.neighbours[neighbourIndex].endVertex = v1.vertexIndex;
@@ -446,7 +476,7 @@ static void FindNeighbours(vertex& v1, vertex& v2, mesh& m, face& f)
     }
 }
 
-static face& AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex& v2, vertex& v3, vertex* vertices)
+static face* AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex& v2, vertex& v3, vertex* vertices)
 {
     if(m.numFaces + 1 >= m.facesSize)
     {
@@ -462,20 +492,18 @@ static face& AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex&
         }
     }
     
+    if(v1.vertexIndex == v2.vertexIndex || v1.vertexIndex == v3.vertexIndex || v2.vertexIndex == v3.vertexIndex)
+    {
+        return nullptr;
+    }
+    
     face newFace = {};
     newFace.neighbourCount = 0;
-    //newFace.neighbours = (neighbour*)calloc(16, sizeof(neighbour));
     newFace.indexInMesh = m.numFaces;
     
     FindNeighbours(v1, v2, m, newFace);
     FindNeighbours(v1, v3, m, newFace);
     FindNeighbours(v2, v3, m, newFace);
-    
-    printf("Added neighbours: %d\n", newFace.neighbourCount);
-    
-    Assert(v1.numFaceHandles < 64);
-    Assert(v2.numFaceHandles < 64);
-    Assert(v3.numFaceHandles < 64);
     
     v1.faceHandles[v1.numFaceHandles++] = newFace.indexInMesh;
     v2.faceHandles[v2.numFaceHandles++] = newFace.indexInMesh;
@@ -484,27 +512,34 @@ static face& AddFace(render_context& renderContext, mesh& m, vertex& v1, vertex&
     newFace.vertices[0] = v1.vertexIndex;
     newFace.vertices[1] = v2.vertexIndex;
     newFace.vertices[2] = v3.vertexIndex;
-    newFace.faceNormal = ComputeFaceNormal(renderContext, newFace, vertices);
+    newFace.faceNormal = ComputeFaceNormal(newFace, vertices);
     
     newFace.faceColor = RandomColor();
     newFace.faceColor.w = 0.5f;
     
+    newFace.id = renderContext.faceCounter++;
     m.faces[m.numFaces++] = newFace;
     
     m.dirty = true;
-    return m.faces[m.numFaces - 1];
+    return &m.faces[m.numFaces - 1];
 }
 
-static void RemoveFace(mesh& m, face* f, vertex* vertices)
+static void RemoveFace(mesh& m, int faceId, vertex* vertices)
 {
     if(m.numFaces == 0)
     {
         return;
     }
     
+    face* f = GetFaceById(faceId, m);
+    
+    if(!f)
+    {
+        return;
+    }
+    
     m.dirty = true;
     
-    printf("Neighbours: %d\n", f->neighbourCount);
     // Go through all of f's neighbours to remove itself
     for(int n = 0; n < f->neighbourCount; n++)
     {
@@ -556,13 +591,10 @@ static void RemoveFace(mesh& m, face* f, vertex* vertices)
     printf("before faces: %d\n", v2.numFaceHandles);
     printf("before faces: %d\n", v3.numFaceHandles);
     
-    //auto& oldFace = m.faces[newFace.indexInMesh];
-    
     for(int fIndex = 0; fIndex < v1.numFaceHandles; fIndex++)
     {
         if(v1.faceHandles[fIndex] == indexInMesh)
         {
-            printf("BIBQWIBDQWOIBDQW\n");
             v1.faceHandles[fIndex] = v1.faceHandles[v1.numFaceHandles - 1];
             v1.numFaceHandles--;
         }
@@ -572,7 +604,6 @@ static void RemoveFace(mesh& m, face* f, vertex* vertices)
     {
         if(v2.faceHandles[fIndex] == indexInMesh)
         {
-            printf("BIBQWIBDQWOIBDQW\n");
             v2.faceHandles[fIndex] = v2.faceHandles[v2.numFaceHandles - 1];
             v2.numFaceHandles--;
         }
@@ -582,7 +613,6 @@ static void RemoveFace(mesh& m, face* f, vertex* vertices)
     {
         if(v3.faceHandles[fIndex] == indexInMesh)
         {
-            printf("BIBQWIBDQWOIBDQW\n");
             v3.faceHandles[fIndex] = v3.faceHandles[v3.numFaceHandles - 1];
             v3.numFaceHandles--;
         }
@@ -593,29 +623,29 @@ static void RemoveFace(mesh& m, face* f, vertex* vertices)
     printf("faces: %d\n", v3.numFaceHandles);
     
     auto& v1new = vertices[newFace.vertices[0]];
-    for(int fIndex = 0; fIndex < v1.numFaceHandles; fIndex++)
+    for(int fIndex = 0; fIndex < v1new.numFaceHandles; fIndex++)
     {
-        if(v1.faceHandles[fIndex] == newFace.indexInMesh)
+        if(v1new.faceHandles[fIndex] == newFace.indexInMesh)
         {
-            v1.faceHandles[fIndex] = indexInMesh;
+            v1new.faceHandles[fIndex] = indexInMesh;
         }
     }
     
     auto& v2new = vertices[newFace.vertices[1]];
-    for(int fIndex = 0; fIndex < v2.numFaceHandles; fIndex++)
+    for(int fIndex = 0; fIndex < v2new.numFaceHandles; fIndex++)
     {
-        if(v2.faceHandles[fIndex] == newFace.indexInMesh)
+        if(v2new.faceHandles[fIndex] == newFace.indexInMesh)
         {
-            v2.faceHandles[fIndex] = indexInMesh;
+            v2new.faceHandles[fIndex] = indexInMesh;
         }
     }
     
     auto& v3new = vertices[newFace.vertices[2]];
-    for(int fIndex = 0; fIndex < v3.numFaceHandles; fIndex++)
+    for(int fIndex = 0; fIndex < v3new.numFaceHandles; fIndex++)
     {
-        if(v3.faceHandles[fIndex] == newFace.indexInMesh)
+        if(v3new.faceHandles[fIndex] == newFace.indexInMesh)
         {
-            v3.faceHandles[fIndex] = indexInMesh;
+            v3new.faceHandles[fIndex] = indexInMesh;
         }
     }
     
@@ -862,7 +892,7 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
     glDisableVertexAttribArray(2);
     glBindVertexArray(0);
     
-    auto lineColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    //auto lineColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
     auto lineWidth = 10.0f;
     auto normalColor = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
     auto faceNormalColor = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
@@ -872,8 +902,6 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
     auto c1 = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
     auto c2 = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
     auto c3 = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    
-    auto vertexSum = glm::vec3(0.0f);
     
     if(renderContext.renderNormals)
     {
