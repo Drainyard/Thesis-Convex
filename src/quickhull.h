@@ -95,11 +95,11 @@ float DistancePointToFace(face& f, vertex& v, vertex* vertices)
 {
     auto c = (vertices[f.vertices[0]].position + vertices[f.vertices[1]].position + vertices[f.vertices[2]].position) / 3.0f;
     
-    auto distanceToOrigin = glm::distance(c, glm::vec3(0.0f));
+    //auto distanceToOrigin = glm::distance(c, glm::vec3(0.0f));
     
     //return glm::dot(f.faceNormal, v.position) + distanceToOrigin;
     
-    return glm::abs((glm::dot(f.faceNormal, v.position) - distanceToOrigin)); 
+    return glm::abs((glm::dot(f.faceNormal, v.position) - glm::dot(f.faceNormal, c))); 
 }
 
 struct vertex_pair
@@ -108,10 +108,10 @@ struct vertex_pair
     vertex second;
 };
 
-void GenerateInitialSimplex(render_context& renderContext, vertex* vertices, int numberOfPoints, mesh& m)
+void GenerateInitialSimplex(render_context& renderContext, vertex* vertices, int numVertices, mesh& m)
 {
     // First we find all 6 extreme points in the whole point set
-    auto extremePoints = FindExtremePoints(vertices, numberOfPoints);
+    auto extremePoints = FindExtremePoints(vertices, numVertices);
     
     vertex_pair mostDistantPair = {};
     auto dist = 0.0f;
@@ -143,7 +143,7 @@ void GenerateInitialSimplex(render_context& renderContext, vertex* vertices, int
     
     // Find the poin that is furthest away from the segment 
     // spanned by the two extreme points
-    for(int i = 0; i < numberOfPoints; i++)
+    for(int i = 0; i < numVertices; i++)
     {
         auto distance = SquareDistancePointToSegment(mostDistantPair.first, mostDistantPair.second, vertices[i]);
         if(distance > extremePointCurrentFurthest)
@@ -153,7 +153,7 @@ void GenerateInitialSimplex(render_context& renderContext, vertex* vertices, int
         }
     }
     
-    auto f = AddFace(renderContext, m, mostDistantPair.first, mostDistantPair.second, vertices[extremePointCurrentIndex], vertices);
+    auto* f = AddFace(renderContext, m, mostDist1, mostDist2, extremePointCurrentIndex, vertices, numVertices);
     if(!f)
     {
         return;
@@ -163,7 +163,7 @@ void GenerateInitialSimplex(render_context& renderContext, vertex* vertices, int
     auto currentIndex = 0;
     
     // Now find the points furthest away from the face
-    for(int i = 0; i < numberOfPoints; i++)
+    for(int i = 0; i < numVertices; i++)
     {
         if(i == mostDist1 || i == mostDist2 || i == extremePointCurrentIndex)
         {
@@ -185,33 +185,20 @@ void GenerateInitialSimplex(render_context& renderContext, vertex* vertices, int
         f->vertices[0] = f->vertices[1];
         f->vertices[1] = t;
         f->faceNormal = ComputeFaceNormal(*f, vertices);
-        AddFace(renderContext, m, mostDistantPair.first, vertices[currentIndex], vertices[extremePointCurrentIndex], vertices);
-        AddFace(renderContext, m, vertices[currentIndex], mostDistantPair.second, vertices[extremePointCurrentIndex], vertices);
-        AddFace(renderContext, m, mostDistantPair.first, mostDistantPair.second, vertices[currentIndex], vertices);
+        AddFace(renderContext, m, mostDist1, currentIndex, extremePointCurrentIndex, vertices, numVertices);
+        AddFace(renderContext, m, currentIndex, mostDist2, extremePointCurrentIndex, vertices, numVertices);
+        AddFace(renderContext, m, mostDist1, mostDist2, currentIndex, vertices, numVertices);
     }
     else
     {
-        AddFace(renderContext, m, vertices[currentIndex], mostDistantPair.first, vertices[extremePointCurrentIndex], vertices);
-        AddFace(renderContext, m, mostDistantPair.second, vertices[currentIndex], vertices[extremePointCurrentIndex], vertices);
-        AddFace(renderContext, m, mostDistantPair.second, mostDistantPair.first, vertices[currentIndex], vertices);
+        AddFace(renderContext, m, currentIndex, mostDist1, extremePointCurrentIndex, vertices, numVertices);
+        AddFace(renderContext, m, mostDist2, currentIndex, extremePointCurrentIndex, vertices, numVertices);
+        AddFace(renderContext, m, mostDist2, mostDist1, currentIndex, vertices, numVertices);
     }
 }
 
 void AddToOutsideSet(face& f, vertex& v)
 {
-    if(f.outsideSetCount + 1 >= f.outsideSetSize)
-    {
-        if(f.outsideSetSize == 0)
-        {
-            f.outsideSetSize = 2;
-            f.outsideSet = (int*)malloc(sizeof(int) * f.outsideSetSize);
-        }
-        else if(f.outsideSet)
-        {
-            f.outsideSetSize *= 2;
-            f.outsideSet = (int*)realloc(f.outsideSet, f.outsideSetSize * sizeof(int));
-        }
-    }
     f.outsideSet[f.outsideSetCount++] = v.vertexIndex;
 }
 
@@ -263,6 +250,7 @@ void FindConvexHorizon(vertex& viewPoint, std::vector<int>& faces, vertex* verti
                 else if(!neighbourFace.visited)
                 {
                     possibleVisibleFaces.push_back(neighbour.faceHandle);
+                    faces.push_back(neighbourFace.id);
                 }
                 neighbourFace.visited = true;
             }
@@ -270,15 +258,15 @@ void FindConvexHorizon(vertex& viewPoint, std::vector<int>& faces, vertex* verti
     }
 }
 
-mesh& InitQuickHull(render_context& renderContext, vertex* vertices, int numberOfPoints, std::stack<int>& faceStack)
+mesh& InitQuickHull(render_context& renderContext, vertex* vertices, int numVertices, std::stack<int>& faceStack)
 {
     auto& m = InitEmptyMesh(renderContext);
     m.position = glm::vec3(0.0f);
     m.scale = glm::vec3(globalScale);
     m.numFaces = 0;
     m.facesSize = 0;
-    GenerateInitialSimplex(renderContext, vertices, numberOfPoints, m);
-    AssignToOutsideSets(vertices, numberOfPoints, m.faces,  m.numFaces);
+    GenerateInitialSimplex(renderContext, vertices, numVertices, m);
+    AssignToOutsideSets(vertices, numVertices, m.faces,  m.numFaces);
     
     for(int i = 0; i < m.numFaces; i++)
     {
@@ -328,8 +316,6 @@ void QuickHullHorizon(render_context& renderContext, mesh& m, vertex* vertices, 
     
     auto& p = vertices[renderContext.debugContext.currentDistantPoint];
     
-    Assert(f.neighbourCount <= 20);
-    
     //TODO: for all unvisited neighbours -> What is unvisited exactly in this case?
     for(int neighbourIndex = 0; neighbourIndex < f.neighbourCount; neighbourIndex++)
     {
@@ -349,12 +335,12 @@ void QuickHullHorizon(render_context& renderContext, mesh& m, vertex* vertices, 
     FindConvexHorizon(p, v, vertices, m, renderContext.debugContext.horizon);
 }
 
-void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices, std::stack<int>& faceStack, face& f, std::vector<int>& v, int prevIterationFaces)
+void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices, std::stack<int>& faceStack, face& f, std::vector<int>& v, int prevIterationFaces, int numVertices)
 {
     auto& p = vertices[renderContext.debugContext.currentDistantPoint];
     for(const auto& e : renderContext.debugContext.horizon)
     {
-        auto newF = AddFace(renderContext, m, vertices[e.origin], vertices[e.end], p, vertices);
+        auto* newF = AddFace(renderContext, m, e.origin, e.end, renderContext.debugContext.currentDistantPoint, vertices, numVertices);
         if(newF)
         {
             auto dot = glm::dot(f.faceNormal, newF->faceNormal);
@@ -403,22 +389,36 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
     for(int id : v)
     {
         printf("Removing face\n");
+        printf("Id to remove: %d\n", id);
         RemoveFace(m, id, vertices);
     }
+    
+    for(int i = 0; i < m.numFaces; i++)
+    {
+        m.faces[i].visited = false;
+    }
+    
     printf("Number of faces: %d\n", m.numFaces);
 }
 
-void QuickHull(render_context& renderContext, vertex* vertices, int numberOfPoints, mesh& m, std::stack<int>& faceStack)
+mesh& QuickHull(render_context& renderContext, vertex* vertices, int numVertices)
 {
-    (void)numberOfPoints;
-    (void)vertices;
-    (void)renderContext;
-    (void)m;
-    //face* currentFace = nullptr;
+    face* currentFace = nullptr;
+    std::stack<int> faceStack;
+    auto& m = InitQuickHull(renderContext, vertices, numVertices, faceStack);
+    std::vector<int> v;
+    int previousIteration = 0;
     while(faceStack.size() > 0)
     {
-        //QuickHullIteration(renderContext, m, vertices, faceStack);
+        currentFace = QuickHullFindNextIteration(renderContext, m, vertices, faceStack);
+        if(currentFace)
+        {
+            QuickHullHorizon(renderContext, m, vertices, *currentFace, v, &previousIteration);
+            QuickHullIteration(renderContext, m, vertices, faceStack, *currentFace, v, previousIteration, numVertices);
+            v.clear();
+        }
     }
+    return m;
 }
 
 

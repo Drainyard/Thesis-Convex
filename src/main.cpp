@@ -89,10 +89,14 @@ int main()
     auto quickHullVertices = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
     memcpy(quickHullVertices, vertices, sizeof(vertex) * numberOfPoints);
     
+    auto finalQHVertices = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
+    memcpy(finalQHVertices, vertices, sizeof(vertex) * numberOfPoints);
+    
     auto disableMouse = false;
     
     std::stack<int> faceStack;
     auto& mq = InitQuickHull(renderContext, quickHullVertices, numberOfPoints, faceStack);
+    mesh* mFinal = nullptr;
     
     QHIteration nextIter = QHIteration::findNextIter;
     face* currentFace = nullptr;
@@ -100,6 +104,7 @@ int main()
     int previousIteration = 0;
     
     auto& mn = NaiveConvexHull(renderContext, naiveVertices, numberOfPoints);
+    //auto& mn = InitEmptyMesh(renderContext);
     
     mesh* currentMesh = &mq;
     
@@ -114,6 +119,18 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         ComputeMatrices(renderContext, deltaTime);
+        
+        if(KeyDown(Key_H))
+        {
+            if(!mFinal)
+            {
+                mFinal = &QuickHull(renderContext, finalQHVertices, numberOfPoints);
+            }
+            if(mFinal)
+            {
+                currentMesh = mFinal;
+            }
+        }
         
         if(KeyDown(Key_J))
         {
@@ -146,7 +163,7 @@ int main()
                         if(currentFace)
                         {
                             printf("Doing iteration\n");
-                            QuickHullIteration(renderContext, mq, quickHullVertices, faceStack, *currentFace, v, previousIteration);
+                            QuickHullIteration(renderContext, mq, quickHullVertices, faceStack, *currentFace, v, previousIteration, numberOfPoints);
                             nextIter = QHIteration::findNextIter;
                             v.clear();
                         }
@@ -160,6 +177,7 @@ int main()
         {
             renderContext.renderPoints = !renderContext.renderPoints;
         }
+        
         if(KeyDown(Key_N))
         {
             renderContext.renderNormals = !renderContext.renderNormals;
