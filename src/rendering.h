@@ -122,7 +122,7 @@ struct face
     int outsideSetCount;
     int outsideSetSize;
     
-    neighbour neighbours[32];
+    neighbour neighbours[128];
     int neighbourCount;
     int indexInMesh;
     bool visited;

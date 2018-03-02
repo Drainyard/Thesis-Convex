@@ -79,7 +79,7 @@ int main()
     
     CreateLight(renderContext, glm::vec3(0.0f, 75.0f, 10.0f), glm::vec3(1, 1, 1), 2500.0f);
     
-    int numberOfPoints = 10;
+    int numberOfPoints = 100;
     
     auto vertices = GeneratePoints(renderContext, numberOfPoints, 0.0f, 100.0f);
     
@@ -103,8 +103,8 @@ int main()
     std::vector<int> v;
     int previousIteration = 0;
     
-    auto& mn = NaiveConvexHull(renderContext, naiveVertices, numberOfPoints);
-    //auto& mn = InitEmptyMesh(renderContext);
+    //auto& mn = NaiveConvexHull(renderContext, naiveVertices, numberOfPoints);
+    auto& mn = InitEmptyMesh(renderContext);
     
     mesh* currentMesh = &mq;
     
