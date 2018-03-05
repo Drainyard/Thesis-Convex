@@ -181,9 +181,9 @@ static void InitializeOpenGL(render_context& renderContext)
     glfwSetKeyCallback(renderContext.window, KeyCallback);
     glfwSetMouseButtonCallback(renderContext.window, MouseButtonCallback);
     
-    printf("%s\n", glGetString(GL_VERSION));
-    printf("Shading language supported: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
-    printf("Glad Version: %d.%d\n", GLVersion.major, GLVersion.minor);
+    Log("%s\n", glGetString(GL_VERSION));
+    Log("Shading language supported: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
+    Log("Glad Version: %d.%d\n", GLVersion.major, GLVersion.minor);
     
     glEnable(GL_DEPTH_TEST);
     
@@ -299,7 +299,7 @@ static GLfloat* BuildVertexBuffer(render_context& renderContext, face* faces, in
 {
     GLfloat* vertices = (GLfloat*)malloc(numFaces * 3 * sizeof(vertex_info));
     
-    printf("Num faces in renderer: %d\n", numFaces);
+    Log("Num faces in renderer: %d\n", numFaces);
     int ns[3];
     for(int i = 0; i < numFaces; i++)
     {
@@ -313,15 +313,15 @@ static GLfloat* BuildVertexBuffer(render_context& renderContext, face* faces, in
             
             if(faces[i].neighbourCount == 1)
             {
-                printf("Neighbours: %d\n", ns[0]);
+                Log("Neighbours: %d\n", ns[0]);
             }
             else if(faces[i].neighbourCount == 2)
             {
-                printf("Neighbours: %d, %d\n", ns[0], ns[1]);
+                Log("Neighbours: %d, %d\n", ns[0], ns[1]);
             }
             else if(faces[i].neighbourCount == 3)
             {
-                printf("Neighbours: %d, %d, %d\n", ns[0], ns[1], ns[2]);
+                Log("Neighbours: %d, %d, %d\n", ns[0], ns[1], ns[2]);
             }
         }
         
@@ -384,12 +384,18 @@ static GLfloat* BuildVertexBuffer(render_context& renderContext, face* faces, in
     return vertices;
 }
 
-static bool IsPointOnPositiveSide(face& f, vertex& v, vertex* vertices)
+static bool IsPointOnPositiveSide(face& f, vertex& v)
 {
-    auto c = (vertices[f.vertices[0]].position + vertices[f.vertices[1]].position + vertices[f.vertices[2]].position) / 3.0f;
-    auto d = glm::dot(f.faceNormal, v.position - c);
+    auto d = glm::dot(f.faceNormal, v.position - f.centerPoint);
     return d > 0;
 }
+
+static bool IsPointOnPositiveSide(face& f, glm::vec3 v)
+{
+    auto d = glm::dot(f.faceNormal, v - f.centerPoint);
+    return d > 0;
+}
+
 
 static face* GetFaceById(int id, mesh& m)
 {
@@ -422,8 +428,13 @@ static glm::vec3 ComputeFaceNormal(face f, vertex* vertices)
 
 //!!!TODO: This is extremely slow now, but naive solution is fine for vertical slice!!!
 // Find face neighbours: i.e. faces sharing two vertices
-static void FindNeighbours(vertex& v1, vertex& v2, mesh& m, face& f)
+static void FindNeighbours(int v1Handle, int v2Handle, mesh& m, face& f, vertex* vertices)
 {
+    auto& v1 = vertices[v1Handle];
+    auto& v2 = vertices[v2Handle];
+    
+    Log("Find neighbours\n");
+    
     for(int v1FaceIndex = 0; v1FaceIndex < v1.numFaceHandles; v1FaceIndex++)
     {
         auto v1Face = v1.faceHandles[v1FaceIndex];
@@ -476,6 +487,12 @@ static void FindNeighbours(vertex& v1, vertex& v2, mesh& m, face& f)
 
 static face* AddFace(render_context& renderContext, mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* vertices, int numVertices)
 {
+    if(m.numFaces == 0)
+    {
+        m.faces = (face*)malloc(sizeof(face) * 2048);
+    }
+    
+    /*
     if(m.numFaces + 1 >= m.facesSize)
     {
         if(m.facesSize == 0)
@@ -489,12 +506,11 @@ static face* AddFace(render_context& renderContext, mesh& m, int v1Handle, int v
             m.faces = (face*)realloc(m.faces, m.facesSize * sizeof(face));
         }
     }
-    
+    */
     
     auto& v1 = vertices[v1Handle];
     auto& v2 = vertices[v2Handle];
     auto& v3 = vertices[v3Handle];
-    
     
     if(v1.vertexIndex == v2.vertexIndex || v1.vertexIndex == v3.vertexIndex ||  v2.vertexIndex == v3.vertexIndex)
     {
@@ -503,16 +519,17 @@ static face* AddFace(render_context& renderContext, mesh& m, int v1Handle, int v
     
     face& newFace = m.faces[m.numFaces++];
     newFace.outsideSet = (int*)malloc(sizeof(int) * numVertices);
+    newFace.outsideSetCount = 0;
+    
     newFace.neighbourCount = 0;
     newFace.indexInMesh = m.numFaces - 1;
     newFace.id = renderContext.faceCounter++;
-    newFace.outsideSetCount = 0;
     
-    FindNeighbours(v1, v2, m, newFace);
-    FindNeighbours(v1, v3, m, newFace);
-    FindNeighbours(v2, v3, m, newFace);
+    FindNeighbours(v1Handle, v2Handle, m, newFace, vertices);
+    FindNeighbours(v1Handle, v3Handle, m, newFace, vertices);
+    FindNeighbours(v2Handle, v3Handle, m, newFace, vertices);
     
-    printf("Neighbourcount in add face: %d\n", newFace.neighbourCount);
+    Log("Neighbourcount in add face: %d\n", newFace.neighbourCount);
     
     v1.faceHandles[v1.numFaceHandles++] = newFace.indexInMesh;
     v2.faceHandles[v2.numFaceHandles++] = newFace.indexInMesh;
@@ -522,7 +539,6 @@ static face* AddFace(render_context& renderContext, mesh& m, int v1Handle, int v
     newFace.vertices[1] = v2.vertexIndex;
     newFace.vertices[2] = v3.vertexIndex;
     newFace.faceNormal = ComputeFaceNormal(newFace, vertices);
-    
     
     bool contained = false;
     for(int i = 0; i < vertices[newFace.vertices[0]].numFaceHandles; i++)
@@ -543,10 +559,10 @@ static face* AddFace(render_context& renderContext, mesh& m, int v1Handle, int v
     }
     Assert(contained);
     
-    
-    
     newFace.faceColor = glm::vec4(0.0f, 1.0f, 1.0f, 0.7f);
     newFace.faceColor.w = 0.5f;
+    
+    newFace.centerPoint = (vertices[newFace.vertices[0]].position + vertices[newFace.vertices[1]].position + vertices[newFace.vertices[2]].position) / 3.0f;
     
     m.dirty = true;
     return &m.faces[m.numFaces - 1];
@@ -570,7 +586,6 @@ static void RemoveFace(mesh& m, int faceId, vertex* vertices)
     auto& v2 = vertices[f->vertices[1]];
     auto& v3 = vertices[f->vertices[2]];
     
-    
     bool contained = false;
     for(int i = 0; i < v1.numFaceHandles; i++)
     {
@@ -590,6 +605,7 @@ static void RemoveFace(mesh& m, int faceId, vertex* vertices)
     }
     Assert(contained);
     
+    f->outsideSetCount = 0;
     
     m.dirty = true;
     
@@ -605,7 +621,7 @@ static void RemoveFace(mesh& m, int faceId, vertex* vertices)
         {
             if(neighbourFace.neighbours[i].faceHandle == f->indexInMesh)
             {
-                printf("Removing\n");
+                Log("Removing\n");
                 // Found the neighbour
                 neighbourFace.neighbours[i] = neighbourFace.neighbours[neighbourFace.neighbourCount - 1];
                 neighbourFace.neighbourCount--;
@@ -617,7 +633,6 @@ static void RemoveFace(mesh& m, int faceId, vertex* vertices)
     auto indexInMesh = f->indexInMesh;
     // Invalidates the f pointer
     // But we only need to swap two faces to make this work
-    
     
     m.faces[indexInMesh] = m.faces[--m.numFaces];
     
@@ -634,21 +649,23 @@ static void RemoveFace(mesh& m, int faceId, vertex* vertices)
             {
                 // Set it to the new index in the mesh
                 neighbourFace.neighbours[n].faceHandle = indexInMesh;
+                break;
             }
         }
     }
     
-    printf("before faces: %d\n", v1.numFaceHandles);
-    printf("before faces: %d\n", v2.numFaceHandles);
-    printf("before faces: %d\n", v3.numFaceHandles);
+    Log("before faces: %d\n", v1.numFaceHandles);
+    Log("before faces: %d\n", v2.numFaceHandles);
+    Log("before faces: %d\n", v3.numFaceHandles);
     
     for(int fIndex = 0; fIndex < v1.numFaceHandles; fIndex++)
     {
         if(v1.faceHandles[fIndex] == indexInMesh)
         {
-            printf("Removing facehandle for v1\n");
+            Log("Removing facehandle for v1\n");
             v1.faceHandles[fIndex] = v1.faceHandles[v1.numFaceHandles - 1];
             v1.numFaceHandles--;
+            break;
         }
     }
     
@@ -656,9 +673,10 @@ static void RemoveFace(mesh& m, int faceId, vertex* vertices)
     {
         if(v2.faceHandles[fIndex] == indexInMesh)
         {
-            printf("Removing facehandle for v2\n");
+            Log("Removing facehandle for v2\n");
             v2.faceHandles[fIndex] = v2.faceHandles[v2.numFaceHandles - 1];
             v2.numFaceHandles--;
+            break;
         }
     }
     
@@ -666,15 +684,16 @@ static void RemoveFace(mesh& m, int faceId, vertex* vertices)
     {
         if(v3.faceHandles[fIndex] == indexInMesh)
         {
-            printf("Removing facehandle for v3\n");
+            Log("Removing facehandle for v3\n");
             v3.faceHandles[fIndex] = v3.faceHandles[v3.numFaceHandles - 1];
             v3.numFaceHandles--;
+            break;
         }
     }
     
-    printf("faces: %d\n", v1.numFaceHandles);
-    printf("faces: %d\n", v2.numFaceHandles);
-    printf("faces: %d\n", v3.numFaceHandles);
+    Log("faces: %d\n", v1.numFaceHandles);
+    Log("faces: %d\n", v2.numFaceHandles);
+    Log("faces: %d\n", v3.numFaceHandles);
     
     auto& v1new = vertices[newFace.vertices[0]];
     for(int fIndex = 0; fIndex < v1new.numFaceHandles; fIndex++)
@@ -682,6 +701,7 @@ static void RemoveFace(mesh& m, int faceId, vertex* vertices)
         if(v1new.faceHandles[fIndex] == newFace.indexInMesh)
         {
             v1new.faceHandles[fIndex] = indexInMesh;
+            break;
         }
     }
     
@@ -691,6 +711,7 @@ static void RemoveFace(mesh& m, int faceId, vertex* vertices)
         if(v2new.faceHandles[fIndex] == newFace.indexInMesh)
         {
             v2new.faceHandles[fIndex] = indexInMesh;
+            break;
         }
     }
     
@@ -700,6 +721,7 @@ static void RemoveFace(mesh& m, int faceId, vertex* vertices)
         if(v3new.faceHandles[fIndex] == newFace.indexInMesh)
         {
             v3new.faceHandles[fIndex] = indexInMesh;
+            break;
         }
     }
     
@@ -951,7 +973,7 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
     //auto lineColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
     auto lineWidth = 10.0f;
     auto normalColor = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
-    auto faceNormalColor = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
+    auto faceNormalColor = glm::vec4(191.0f / 255.0f, 0.0f, 0.0f, 1.0f);
     
     auto lineLength = 20.0f;
     
@@ -961,7 +983,6 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
     
     if(renderContext.renderNormals)
     {
-        
         for(int i = 0; i < m.numFaces; i++)
         {
             auto& f = m.faces[i];
@@ -977,9 +998,7 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
             RenderLine(renderContext, v2.position, v3.position, c2, lineWidth);
             RenderLine(renderContext, v3.position, v1.position, c3, lineWidth);
             
-            auto centerPoint = (v1.position + v2.position + v3.position)/3.0f;
-            
-            RenderLine(renderContext, centerPoint, centerPoint + lineLength * f.faceNormal, faceNormalColor, lineWidth);
+            RenderLine(renderContext, f.centerPoint, f.centerPoint + lineLength * f.faceNormal, faceNormalColor, lineWidth);
         }
     }
     else
@@ -992,12 +1011,9 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
             auto v2 = vertices[f.vertices[1]];
             auto v3 = vertices[f.vertices[2]];
             
-            if(i == 0)
-            {
-                RenderLine(renderContext, v1.position, v2.position, c1, lineWidth);
-                RenderLine(renderContext, v2.position, v3.position, c2, lineWidth);
-                RenderLine(renderContext, v3.position, v1.position, c3, lineWidth);
-            }
+            RenderLine(renderContext, v1.position, v2.position, c1, lineWidth);
+            RenderLine(renderContext, v2.position, v3.position, c2, lineWidth);
+            RenderLine(renderContext, v3.position, v1.position, c3, lineWidth);
         }
     }
     

@@ -34,27 +34,30 @@ static input_state inputState;
 #define Max(A,B) ((A > B) ? (A) : (B))
 #define Abs(x) ((x) < 0 ? -(x) : (x))
 
-static vertex* GeneratePoints(render_context& renderContext, int numberOfPoints, float min = 0.0f, float max = 200.0f)
+static vertex* GeneratePoints(render_context& renderContext, int numberOfPoints, coord_t min = 0.0f, coord_t max = 200.0f)
 {
     auto res = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
     for(int i = 0; i < numberOfPoints; i++)
     {
-        float x = RandomFloat(min, max);
-        float y = RandomFloat(min, max);
-        float z = RandomFloat(min, max);
+        coord_t x = RandomCoord(min, max);
+        coord_t y = RandomCoord(min, max);
+        coord_t z = RandomCoord(min, max);
         
         res[i].position = glm::vec3(x, y, z) - renderContext.originOffset;
         res[i].color = RandomColor(); //glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
         res[i].numFaceHandles = 0;
         res[i].vertexIndex = i;
+        res[i].faceHandles = (int*)malloc(sizeof(int) * 1024);
     }
+    
     return res;
 }
 
-
 int main()
 {
-    srand((unsigned int)time(NULL));
+    auto seed = 1520254626;//time(NULL);
+    srand(seed);
+    printf("Seed: %ud\n", seed);
     render_context renderContext = {};
     renderContext.FoV = 45.0f;
     renderContext.position = glm::vec3(0.0f, 50.5f, 30.0f);
@@ -69,7 +72,7 @@ int main()
     
     InitializeOpenGL(renderContext);
     
-    glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
+    glClearColor(41.0f / 255.0f, 54.0f / 255.0f, 69.0f / 255.0f, 1.0f);
     
     double lastFrame = glfwGetTime();
     double currentFrame = 0.0;
@@ -79,9 +82,9 @@ int main()
     
     CreateLight(renderContext, glm::vec3(0.0f, 75.0f, 10.0f), glm::vec3(1, 1, 1), 2500.0f);
     
-    int numberOfPoints = 100;
+    int numberOfPoints = 30;
     
-    auto vertices = GeneratePoints(renderContext, numberOfPoints, 0.0f, 100.0f);
+    auto vertices = GeneratePoints(renderContext, numberOfPoints, 0.0, 100.0);
     
     auto naiveVertices = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
     memcpy(naiveVertices, vertices, sizeof(vertex) * numberOfPoints);
@@ -140,7 +143,7 @@ int main()
                 {
                     case QHIteration::findNextIter:
                     {
-                        printf("Finding next iteration\n");
+                        Log("Finding next iteration\n");
                         currentFace = QuickHullFindNextIteration(renderContext, mq, quickHullVertices, faceStack);
                         if(currentFace)
                         {
@@ -152,7 +155,7 @@ int main()
                     {
                         if(currentFace)
                         {
-                            printf("Finding horizon\n");
+                            Log("Finding horizon\n");
                             QuickHullHorizon(renderContext, mq, quickHullVertices, *currentFace, v, &previousIteration);
                             nextIter = QHIteration::doIter;
                         }
@@ -162,8 +165,8 @@ int main()
                     {
                         if(currentFace)
                         {
-                            printf("Doing iteration\n");
-                            QuickHullIteration(renderContext, mq, quickHullVertices, faceStack, *currentFace, v, previousIteration, numberOfPoints);
+                            Log("Doing iteration\n");
+                            QuickHullIteration(renderContext, mq, quickHullVertices, faceStack, currentFace->id, v, previousIteration, numberOfPoints);
                             nextIter = QHIteration::findNextIter;
                             v.clear();
                         }
@@ -171,6 +174,11 @@ int main()
                     break;
                 }
             }
+        }
+        
+        if(KeyDown(Key_T))
+        {
+            
         }
         
         if(KeyDown(Key_P))

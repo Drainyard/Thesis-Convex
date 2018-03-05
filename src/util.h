@@ -1,11 +1,35 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#ifdef DEBUG
 #define Assert(Expression) if(!(Expression)) {printf("Assertion failed in: %s on line %d\n",__FILE__,__LINE__); asm("int $3");}
+#else
+#define Assert(Expression)
+#endif
+
+#ifdef DEBUG
+#define Log(Msg, ...) printf(Msg, ## __VA_ARGS__)
+#else
+#define Log(Msg, ...)
+#endif
+
+#define F_EPSILON 0.01
+
+using coord_t = double;
 
 static float RandomFloat(float start, float end)
 {
     return (rand() / (float)RAND_MAX * end) + start;
+}
+
+static double RandomDouble(double start, double end)
+{
+    return (rand() / (double)RAND_MAX * end) + start;
+}
+
+static coord_t RandomCoord(coord_t start, coord_t end)
+{
+    return (rand() / (coord_t)RAND_MAX * end) + start;
 }
 
 static int RandomInt(int start, int end)
@@ -15,7 +39,7 @@ static int RandomInt(int start, int end)
 
 static glm::vec4 RandomColor()
 {
-    return glm::vec4((float)RandomInt(0, 255) / 255.0f, (float)RandomInt(0, 255) / 255.0f, (float)RandomInt(0, 255) / 255.0f, 1.0f);
+    return glm::vec4((coord_t)RandomInt(0, 255) / 255.0, (coord_t)RandomInt(0, 255) / 255.0, (coord_t)RandomInt(0, 255) / 255.0, 1.0);
 }
 
 #define list(type)\

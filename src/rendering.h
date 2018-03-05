@@ -107,9 +107,10 @@ struct vertex
             glm::vec4 color;
         };
     };
-    int faceHandles[64]; // Try with 64 for now. Optimize if less or more
+    int* faceHandles; // Try with 64 for now. Optimize if less or more
     int numFaceHandles;
     int vertexIndex;
+    bool assigned;
 };
 
 struct face
@@ -122,10 +123,13 @@ struct face
     int outsideSetCount;
     int outsideSetSize;
     
-    neighbour neighbours[128];
+    glm::vec3 centerPoint;
+    
+    neighbour neighbours[512];
     int neighbourCount;
     int indexInMesh;
     bool visited;
+    bool visitedV;
 };
 
 struct mesh

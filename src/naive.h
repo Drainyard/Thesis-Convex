@@ -29,7 +29,7 @@
                      f.vertices[1] = j;
                      f.vertices[2] = k;
                      f.faceNormal = ComputeFaceNormal(f, vertices);
-                     if(IsPointOnPositiveSide(f, vertices[p], vertices))
+                     if(IsPointOnPositiveSide(f, vertices[p]))
                      {
                          if(firstPoint)
                          {
