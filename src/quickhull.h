@@ -8,57 +8,6 @@ enum QHIteration
     doIter
 };
 
-int* FindExtremePoints(vertex* points, int numPoints)
-{
-    if(numPoints > 0)
-    {
-        auto minX = 0;
-        auto maxX = 0;
-        auto minY = 0;
-        auto maxY = 0;
-        auto minZ = 0;
-        auto maxZ = 0;
-        
-        for(int i = 0; i < numPoints; i++)
-        {
-            auto& p = points[i];
-            if(p.position.x > points[maxX].position.x)
-            {
-                maxX = i;
-            }
-            if(p.position.x < points[minX].position.x)
-            {
-                minX = i;
-            }
-            if(p.position.y > points[maxY].position.y)
-            {
-                maxY = i;
-            }
-            if(p.position.y < points[minY].position.y)
-            {
-                minY = i;
-            }
-            if(p.position.z > points[maxZ].position.z)
-            {
-                maxZ = i;
-            }
-            if(p.position.z < points[minZ].position.z)
-            {
-                minZ = i;
-            }
-        }
-        int* res = (int*)malloc(sizeof(int) * 6);
-        res[0] = minX;
-        res[1] = maxX;
-        res[2] = minY;
-        res[3] = maxY;
-        res[4] = minZ;
-        res[5] = maxZ;
-        return res;
-    }
-    return nullptr;
-}
-
 float DistanceBetweenPoints(vertex& p1, vertex& p2)
 {
     return glm::distance(p1.position, p2.position);
@@ -91,12 +40,8 @@ float SquareDistancePointToSegment(vertex& a, vertex& b, vertex& c)
 
 // t=nn·v1−nn·p
 // p0=p+t·nn
-float DistancePointToFace(face& f, vertex& v, vertex* vertices)
+float DistancePointToFace(face& f, vertex& v)
 {
-    //auto distanceToOrigin = glm::distance(c, glm::vec3(0.0f));
-    
-    //return glm::dot(f.faceNormal, v.position) + distanceToOrigin;
-    
     return glm::abs((glm::dot(f.faceNormal, v.position) - glm::dot(f.faceNormal, f.centerPoint))); 
 }
 
@@ -106,7 +51,7 @@ struct vertex_pair
     vertex second;
 };
 
-void GenerateInitialSimplex(render_context& renderContext, vertex* vertices, int numVertices, mesh& m)
+coord_t GenerateInitialSimplex(render_context& renderContext, vertex* vertices, int numVertices, mesh& m)
 {
     // First we find all 6 extreme points in the whole point set
     auto extremePoints = FindExtremePoints(vertices, numVertices);
@@ -151,10 +96,13 @@ void GenerateInitialSimplex(render_context& renderContext, vertex* vertices, int
         }
     }
     
+    auto epsilon = 3 * (extremePoints[1] + extremePoints[3] + extremePoints[5]) * FLT_EPSILON;
+    //auto epsilon = 0.0f;
+    
     auto* f = AddFace(renderContext, m, mostDist1, mostDist2, extremePointCurrentIndex, vertices, numVertices);
     if(!f)
     {
-        return;
+        return epsilon;
     }
     
     auto currentFurthest = 0.0f;
@@ -167,7 +115,8 @@ void GenerateInitialSimplex(render_context& renderContext, vertex* vertices, int
         {
             continue;
         }
-        auto distance = DistancePointToFace(*f, vertices[i], vertices);
+        
+        auto distance = DistancePointToFace(*f, vertices[i]);
         if(distance > currentFurthest)
         {
             currentIndex = i;
@@ -177,7 +126,7 @@ void GenerateInitialSimplex(render_context& renderContext, vertex* vertices, int
     
     renderContext.debugContext.currentFaceIndex = f->indexInMesh;
     renderContext.debugContext.currentDistantPoint = currentIndex;
-    if(IsPointOnPositiveSide(*f, vertices[currentIndex]))
+    if(IsPointOnPositiveSide(*f, vertices[currentIndex], epsilon))
     {
         auto t = f->vertices[0];
         f->vertices[0] = f->vertices[1];
@@ -193,6 +142,8 @@ void GenerateInitialSimplex(render_context& renderContext, vertex* vertices, int
         AddFace(renderContext, m, mostDist2, currentIndex, extremePointCurrentIndex, vertices, numVertices);
         AddFace(renderContext, m, mostDist2, mostDist1, currentIndex, vertices, numVertices);
     }
+    
+    return epsilon;
 }
 
 void AddToOutsideSet(face& f, vertex& v)
@@ -201,7 +152,7 @@ void AddToOutsideSet(face& f, vertex& v)
     v.assigned = true;
 }
 
-void AssignToOutsideSets(vertex* vertices, int numVertices, face* faces, int numFaces)
+void AssignToOutsideSets(vertex* vertices, int numVertices, face* faces, int numFaces, coord_t epsilon)
 {
     std::vector<vertex> unassigned(vertices, vertices + numVertices);
     
@@ -217,7 +168,7 @@ void AssignToOutsideSets(vertex* vertices, int numVertices, face* faces, int num
                 continue;
             }
             
-            if(IsPointOnPositiveSide(f, unassigned[vertexIndex]))
+            if(IsPointOnPositiveSide(f, unassigned[vertexIndex], epsilon))
             {
                 vertex v = unassigned[vertexIndex];
                 AddToOutsideSet(f, v);
@@ -240,7 +191,56 @@ bool EdgeUnique(edge& input, std::vector<edge>& list)
     return true;
 }
 
-void FindConvexHorizon(vertex& viewPoint, std::vector<int>& faces, vertex* vertices, mesh& m, std::vector<edge>& list)
+bool HorizonValid(std::vector<edge>& horizon)
+{
+    int currentIndex = 0;
+    auto currentEdge = horizon[currentIndex++];
+    
+    bool foundEdge = false;
+    
+    auto firstEdge = horizon[0];
+    
+    auto cpyH = std::vector<edge>(horizon);
+    
+    cpyH.erase(cpyH.begin());
+    
+    while(currentEdge.end != firstEdge.origin)
+    {
+        for(size_t i = 0; i < cpyH.size(); i++)
+        {
+            if(currentEdge.end == cpyH[i].origin)
+            {
+                foundEdge = true;
+                Log("%d %d -> %d %d ->", currentEdge.origin, currentEdge.end, cpyH[i].origin, cpyH[i].end);
+                currentIndex = (int)i;
+                currentEdge = cpyH[currentIndex];
+                break;
+            }
+        }
+        
+        if(!foundEdge)
+        {
+            Log("\n");
+            return false;
+        }
+        
+        cpyH.erase(cpyH.begin() + currentIndex);
+        
+        foundEdge = false;
+    }
+    Log("\n");
+    return true;
+}
+
+void PrintHorizon(std::vector<edge>& list)
+{
+    for(size_t i = 0; i < list.size(); i++)
+    {
+        Log("Edge: origin %d end %d\n", list[i].origin, list[i].end);
+    }
+}
+
+void FindConvexHorizon(vertex& viewPoint, std::vector<int>& faces, mesh& m, std::vector<edge>& list, coord_t epsilon)
 {
     std::vector<int> possibleVisibleFaces(faces);
     for(size_t faceIndex = 0; faceIndex < possibleVisibleFaces.size(); faceIndex++)
@@ -251,38 +251,49 @@ void FindConvexHorizon(vertex& viewPoint, std::vector<int>& faces, vertex* verti
             for(int neighbourIndex = 0; neighbourIndex < f->neighbourCount; neighbourIndex++)
             {
                 auto& neighbour = f->neighbours[neighbourIndex];
-                auto& neighbourFace = m.faces[neighbour.faceHandle];
-                if(!IsPointOnPositiveSide(neighbourFace, viewPoint))
+                //auto& neighbourFace = m.faces[neighbour.faceHandle];
+                auto neighbourFace = GetFaceById(neighbour.id, m);
+                if(neighbourFace)
                 {
-                    edge newEdge = {};
-                    newEdge.origin = neighbour.originVertex;
-                    newEdge.end = neighbour.endVertex;
-                    if(EdgeUnique(newEdge, list))
+                    if(!IsPointOnPositiveSide(*neighbourFace, viewPoint, epsilon))
                     {
-                        list.push_back(newEdge);
+                        edge newEdge = {};
+                        newEdge.origin = neighbour.originVertex;
+                        newEdge.end = neighbour.endVertex;
+                        if(EdgeUnique(newEdge, list))
+                        {
+                            list.push_back(newEdge);
+                        }
+                        
                     }
-                    
+                    else if(!neighbourFace->visited)
+                    {
+                        possibleVisibleFaces.push_back(neighbour.id);
+                        faces.push_back(neighbourFace->id);
+                    }
+                    neighbourFace->visited = true;
                 }
-                else if(!neighbourFace.visited)
-                {
-                    possibleVisibleFaces.push_back(neighbour.faceHandle);
-                    faces.push_back(neighbourFace.id);
-                }
-                neighbourFace.visited = true;
             }
         }
     }
+    
+    if(!HorizonValid(list))
+    {
+        Log("Invalid horizon\n");
+    }
 }
 
-mesh& InitQuickHull(render_context& renderContext, vertex* vertices, int numVertices, std::stack<int>& faceStack)
+
+
+mesh& InitQuickHull(render_context& renderContext, vertex* vertices, int numVertices, std::stack<int>& faceStack, coord_t* epsilon)
 {
     auto& m = InitEmptyMesh(renderContext);
     m.position = glm::vec3(0.0f);
     m.scale = glm::vec3(globalScale);
     m.numFaces = 0;
     m.facesSize = 0;
-    GenerateInitialSimplex(renderContext, vertices, numVertices, m);
-    AssignToOutsideSets(vertices, numVertices, m.faces,  m.numFaces);
+    *epsilon = GenerateInitialSimplex(renderContext, vertices, numVertices, m);
+    AssignToOutsideSets(vertices, numVertices, m.faces,  m.numFaces, *epsilon);
     
     for(int i = 0; i < m.numFaces; i++)
     {
@@ -310,7 +321,7 @@ face* QuickHullFindNextIteration(render_context& renderContext, mesh& m, vertex*
         int currentFurthest = 0;
         for(int vertexIndex = 0; vertexIndex < f->outsideSetCount; vertexIndex++)
         {
-            auto dist = DistancePointToFace(*f, vertices[f->outsideSet[vertexIndex]], vertices);
+            auto dist = DistancePointToFace(*f, vertices[f->outsideSet[vertexIndex]]);
             if(dist > furthestDistance && vertices[f->outsideSet[vertexIndex]].numFaceHandles == 0)
             {
                 currentFurthest = vertexIndex;
@@ -325,33 +336,38 @@ face* QuickHullFindNextIteration(render_context& renderContext, mesh& m, vertex*
         
         res = &m.faces[f->indexInMesh];
     }
+    
     faceStack.pop();
     return res;
 }
 
-void QuickHullHorizon(render_context& renderContext, mesh& m, vertex* vertices, face& f, std::vector<int>& v, int* prevIterationFaces)
-{
+void QuickHullHorizon(render_context& renderContext, mesh& m, vertex* vertices, face& f, std::vector<int>& v, int* prevIterationFaces, coord_t epsilon)
+{ 
     v.push_back(f.id);
     
     auto& p = vertices[renderContext.debugContext.currentDistantPoint];
     
-    for(int i = 0; i < v.size(); i++)
+    for(size_t i = 0; i < v.size(); i++)
     {
         auto fa = GetFaceById(v[i], m);
         if(!fa || fa->visitedV)
             continue;
         
         fa->visitedV = true;
+        
         //TODO: for all unvisited neighbours -> What is unvisited exactly in this case?
         for(int neighbourIndex = 0; neighbourIndex < fa->neighbourCount; neighbourIndex++)
         {
             auto& neighbour = m.faces[fa->neighbours[neighbourIndex].faceHandle];
             
-            if(IsPointOnPositiveSide(neighbour, p))
+            auto& newF = m.faces[fa->neighbours[neighbourIndex].faceHandle];
+            if(IsPointOnPositiveSide(neighbour, p, epsilon))
             {
-                auto& newF = m.faces[fa->neighbours[neighbourIndex].faceHandle];
                 if(!newF.visitedV)
+                {
                     v.push_back(newF.id);
+                    //newF.visitedV = true;
+                }
             }
         }
     }
@@ -361,17 +377,20 @@ void QuickHullHorizon(render_context& renderContext, mesh& m, vertex* vertices, 
     
     //std::vector<edge> horizon;
     renderContext.debugContext.horizon.clear();
-    FindConvexHorizon(p, v, vertices, m, renderContext.debugContext.horizon);
+    FindConvexHorizon(p, v, m, renderContext.debugContext.horizon, epsilon);
+    PrintHorizon(renderContext.debugContext.horizon);
 }
 
-void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices, std::stack<int>& faceStack, int fHandle, std::vector<int>& v, int prevIterationFaces, int numVertices)
+void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices, std::stack<int>& faceStack, int fHandle, std::vector<int>& v, int prevIterationFaces, int numVertices, coord_t epsilon)
 {
     face* f = GetFaceById(fHandle, m);
     
     if(!f)
         return;
     
-    auto& p = vertices[renderContext.debugContext.currentDistantPoint];
+    
+    Log("Horizon: %zd\n", renderContext.debugContext.horizon.size());
+    
     for(const auto& e : renderContext.debugContext.horizon)
     {
         auto* newF = AddFace(renderContext, m, e.origin, e.end, renderContext.debugContext.currentDistantPoint, vertices, numVertices);
@@ -386,10 +405,8 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
                 Log("Original normal: (%f, %f, %f)\n", f->faceNormal.x, f->faceNormal.y, f->faceNormal.z);
             }
             
-            
-            
             //if(dot < 0.0f)
-            if(IsPointOnPositiveSide(*newF, f->centerPoint))
+            if(IsPointOnPositiveSide(*newF, f->centerPoint, epsilon))
             {
                 Log("Reversing normals\n");
                 auto t = newF->vertices[0];
@@ -433,7 +450,7 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
                 {
                     auto osHandle = fInV->outsideSet[osIndex];
                     auto& q = vertices[osHandle];
-                    if(!q.assigned && q.numFaceHandles == 0 && IsPointOnPositiveSide(m.faces[newFaceIndex], q))
+                    if(!q.assigned && q.numFaceHandles == 0 && IsPointOnPositiveSide(m.faces[newFaceIndex], q, epsilon))
                     {
                         Assert(m.faces[newFaceIndex].outsideSetCount <= numVertices);
                         AddToOutsideSet(m.faces[newFaceIndex], q);
@@ -446,9 +463,12 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
     Log("Faces before: %d\n", m.numFaces);
     for(int id : v)
     {
-        Log("Removing face\n");
+        Log("Removing face: %d\n", id);
         RemoveFace(m, id, vertices);
     }
+    
+    renderContext.debugContext.currentFaceIndex = -1;
+    
     Log("Faces After: %d\n", m.numFaces);
     
     for(int i = 0; i < m.numFaces; i++)
@@ -463,7 +483,8 @@ mesh& QuickHull(render_context& renderContext, vertex* vertices, int numVertices
 {
     face* currentFace = nullptr;
     std::stack<int> faceStack;
-    auto& m = InitQuickHull(renderContext, vertices, numVertices, faceStack);
+    coord_t epsilon;
+    auto& m = InitQuickHull(renderContext, vertices, numVertices, faceStack, &epsilon);
     std::vector<int> v;
     int previousIteration = 0;
     while(faceStack.size() > 0)
@@ -471,14 +492,15 @@ mesh& QuickHull(render_context& renderContext, vertex* vertices, int numVertices
         currentFace = QuickHullFindNextIteration(renderContext, m, vertices, faceStack);
         if(currentFace)
         {
-            QuickHullHorizon(renderContext, m, vertices, *currentFace, v, &previousIteration);
-            QuickHullIteration(renderContext, m, vertices, faceStack, currentFace->id, v, previousIteration, numVertices);
+            QuickHullHorizon(renderContext, m, vertices, *currentFace, v, &previousIteration, epsilon);
+            QuickHullIteration(renderContext, m, vertices, faceStack, currentFace->id, v, previousIteration, numVertices, epsilon);
             v.clear();
-            
         }
     }
     return m;
 }
+
+
 
 
 #endif

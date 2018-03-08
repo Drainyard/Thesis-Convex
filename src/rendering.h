@@ -93,6 +93,7 @@ struct neighbour
     int faceHandle;
     int originVertex;
     int endVertex;
+    int id;
 };
 
 struct vertex
@@ -163,6 +164,8 @@ struct mesh
     GLuint normalBufferHandle;
     int normalCount;
     bool hasNormals;
+    
+    int faceCounter;
 };
 
 struct debug_context
@@ -174,7 +177,6 @@ struct debug_context
 
 struct render_context
 {
-    int faceCounter;
     glm::mat4 projectionMatrix;
     glm::mat4 viewMatrix;
     
@@ -210,6 +212,7 @@ struct render_context
     
     bool renderPoints;
     bool renderNormals;
+    bool renderOutsideSets;
     
     GLuint primitiveVAO;
     GLuint primitiveVBO;

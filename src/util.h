@@ -13,9 +13,9 @@
 #define Log(Msg, ...)
 #endif
 
-#define F_EPSILON 0.01
+#define Log_A(Msg, ...) printf(Msg, ## __VA_ARGS__)
 
-using coord_t = double;
+using coord_t = float;
 
 static float RandomFloat(float start, float end)
 {

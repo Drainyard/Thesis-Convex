@@ -44,6 +44,58 @@ static glm::mat4 ComputeTransformation(glm::vec3 scale = glm::vec3(1.0f), glm::q
     return t;
 }
 
+int* FindExtremePoints(vertex* points, int numPoints)
+{
+    
+    if(numPoints > 0)
+    {
+        auto minX = 0;
+        auto maxX = 0;
+        auto minY = 0;
+        auto maxY = 0;
+        auto minZ = 0;
+        auto maxZ = 0;
+        
+        for(int i = 0; i < numPoints; i++)
+        {
+            auto& p = points[i];
+            if(p.position.x > points[maxX].position.x)
+            {
+                maxX = i;
+            }
+            if(p.position.x < points[minX].position.x)
+            {
+                minX = i;
+            }
+            if(p.position.y > points[maxY].position.y)
+            {
+                maxY = i;
+            }
+            if(p.position.y < points[minY].position.y)
+            {
+                minY = i;
+            }
+            if(p.position.z > points[maxZ].position.z)
+            {
+                maxZ = i;
+            }
+            if(p.position.z < points[minZ].position.z)
+            {
+                minZ = i;
+            }
+        }
+        int* res = (int*)malloc(sizeof(int) * 6);
+        res[0] = minX;
+        res[1] = maxX;
+        res[2] = minY;
+        res[3] = maxY;
+        res[4] = minZ;
+        res[5] = maxZ;
+        return res;
+    }
+    return nullptr;
+}
+
 static void ComputeMeshTransformation(mesh& object)
 {
     object.transform = ComputeTransformation(object.scale, object.orientation, object.position);
@@ -384,16 +436,16 @@ static GLfloat* BuildVertexBuffer(render_context& renderContext, face* faces, in
     return vertices;
 }
 
-static bool IsPointOnPositiveSide(face& f, vertex& v)
+static bool IsPointOnPositiveSide(face& f, vertex& v, coord_t epsilon = 0.0f)
 {
     auto d = glm::dot(f.faceNormal, v.position - f.centerPoint);
-    return d > 0;
+    return d > epsilon;
 }
 
-static bool IsPointOnPositiveSide(face& f, glm::vec3 v)
+static bool IsPointOnPositiveSide(face& f, glm::vec3 v, coord_t epsilon = 0.0f)
 {
     auto d = glm::dot(f.faceNormal, v - f.centerPoint);
-    return d > 0;
+    return d > epsilon;
 }
 
 
@@ -473,6 +525,9 @@ static void FindNeighbours(int v1Handle, int v2Handle, mesh& m, face& f, vertex*
                     neighbour.neighbours[neighbourIndex].faceHandle = f.indexInMesh;
                     neighbour.neighbours[neighbourIndex].endVertex = v1.vertexIndex;
                     neighbour.neighbours[neighbourIndex].originVertex = v2.vertexIndex;
+                    neighbour.neighbours[neighbourIndex].id = f.id;
+                    
+                    f.neighbours[index].id = neighbour.id;
                     neighbour.visited = false;
                     
                     // Can we have 3+ neighbours while we're constructing?
@@ -490,23 +545,8 @@ static face* AddFace(render_context& renderContext, mesh& m, int v1Handle, int v
     if(m.numFaces == 0)
     {
         m.faces = (face*)malloc(sizeof(face) * 2048);
+        m.faceCounter = 0;
     }
-    
-    /*
-    if(m.numFaces + 1 >= m.facesSize)
-    {
-        if(m.facesSize == 0)
-        {
-            m.facesSize = 2;
-            m.faces = (face*)malloc(sizeof(face) * m.facesSize);
-        }
-        else
-        {
-            m.facesSize *= 2;
-            m.faces = (face*)realloc(m.faces, m.facesSize * sizeof(face));
-        }
-    }
-    */
     
     auto& v1 = vertices[v1Handle];
     auto& v2 = vertices[v2Handle];
@@ -523,7 +563,7 @@ static face* AddFace(render_context& renderContext, mesh& m, int v1Handle, int v
     
     newFace.neighbourCount = 0;
     newFace.indexInMesh = m.numFaces - 1;
-    newFace.id = renderContext.faceCounter++;
+    newFace.id = m.faceCounter++;
     
     FindNeighbours(v1Handle, v2Handle, m, newFace, vertices);
     FindNeighbours(v1Handle, v3Handle, m, newFace, vertices);
@@ -579,6 +619,7 @@ static void RemoveFace(mesh& m, int faceId, vertex* vertices)
     
     if(!f)
     {
+        Log("Can't remove face\n");
         return;
     }
     
@@ -1018,10 +1059,14 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
     }
     
     RenderQuad(renderContext, vertices[renderContext.debugContext.currentDistantPoint].position, glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(globalScale), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
-    auto& currentFace = m.faces[renderContext.debugContext.currentFaceIndex];
-    for(int i = 0; i < currentFace.outsideSetCount; i++)
+    
+    if(renderContext.debugContext.currentFaceIndex != -1)
     {
-        RenderQuad(renderContext, vertices[currentFace.outsideSet[i]].position, glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(globalScale), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
+        auto& currentFace = m.faces[renderContext.debugContext.currentFaceIndex];
+        for(int i = 0; i < currentFace.outsideSetCount; i++)
+        {
+            //RenderQuad(renderContext, vertices[currentFace.outsideSet[i]].position, glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(globalScale), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
+        }
     }
     
     auto& edgeList = renderContext.debugContext.horizon;

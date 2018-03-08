@@ -1,6 +1,7 @@
 #include <ctime>
 #include <random>
 #include <vector>
+#include <map>
 #include <stack>
 #include <cstdio>
 #include <cstdlib>
@@ -44,20 +45,43 @@ static vertex* GeneratePoints(render_context& renderContext, int numberOfPoints,
         coord_t z = RandomCoord(min, max);
         
         res[i].position = glm::vec3(x, y, z) - renderContext.originOffset;
-        res[i].color = RandomColor(); //glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
         res[i].numFaceHandles = 0;
         res[i].vertexIndex = i;
         res[i].faceHandles = (int*)malloc(sizeof(int) * 1024);
     }
-    
     return res;
+}
+
+static vertex* CopyVertices(vertex* vertices, int numberOfPoints)
+{
+    auto res = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
+    for(int i = 0; i < numberOfPoints; i++)
+    {
+        res[i].position = vertices[i].position;
+        res[i].color = vertices[i].color;
+        res[i].numFaceHandles = 0;
+        res[i].vertexIndex = i;
+        res[i].faceHandles = (int*)malloc(sizeof(int) * 1024);
+    }
+    return res;
+}
+
+vertex* GenerateNewPointSet(render_context& renderContext, vertex** naive, vertex** quickhull, vertex** user, int numVertices, coord_t rangeMin, coord_t rangeMax)
+{
+    auto vertices = GeneratePoints(renderContext, numVertices, rangeMin, rangeMax);
+    *naive = CopyVertices(vertices, numVertices);
+    *quickhull = CopyVertices(vertices, numVertices);
+    *user = CopyVertices(vertices, numVertices);
+    return vertices;
 }
 
 int main()
 {
-    auto seed = 1520254626;//time(NULL);
+    // Degenerate: 1520515408
+    auto seed = 1520515408; //1520254626;//time(NULL);
     srand(seed);
-    printf("Seed: %ud\n", seed);
+    printf("Seed: %d\n", seed);
     render_context renderContext = {};
     renderContext.FoV = 45.0f;
     renderContext.position = glm::vec3(0.0f, 50.5f, 30.0f);
@@ -66,9 +90,9 @@ int main()
     renderContext.near = 0.1f;
     renderContext.far =  10000.0f;
     renderContext.originOffset = glm::vec3(5.0f, 0.0f, 5.0f);
-    renderContext.renderPoints = true;
-    renderContext.renderNormals = true;
-    renderContext.faceCounter = 0;
+    renderContext.renderPoints = false;
+    renderContext.renderNormals = false;
+    renderContext.renderOutsideSets = false;
     
     InitializeOpenGL(renderContext);
     
@@ -80,25 +104,22 @@ int main()
     inputState.mouseYaw = -90.0f;
     inputState.mousePitch = -45.0f;
     
-    CreateLight(renderContext, glm::vec3(0.0f, 75.0f, 10.0f), glm::vec3(1, 1, 1), 2500.0f);
+    CreateLight(renderContext, glm::vec3(0.0f, 50.0f, 30.0f), glm::vec3(1, 1, 1), 2000.0f);
     
-    int numberOfPoints = 30;
+    int numberOfPoints = 10000;
     
-    auto vertices = GeneratePoints(renderContext, numberOfPoints, 0.0, 100.0);
+    vertex* naiveVertices = nullptr;
+    vertex* quickHullVertices = nullptr;
+    vertex* finalQHVertices = nullptr;
     
-    auto naiveVertices = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
-    memcpy(naiveVertices, vertices, sizeof(vertex) * numberOfPoints);
-    
-    auto quickHullVertices = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
-    memcpy(quickHullVertices, vertices, sizeof(vertex) * numberOfPoints);
-    
-    auto finalQHVertices = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
-    memcpy(finalQHVertices, vertices, sizeof(vertex) * numberOfPoints);
+    auto vertices = GenerateNewPointSet(renderContext, &naiveVertices, &quickHullVertices, &finalQHVertices, numberOfPoints, 0.0, 100.0);
     
     auto disableMouse = false;
     
+    coord_t epsilon;
+    
     std::stack<int> faceStack;
-    auto& mq = InitQuickHull(renderContext, quickHullVertices, numberOfPoints, faceStack);
+    auto& mq = InitQuickHull(renderContext, quickHullVertices, numberOfPoints, faceStack, &epsilon);
     mesh* mFinal = nullptr;
     
     QHIteration nextIter = QHIteration::findNextIter;
@@ -111,6 +132,8 @@ int main()
     
     mesh* currentMesh = &mq;
     
+    mesh* qHullNew = nullptr;
+    
     // Check if the ESC key was pressed or the window was closed
     while(!KeyDown(Key_Escape) &&
           glfwWindowShouldClose(renderContext.window) == 0 )
@@ -122,6 +145,16 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         ComputeMatrices(renderContext, deltaTime);
+        
+        if(KeyDown(Key_Y))
+        {
+            free(vertices);
+            free(naiveVertices);
+            free(quickHullVertices);
+            free(finalQHVertices);
+            vertices = GenerateNewPointSet(renderContext, &naiveVertices, &quickHullVertices, &finalQHVertices, numberOfPoints, 0.0, 100.0);
+            mFinal = nullptr;
+        }
         
         if(KeyDown(Key_H))
         {
@@ -156,7 +189,7 @@ int main()
                         if(currentFace)
                         {
                             Log("Finding horizon\n");
-                            QuickHullHorizon(renderContext, mq, quickHullVertices, *currentFace, v, &previousIteration);
+                            QuickHullHorizon(renderContext, mq, quickHullVertices, *currentFace, v, &previousIteration, epsilon);
                             nextIter = QHIteration::doIter;
                         }
                     }
@@ -166,7 +199,7 @@ int main()
                         if(currentFace)
                         {
                             Log("Doing iteration\n");
-                            QuickHullIteration(renderContext, mq, quickHullVertices, faceStack, currentFace->id, v, previousIteration, numberOfPoints);
+                            QuickHullIteration(renderContext, mq, quickHullVertices, faceStack, currentFace->id, v, previousIteration, numberOfPoints, epsilon);
                             nextIter = QHIteration::findNextIter;
                             v.clear();
                         }
@@ -174,11 +207,6 @@ int main()
                     break;
                 }
             }
-        }
-        
-        if(KeyDown(Key_T))
-        {
-            
         }
         
         if(KeyDown(Key_P))
@@ -191,10 +219,16 @@ int main()
             renderContext.renderNormals = !renderContext.renderNormals;
         }
         
+        if(KeyDown(Key_O))
+        {
+            renderContext.renderOutsideSets = !renderContext.renderOutsideSets;
+        }
+        
         if(renderContext.renderPoints)
         {
             RenderPointCloud(renderContext, vertices, numberOfPoints);
         }
+        
         
         if(KeyDown(Key_Q))
         {
@@ -231,8 +265,8 @@ int main()
         inputState.yScroll = 0;
         inputState.xDelta = 0;
         inputState.yDelta = 0;
-        SetInvalidKeys();
         
+        SetInvalidKeys();
         glfwPollEvents();
     }
     

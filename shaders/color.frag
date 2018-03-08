@@ -25,9 +25,9 @@ void main()
 
 	vec3 R = reflect(-l,n);
 
-	float cosAlpha = clamp( dot( E,R ), 0,1 );
+	float cosAlpha = clamp(dot(E, R), 0, 1);
 
-	float cosTheta = clamp( dot( n,l ), 0,1 );
+	float cosTheta = clamp( dot(n, l), 0, 1);
 	float distance = length(lightPosWorld - posWorld);
 	vec3 ambientColor = vec3(0.3, 0.3, 0.3) * diffuseColor;
 	color.rgb = ambientColor + c.rgb * lightPower * lightColor * cosTheta / (distance*distance) + specularColor * lightColor * pow(cosAlpha, 5) / (distance*distance);
