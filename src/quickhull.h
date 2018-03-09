@@ -36,7 +36,7 @@ float SquareDistancePointToSegment(vertex& a, vertex& b, vertex& c)
     float f = Dot(ab, ab);
     if( e >= f) return Dot(bc, bc);
     
-    return Dot(ac, ac) - e * e / f;
+    return Dot(ac, ac) - (e * e) / f;
 }
 
 // t=nn·v1−nn·p

@@ -464,7 +464,6 @@ static bool IsPointOnPositiveSide(face& f, glm::vec3 v, coord_t epsilon = 0.0f)
     return d > epsilon;
 }
 
-
 static face* GetFaceById(int id, mesh& m)
 {
     for(int i = 0; i < m.numFaces; i++)
