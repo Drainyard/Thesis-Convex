@@ -1018,9 +1018,9 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
     
     auto lineLength = 20.0f;
     
-    auto c1 = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    auto c2 = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    auto c3 = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    auto c1 = faceNormalColor; //glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    auto c2 = faceNormalColor; //glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    auto c3 = faceNormalColor; //glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
     
     if(renderContext.renderNormals)
     {

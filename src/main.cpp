@@ -53,6 +53,26 @@ static vertex* GeneratePoints(render_context& renderContext, int numberOfPoints,
     return res;
 }
 
+static vertex* GeneratePointsInSphere(render_context& renderContext, int numberOfPoints, coord_t min = 0.0f, coord_t max = 200.0f)
+{
+    auto res = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
+    for(int i = 0; i < numberOfPoints; i++) 
+    {
+        coord_t theta = 2 * (coord_t)M_PI * RandomCoord(0.0, 1.0);
+        coord_t phi = (coord_t)acos(1 - 2 * RandomCoord(0.0, 1.0));
+        coord_t x = (coord_t)sin(phi) * (coord_t)cos(theta) * max;
+        coord_t y = (coord_t)sin(phi) * (coord_t)sin(theta) * max;
+        coord_t z = (coord_t)cos(phi) * max;
+        
+        res[i].position = glm::vec3(x, y, z) - renderContext.originOffset;
+        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
+        res[i].numFaceHandles = 0;
+        res[i].vertexIndex = i;
+        res[i].faceHandles = (int*)malloc(sizeof(int) * 1024);
+    }
+    return res;
+}
+
 static vertex* CopyVertices(vertex* vertices, int numberOfPoints)
 {
     auto res = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
@@ -69,7 +89,7 @@ static vertex* CopyVertices(vertex* vertices, int numberOfPoints)
 
 vertex* GenerateNewPointSet(render_context& renderContext, vertex** naive, vertex** quickhull, vertex** user, int numVertices, coord_t rangeMin, coord_t rangeMax)
 {
-    auto vertices = GeneratePoints(renderContext, numVertices, rangeMin, rangeMax);
+    auto vertices = GeneratePointsInSphere(renderContext, numVertices, rangeMin, rangeMax);
     *naive = CopyVertices(vertices, numVertices);
     *quickhull = CopyVertices(vertices, numVertices);
     *user = CopyVertices(vertices, numVertices);
@@ -79,7 +99,8 @@ vertex* GenerateNewPointSet(render_context& renderContext, vertex** naive, verte
 int main()
 {
     // Degenerate: 1520515408
-    auto seed = 1520515408; //1520254626;//time(NULL);
+    //auto seed = 1520515408; //1520254626;//time(NULL);
+    auto seed = time(NULL);
     srand(seed);
     printf("Seed: %d\n", seed);
     render_context renderContext = {};
@@ -106,7 +127,7 @@ int main()
     
     CreateLight(renderContext, glm::vec3(0.0f, 50.0f, 30.0f), glm::vec3(1, 1, 1), 2000.0f);
     
-    int numberOfPoints = 10000;
+    int numberOfPoints = 1000;
     
     vertex* naiveVertices = nullptr;
     vertex* quickHullVertices = nullptr;
