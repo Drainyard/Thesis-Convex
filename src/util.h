@@ -42,6 +42,8 @@ static glm::vec4 RandomColor()
     return glm::vec4((coord_t)RandomInt(0, 255) / 255.0, (coord_t)RandomInt(0, 255) / 255.0, (coord_t)RandomInt(0, 255) / 255.0, 1.0);
 }
 
+
+
 #define list(type)\
 struct type ## _list\
 {\

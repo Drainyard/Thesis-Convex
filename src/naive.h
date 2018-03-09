@@ -88,7 +88,7 @@
                  }
                  if(partOfConvex)
                  {
-                     AddFace(renderContext, m, i, j, k, vertices, numVertices);
+                     AddFace(m, i, j, k, vertices, numVertices);
                  }
              }
          }

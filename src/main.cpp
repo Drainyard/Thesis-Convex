@@ -48,21 +48,21 @@ static vertex* GeneratePoints(render_context& renderContext, int numberOfPoints,
         res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
         res[i].numFaceHandles = 0;
         res[i].vertexIndex = i;
-        res[i].faceHandles = (int*)malloc(sizeof(int) * 1024);
+        res[i].faceHandles = (int*)malloc(sizeof(int) * 2048);
     }
     return res;
 }
 
-static vertex* GeneratePointsInSphere(render_context& renderContext, int numberOfPoints, coord_t min = 0.0f, coord_t max = 200.0f)
+static vertex* GeneratePointsOnSphere(render_context& renderContext, int numberOfPoints, coord_t radius)
 {
     auto res = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
     for(int i = 0; i < numberOfPoints; i++) 
     {
         coord_t theta = 2 * (coord_t)M_PI * RandomCoord(0.0, 1.0);
         coord_t phi = (coord_t)acos(1 - 2 * RandomCoord(0.0, 1.0));
-        coord_t x = (coord_t)sin(phi) * (coord_t)cos(theta) * max;
-        coord_t y = (coord_t)sin(phi) * (coord_t)sin(theta) * max;
-        coord_t z = (coord_t)cos(phi) * max;
+        coord_t x = (coord_t)sin(phi) * (coord_t)cos(theta) * radius;
+        coord_t y = (coord_t)sin(phi) * (coord_t)sin(theta) * radius;
+        coord_t z = (coord_t)cos(phi) * radius;
         
         res[i].position = glm::vec3(x, y, z) - renderContext.originOffset;
         res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
@@ -73,19 +73,29 @@ static vertex* GeneratePointsInSphere(render_context& renderContext, int numberO
     return res;
 }
 
-static vertex* CopyVertices(vertex* vertices, int numberOfPoints)
+
+static vertex* GeneratePointsInSphere(render_context& renderContext, int numberOfPoints, coord_t min = 0.0f, coord_t max = 200.0f)
 {
     auto res = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
-    for(int i = 0; i < numberOfPoints; i++)
+    for(int i = 0; i < numberOfPoints; i++) 
     {
-        res[i].position = vertices[i].position;
-        res[i].color = vertices[i].color;
+        coord_t theta = 2 * (coord_t)M_PI * RandomCoord(0.0, 1.0);
+        coord_t phi = (coord_t)acos(1 - 2 * RandomCoord(0.0, 1.0));
+        
+        auto r = RandomCoord(min, max);
+        coord_t x = r * (coord_t)sin(phi) * (coord_t)cos(theta);
+        coord_t y = r * (coord_t)sin(phi) * (coord_t)sin(theta);
+        coord_t z = r * (coord_t)cos(phi);
+        
+        res[i].position = glm::vec3(x, y, z) - renderContext.originOffset;
+        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
         res[i].numFaceHandles = 0;
         res[i].vertexIndex = i;
         res[i].faceHandles = (int*)malloc(sizeof(int) * 1024);
     }
     return res;
 }
+
 
 vertex* GenerateNewPointSet(render_context& renderContext, vertex** naive, vertex** quickhull, vertex** user, int numVertices, coord_t rangeMin, coord_t rangeMax)
 {
@@ -101,8 +111,8 @@ int main()
     // Degenerate: 1520515408
     //auto seed = 1520515408; //1520254626;//time(NULL);
     auto seed = time(NULL);
-    srand(seed);
-    printf("Seed: %d\n", seed);
+    srand((unsigned int)seed);
+    printf("Seed: %ld\n", seed);
     render_context renderContext = {};
     renderContext.FoV = 45.0f;
     renderContext.position = glm::vec3(0.0f, 50.5f, 30.0f);
@@ -127,7 +137,7 @@ int main()
     
     CreateLight(renderContext, glm::vec3(0.0f, 50.0f, 30.0f), glm::vec3(1, 1, 1), 2000.0f);
     
-    int numberOfPoints = 1000;
+    int numberOfPoints = 500;
     
     vertex* naiveVertices = nullptr;
     vertex* quickHullVertices = nullptr;
@@ -137,23 +147,21 @@ int main()
     
     auto disableMouse = false;
     
-    coord_t epsilon;
-    
-    std::stack<int> faceStack;
-    auto& mq = InitQuickHull(renderContext, quickHullVertices, numberOfPoints, faceStack, &epsilon);
+    mesh* mq = nullptr; 
     mesh* mFinal = nullptr;
-    
-    QHIteration nextIter = QHIteration::findNextIter;
-    face* currentFace = nullptr;
-    std::vector<int> v;
-    int previousIteration = 0;
     
     //auto& mn = NaiveConvexHull(renderContext, naiveVertices, numberOfPoints);
     auto& mn = InitEmptyMesh(renderContext);
     
-    mesh* currentMesh = &mq;
+    mesh* currentMesh = mq;
     
-    mesh* qHullNew = nullptr;
+    qh_context qhContext = InitializeQHContext(vertices, numberOfPoints);
+    
+    qh_context timerContext = InitializeQHContext(vertices, numberOfPoints);
+    double qhTimer = 0.0;
+    double qhTimerInit = 0.1;
+    
+    bool timerStarted = false;
     
     // Check if the ESC key was pressed or the window was closed
     while(!KeyDown(Key_Escape) &&
@@ -191,43 +199,29 @@ int main()
         
         if(KeyDown(Key_J))
         {
-            if(faceStack.size() > 0)
+            QuickHullStep(renderContext, qhContext);
+        }
+        
+        if(timerStarted)
+        {
+            if(qhTimer <= 0.0)
             {
-                switch(nextIter)
-                {
-                    case QHIteration::findNextIter:
-                    {
-                        Log("Finding next iteration\n");
-                        currentFace = QuickHullFindNextIteration(renderContext, mq, quickHullVertices, faceStack);
-                        if(currentFace)
-                        {
-                            nextIter = QHIteration::findHorizon;
-                        }
-                    }
-                    break;
-                    case QHIteration::findHorizon:
-                    {
-                        if(currentFace)
-                        {
-                            Log("Finding horizon\n");
-                            QuickHullHorizon(renderContext, mq, quickHullVertices, *currentFace, v, &previousIteration, epsilon);
-                            nextIter = QHIteration::doIter;
-                        }
-                    }
-                    break;
-                    case QHIteration::doIter:
-                    {
-                        if(currentFace)
-                        {
-                            Log("Doing iteration\n");
-                            QuickHullIteration(renderContext, mq, quickHullVertices, faceStack, currentFace->id, v, previousIteration, numberOfPoints, epsilon);
-                            nextIter = QHIteration::findNextIter;
-                            v.clear();
-                        }
-                    }
-                    break;
-                }
+                QuickHullStep(renderContext, timerContext);
             }
+            else
+            {
+                qhTimer -= deltaTime;
+            }
+        }
+        
+        if(KeyDown(Key_F))
+        {
+            if(!timerStarted)
+            {
+                timerStarted = true;
+                qhTimer = qhTimerInit;
+            }
+            currentMesh = &timerContext.m;
         }
         
         if(KeyDown(Key_P))
@@ -253,7 +247,7 @@ int main()
         
         if(KeyDown(Key_Q))
         {
-            currentMesh = &mq;
+            currentMesh = &qhContext.m; //mq;
         }
         
         if(KeyDown(Key_B))

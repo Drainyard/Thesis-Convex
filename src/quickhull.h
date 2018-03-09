@@ -3,6 +3,7 @@
 
 enum QHIteration
 {
+    initQH,
     findNextIter,
     findHorizon,
     doIter
@@ -99,7 +100,7 @@ coord_t GenerateInitialSimplex(render_context& renderContext, vertex* vertices, 
     auto epsilon = 3 * (extremePoints[1] + extremePoints[3] + extremePoints[5]) * FLT_EPSILON;
     //auto epsilon = 0.0f;
     
-    auto* f = AddFace(renderContext, m, mostDist1, mostDist2, extremePointCurrentIndex, vertices, numVertices);
+    auto* f = AddFace(m, mostDist1, mostDist2, extremePointCurrentIndex, vertices, numVertices);
     if(!f)
     {
         return epsilon;
@@ -132,15 +133,15 @@ coord_t GenerateInitialSimplex(render_context& renderContext, vertex* vertices, 
         f->vertices[0] = f->vertices[1];
         f->vertices[1] = t;
         f->faceNormal = ComputeFaceNormal(*f, vertices);
-        AddFace(renderContext, m, mostDist1, currentIndex, extremePointCurrentIndex, vertices, numVertices);
-        AddFace(renderContext, m, currentIndex, mostDist2, extremePointCurrentIndex, vertices, numVertices);
-        AddFace(renderContext, m, mostDist1, mostDist2, currentIndex, vertices, numVertices);
+        AddFace(m, mostDist1, currentIndex, extremePointCurrentIndex, vertices, numVertices);
+        AddFace(m, currentIndex, mostDist2, extremePointCurrentIndex, vertices, numVertices);
+        AddFace(m, mostDist1, mostDist2, currentIndex, vertices, numVertices);
     }
     else
     {
-        AddFace(renderContext, m, currentIndex, mostDist1, extremePointCurrentIndex, vertices, numVertices);
-        AddFace(renderContext, m, mostDist2, currentIndex, extremePointCurrentIndex, vertices, numVertices);
-        AddFace(renderContext, m, mostDist2, mostDist1, currentIndex, vertices, numVertices);
+        AddFace(m, currentIndex, mostDist1, extremePointCurrentIndex, vertices, numVertices);
+        AddFace(m, mostDist2, currentIndex, extremePointCurrentIndex, vertices, numVertices);
+        AddFace(m, mostDist2, mostDist1, currentIndex, vertices, numVertices);
     }
     
     return epsilon;
@@ -393,7 +394,7 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
     
     for(const auto& e : renderContext.debugContext.horizon)
     {
-        auto* newF = AddFace(renderContext, m, e.origin, e.end, renderContext.debugContext.currentDistantPoint, vertices, numVertices);
+        auto* newF = AddFace(m, e.origin, e.end, renderContext.debugContext.currentDistantPoint, vertices, numVertices);
         if(newF)
         {
             auto dot = glm::dot(f->faceNormal, newF->faceNormal);
@@ -500,7 +501,77 @@ mesh& QuickHull(render_context& renderContext, vertex* vertices, int numVertices
     return m;
 }
 
+struct qh_context
+{
+    vertex* vertices;
+    int numberOfPoints;
+    std::stack<int> faceStack;
+    float epsilon;
+    QHIteration iter;
+    face* currentFace;
+    std::vector<int> v;
+    mesh m;
+    int previousIteration;
+};
 
+qh_context InitializeQHContext(vertex* vertices, int numberOfPoints)
+{
+    qh_context qhContext = {};
+    qhContext.vertices = CopyVertices(vertices, numberOfPoints);
+    qhContext.numberOfPoints = numberOfPoints;
+    qhContext.epsilon = 0.0f;
+    qhContext.iter = QHIteration::initQH;
+    qhContext.currentFace = 0;
+    qhContext.previousIteration = 0;
+    return qhContext;
+}
+
+void QuickHullStep(render_context& renderContext, qh_context& context)
+{
+    switch(context.iter)
+    {
+        case QHIteration::initQH:
+        {
+            context.m = InitQuickHull(renderContext, context.vertices, context.numberOfPoints, context.faceStack, &context.epsilon);
+            context.iter = QHIteration::findNextIter;
+        }
+        break;
+        case QHIteration::findNextIter:
+        {
+            if(context.faceStack.size() > 0)
+            {
+                Log("Finding next iteration\n");
+                context.currentFace = QuickHullFindNextIteration(renderContext, context.m, context.vertices, context.faceStack);
+                if(context.currentFace)
+                {
+                    context.iter = QHIteration::findHorizon;
+                }
+            }
+        }
+        break;
+        case QHIteration::findHorizon:
+        {
+            if(context.currentFace)
+            {
+                Log("Finding horizon\n");
+                QuickHullHorizon(renderContext, context.m, context.vertices, *context.currentFace, context.v, &context.previousIteration, context.epsilon);
+                context.iter = QHIteration::doIter;
+            }
+        }
+        break;
+        case QHIteration::doIter:
+        {
+            if(context.currentFace)
+            {
+                Log("Doing iteration\n");
+                QuickHullIteration(renderContext, context.m, context.vertices, context.faceStack, context.currentFace->id, context.v, context.previousIteration, context.numberOfPoints, context.epsilon);
+                context.iter = QHIteration::findNextIter;
+                context.v.clear();
+            }
+        }
+        break;
+    }
+}
 
 
 #endif

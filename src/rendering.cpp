@@ -18,6 +18,22 @@ static void SetFloatUniform(GLuint programID, const char* name, float value)
     glUniform1f(glGetUniformLocation(programID, name), value);
 }
 
+
+static vertex* CopyVertices(vertex* vertices, int numberOfPoints)
+{
+    auto res = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
+    for(int i = 0; i < numberOfPoints; i++)
+    {
+        res[i].position = vertices[i].position;
+        res[i].color = vertices[i].color;
+        res[i].numFaceHandles = 0;
+        res[i].vertexIndex = i;
+        res[i].faceHandles = (int*)malloc(sizeof(int) * 2048);
+    }
+    return res;
+}
+
+
 void MessageCallback(GLenum source,
                      GLenum type,
                      GLuint id,
@@ -540,11 +556,11 @@ static void FindNeighbours(int v1Handle, int v2Handle, mesh& m, face& f, vertex*
     }
 }
 
-static face* AddFace(render_context& renderContext, mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* vertices, int numVertices)
+static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* vertices, int numVertices)
 {
     if(m.numFaces == 0)
     {
-        m.faces = (face*)malloc(sizeof(face) * 2048);
+        m.faces = (face*)malloc(sizeof(face) * 2048 * 10);
         m.faceCounter = 0;
     }
     
