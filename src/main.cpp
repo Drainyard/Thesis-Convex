@@ -159,7 +159,7 @@ int main()
     
     qh_context timerContext = InitializeQHContext(vertices, numberOfPoints);
     double qhTimer = 0.0;
-    double qhTimerInit = 0.1;
+    double qhTimerInit = 0.03;
     
     bool timerStarted = false;
     
@@ -181,7 +181,10 @@ int main()
             free(naiveVertices);
             free(quickHullVertices);
             free(finalQHVertices);
+            free(timerContext.vertices);
+            
             vertices = GenerateNewPointSet(renderContext, &naiveVertices, &quickHullVertices, &finalQHVertices, numberOfPoints, 0.0, 100.0);
+            timerContext = InitializeQHContext(vertices, numberOfPoints);
             mFinal = nullptr;
         }
         
@@ -216,9 +219,9 @@ int main()
         
         if(KeyDown(Key_F))
         {
-            if(!timerStarted)
+            timerStarted = !timerStarted;
+            if(timerStarted)
             {
-                timerStarted = true;
                 qhTimer = qhTimerInit;
             }
             currentMesh = &timerContext.m;
