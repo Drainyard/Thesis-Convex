@@ -585,6 +585,7 @@ static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* 
     FindNeighbours(v2Handle, v3Handle, m, newFace, vertices);
     
     Log("Neighbourcount in add face: %d\n", newFace.neighbourCount);
+    Assert(newFace.neighbourCount <= 10);
     
     v1.faceHandles[v1.numFaceHandles++] = newFace.indexInMesh;
     v2.faceHandles[v2.numFaceHandles++] = newFace.indexInMesh;
@@ -623,19 +624,21 @@ static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* 
     return &m.faces[m.numFaces - 1];
 }
 
-static void RemoveFace(mesh& m, int faceId, vertex* vertices)
+// Returns index of moved mesh
+static int RemoveFace(mesh& m, int faceId, vertex* vertices)
 {
     if(m.numFaces == 0)
     {
-        return;
+        return -1;
     }
     
-    face* f = GetFaceById(faceId, m);
+    //face* f = GetFaceById(faceId, m);
+    face* f = &m.faces[faceId];
     
     if(!f)
     {
         Log("Can't remove face\n");
-        return;
+        return -1;
     }
     
     auto& v1 = vertices[f->vertices[0]];
@@ -687,10 +690,11 @@ static void RemoveFace(mesh& m, int faceId, vertex* vertices)
     }
     
     auto indexInMesh = f->indexInMesh;
+    
     // Invalidates the f pointer
     // But we only need to swap two faces to make this work
-    
     m.faces[indexInMesh] = m.faces[--m.numFaces];
+    Log_A("New Index: %d\n", m.numFaces);
     
     auto& newFace = m.faces[indexInMesh];
     
@@ -782,35 +786,55 @@ static void RemoveFace(mesh& m, int faceId, vertex* vertices)
     }
     
     newFace.indexInMesh = indexInMesh;
+    return indexInMesh;
 }
 
-static mesh& InitEmptyMesh(render_context& renderContext)
+static mesh& InitEmptyMesh(render_context& renderContext, int meshIndex = -1)
 {
-    mesh& object = renderContext.meshes[renderContext.meshCount++];
-    
-    glGenVertexArrays(1, &object.VAO);
-    glBindVertexArray(object.VAO);
-    glGenBuffers(1, &object.VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, object.VBO);
-    
-    auto& mat = object.material;
-    mat.specularColor = glm::vec3(1.0f);
-    mat.alpha = 1.0f;
-    mat.type = MT_color;
-    mat.diffuse.diffuseColor = glm::vec3(1.0f);
-    mat.materialShader = renderContext.colorShader;
-    
-    object.vertexCount = 0;
-    object.uvCount = 0;
-    object.colorCount = 0;
-    object.normalCount = 0;
-    object.dirty = true;
-    
-    glBindVertexArray(0);
-    object.numFaces = 0;
-    object.facesSize = 0;
-    
-    return object;
+    if(meshIndex != -1)
+    {
+        auto& m = renderContext.meshes[meshIndex];
+        free(m.faces);
+        m.vertexCount = 0;
+        m.uvCount = 0;
+        m.colorCount = 0;
+        m.normalCount = 0;
+        m.dirty = true;
+        m.numFaces = 0;
+        m.facesSize = 0;
+        
+        return m;
+    }
+    else
+    {
+        
+        mesh& object = renderContext.meshes[renderContext.meshCount++];
+        object.meshIndex = renderContext.meshCount - 1;
+        
+        glGenVertexArrays(1, &object.VAO);
+        glBindVertexArray(object.VAO);
+        glGenBuffers(1, &object.VBO);
+        glBindBuffer(GL_ARRAY_BUFFER, object.VBO);
+        
+        auto& mat = object.material;
+        mat.specularColor = glm::vec3(1.0f);
+        mat.alpha = 1.0f;
+        mat.type = MT_color;
+        mat.diffuse.diffuseColor = glm::vec3(1.0f);
+        mat.materialShader = renderContext.colorShader;
+        
+        object.vertexCount = 0;
+        object.uvCount = 0;
+        object.colorCount = 0;
+        object.normalCount = 0;
+        object.dirty = true;
+        
+        glBindVertexArray(0);
+        object.numFaces = 0;
+        object.facesSize = 0;
+        
+        return object;
+    }
 }
 
 static mesh& LoadMesh(render_context& renderContext, gl_buffer vbo, gl_buffer* uvBuffer = 0, gl_buffer* colorBuffer = 0, gl_buffer* normalBuffer = 0, glm::vec3 diffuseColor = glm::vec3(1.0f))

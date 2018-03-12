@@ -123,10 +123,11 @@ struct face
     int* outsideSet;
     int outsideSetCount;
     int outsideSetSize;
+    int furthestPointIndex;
     
     glm::vec3 centerPoint;
     
-    neighbour neighbours[512];
+    neighbour neighbours[10];
     int neighbourCount;
     int indexInMesh;
     bool visited;
@@ -140,6 +141,7 @@ struct mesh
     glm::vec3 scale;
     glm::mat4 transform;
     
+    int meshIndex = -1;
     render_material material;
     
     bool dirty;
