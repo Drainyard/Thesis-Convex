@@ -14,29 +14,19 @@ float DistanceBetweenPoints(vertex& p1, vertex& p2)
     return glm::distance(p1.position, p2.position);
 }
 
-float Dot(glm::vec3 p1, glm::vec3 p2)
-{
-    return p1.x * p2.x + p1.y * p2.y + p1.z * p2.z;
-}
-
-float Dot(vertex& v1, vertex v2)
-{
-    return Dot(v1.position, v2.position);
-}
-
 float SquareDistancePointToSegment(vertex& a, vertex& b, vertex& c)
 {
     glm::vec3 ab = b.position - a.position;
     glm::vec3 ac = c.position - a.position;
     glm::vec3 bc = c.position - b.position;
     
-    float e = Dot(ac, ab);
+    float e = glm::dot(ac, ab);
     
-    if(e <= 0.0f) return Dot(ac, ac);
-    float f = Dot(ab, ab);
-    if( e >= f) return Dot(bc, bc);
+    if(e <= 0.0f) return glm::dot(ac, ac);
+    float f = glm::dot(ab, ab);
+    if( e >= f) return glm::dot(bc, bc);
     
-    return Dot(ac, ac) - (e * e) / f;
+    return glm::dot(ac, ac) - (e * e) / f;
 }
 
 // t=nn·v1−nn·p
@@ -399,15 +389,6 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
         auto* newF = AddFace(m, e.origin, e.end, renderContext.debugContext.currentDistantPoint, vertices, numVertices);
         if(newF)
         {
-            auto dot = glm::dot(f->faceNormal, newF->faceNormal);
-            Log("Dot: %f\n", dot);
-            
-            if(std::isnan(dot))
-            {
-                Log("New normal: (%f, %f, %f)\n", newF->faceNormal.x, newF->faceNormal.y, newF->faceNormal.z);
-                Log("Original normal: (%f, %f, %f)\n", f->faceNormal.x, f->faceNormal.y, f->faceNormal.z);
-            }
-            
             if(IsPointOnPositiveSide(*newF, f->centerPoint, epsilon))
             {
                 Log("Reversing normals\n");
@@ -436,6 +417,7 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
             }
         }
     }
+    
     
     // The way we understand this, is that unassigned now means any point that was
     // assigned in the first round, but is part of a face that is about to be
@@ -476,25 +458,43 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
         }
     }
     
+    std::vector<int> uniqueInV;
+    for(size_t i = 0; i < v.size(); i++)
+    {
+        bool alreadyAdded = false;
+        for(size_t j = 0; j < uniqueInV.size(); j++)
+        {
+            if(uniqueInV[j] == v[i])
+            {
+                alreadyAdded = true;
+                break;
+            }
+        }
+        
+        if(!alreadyAdded)
+        {
+            uniqueInV.push_back(v[i]);
+        }
+    }
+    
     Log("Faces before: %d\n", m.numFaces);
     //for(int id : v)
-    for(size_t vIndex = 0; vIndex < v.size(); vIndex++)
+    for(size_t vIndex = 0; vIndex < uniqueInV.size(); vIndex++)
     {
         Log("Removing face: %d\n", id);
         
         //auto oldFaceHandle = m.faces[v[vIndex]].indexInMesh;
         auto movedHandle = m.numFaces - 1;
-        Log_A("New Index: %d\n", movedHandle);
         
-        auto newHandle = RemoveFace(m, v[vIndex], vertices);
+        auto newHandle = RemoveFace(m, uniqueInV[vIndex], vertices);
         if(newHandle == -1)
             continue;
         
-        for(size_t j = 0; j < v.size(); j++)
+        for(size_t j = 0; j < uniqueInV.size(); j++)
         {
-            if(v[j] == movedHandle)
+            if(uniqueInV[j] == movedHandle)
             {
-                v[j] = newHandle;
+                uniqueInV[j] = newHandle;
             }
         }
         

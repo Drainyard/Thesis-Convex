@@ -99,7 +99,7 @@ static vertex* GeneratePointsInSphere(render_context& renderContext, int numberO
 
 vertex* GenerateNewPointSet(render_context& renderContext, vertex** naive, vertex** quickhull, vertex** user, int numVertices, coord_t rangeMin, coord_t rangeMax)
 {
-    auto vertices = GeneratePoints(renderContext, numVertices, rangeMin, rangeMax);
+    auto vertices = GeneratePointsInSphere(renderContext, numVertices, rangeMin, rangeMax);
     *naive = CopyVertices(vertices, numVertices);
     *quickhull = CopyVertices(vertices, numVertices);
     *user = CopyVertices(vertices, numVertices);
@@ -109,8 +109,8 @@ vertex* GenerateNewPointSet(render_context& renderContext, vertex** naive, verte
 int main()
 {
     // Degenerate: 1520515408
-    //auto seed = 1520515408; //1520254626;//time(NULL);
-    auto seed = time(NULL);
+    auto seed = 1520515408; //1520254626;//time(NULL);
+    //auto seed = time(NULL);
     srand((unsigned int)seed);
     printf("Seed: %ld\n", seed);
     render_context renderContext = {};
@@ -137,7 +137,7 @@ int main()
     
     CreateLight(renderContext, glm::vec3(0.0f, 50.0f, 30.0f), glm::vec3(1, 1, 1), 2000.0f);
     
-    int numberOfPoints = 20;
+    int numberOfPoints = 30000;
     
     vertex* naiveVertices = nullptr;
     vertex* quickHullVertices = nullptr;
