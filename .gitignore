@@ -4,6 +4,8 @@
 4ed
 4sh.sh
 
+build/main
+
 ### C ###
 # Prerequisites
 *.d
