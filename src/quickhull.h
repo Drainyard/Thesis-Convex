@@ -318,7 +318,6 @@ face* QuickHullFindNextIteration(render_context& renderContext, mesh& m, std::ve
     
     face* res = nullptr;
     
-    //auto f = GetFaceById(faceStack.top(), m);
     auto f = &m.faces[faceStack[faceStack.size() - 1]];
     
     if(f && f->outsideSetCount > 0)
@@ -326,7 +325,11 @@ face* QuickHullFindNextIteration(render_context& renderContext, mesh& m, std::ve
         renderContext.debugContext.currentFaceIndex = f->indexInMesh;
         renderContext.debugContext.currentDistantPoint = f->furthestPointIndex;
         
-        res = &m.faces[f->indexInMesh];
+        res = f;
+    }
+    else
+    {
+        res = nullptr;
     }
     
     faceStack.pop_back();
@@ -335,14 +338,12 @@ face* QuickHullFindNextIteration(render_context& renderContext, mesh& m, std::ve
 
 void QuickHullHorizon(render_context& renderContext, mesh& m, vertex* vertices, face& f, std::vector<int>& v, int* prevIterationFaces, coord_t epsilon)
 { 
-    //v.push_back(f.id);
     v.push_back(f.indexInMesh);
     
     auto& p = vertices[renderContext.debugContext.currentDistantPoint];
     
     for(size_t i = 0; i < v.size(); i++)
     {
-        //auto fa = GetFaceById(v[i], m);
         auto fa = &m.faces[v[i]];
         if(!fa || fa->visitedV)
             continue;
@@ -358,7 +359,6 @@ void QuickHullHorizon(render_context& renderContext, mesh& m, vertex* vertices, 
             {
                 if(!newF.visitedV)
                 {
-                    //v.push_back(newF.id);
                     v.push_back(newF.indexInMesh);
                 }
             }
@@ -376,7 +376,6 @@ void QuickHullHorizon(render_context& renderContext, mesh& m, vertex* vertices, 
 
 void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices, std::vector<int>& faceStack, int fHandle, std::vector<int>& v, int prevIterationFaces, int numVertices, coord_t epsilon)
 {
-    //face* f = GetFaceById(fHandle, m);
     face* f = &m.faces[fHandle];
     
     if(!f)
@@ -398,14 +397,12 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
                 newF->faceNormal = ComputeFaceNormal(*newF, vertices);
             }
             
-            //faceStack.push(newF->id);
             faceStack.push_back(newF->indexInMesh);
         }
     }
     
     for(const auto& handle : v)
     {
-        //auto fInV = GetFaceById(handle, m);
         auto fInV = &m.faces[handle];
         if(fInV)
         {
@@ -432,7 +429,6 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
         
         for(const auto& handle : v)
         {
-            //auto fInV = GetFaceById(handle, m);
             auto fInV = &m.faces[handle];
             if(fInV)
             {
@@ -478,12 +474,11 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
     }
     
     Log("Faces before: %d\n", m.numFaces);
-    //for(int id : v)
+    
     for(size_t vIndex = 0; vIndex < uniqueInV.size(); vIndex++)
     {
         Log("Removing face: %d\n", id);
         
-        //auto oldFaceHandle = m.faces[v[vIndex]].indexInMesh;
         auto movedHandle = m.numFaces - 1;
         
         auto newHandle = RemoveFace(m, uniqueInV[vIndex], vertices);
@@ -544,16 +539,19 @@ mesh& QuickHull(render_context& renderContext, vertex* vertices, int numVertices
     int previousIteration = 0;
     while(faceStack.size() > 0)
     {
+        
         currentFace = QuickHullFindNextIteration(renderContext, m, faceStack);
         if(currentFace)
         {
-            //Time("Horizon", QuickHullHorizon(renderContext, m, vertices, *currentFace, v, &previousIteration, epsilon));
+            TIME_START;
             QuickHullHorizon(renderContext, m, vertices, *currentFace, v, &previousIteration, epsilon);
             QuickHullIteration(renderContext, m, vertices, faceStack, currentFace->id, v, previousIteration, numVertices, epsilon);
-            //Time("Running iteration", QuickHullIteration(renderContext, m, vertices, faceStack, currentFace->indexInMesh, v, previousIteration, numVertices, epsilon));
             v.clear();
+            TIME_END("QH Iteration");
         }
     }
+    
+    Log_A("Number of triangles: %d\n", m.numFaces);
     return m;
 }
 

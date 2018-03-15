@@ -146,13 +146,20 @@ int main()
     
     HullType hullType = HullType::QH;
     
-    int numberOfPoints = 500;
+    int numberOfPoints = 17500;
     auto vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 100.0f);
+    //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ");
     hull h = {};
     InitializeHull(h, vertices, numberOfPoints, hullType);
     
     mesh* currentMesh = nullptr;
     vertex* currentVertices = vertices;
+    
+    auto fps = 0.0;
+    auto currentFrameCount = 0;
+    auto fpsSum = 0.0;
+    auto averageFPS = 0.0;
+    auto totalDelta = 0.0;
     
     // Check if the ESC key was pressed or the window was closed
     while(!KeyDown(Key_Escape) &&
@@ -161,6 +168,18 @@ int main()
         currentFrame = glfwGetTime();
         deltaTime = Min(currentFrame - lastFrame, 0.1);
         lastFrame = currentFrame;
+        
+        currentFrameCount++;
+        
+        if(totalDelta >= 1.0)
+        {
+            fps = (1.0 * (1.0 - totalDelta)) + (double)currentFrameCount;
+            totalDelta = 0.0;
+            currentFrameCount = 0;
+            //Log_A("FPS: %f\n", fps);
+        }
+        
+        totalDelta += deltaTime;
         
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
