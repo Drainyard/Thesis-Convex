@@ -109,8 +109,8 @@ vertex* GenerateNewPointSet(render_context& renderContext, vertex** naive, verte
 int main()
 {
     // Degenerate: 1520515408
-    auto seed = 1520515408; //1520254626;//time(NULL);
-    //auto seed = time(NULL);
+    //auto seed = 1520515408; //1520254626;//time(NULL);
+    auto seed = time(NULL);
     srand((unsigned int)seed);
     printf("Seed: %ld\n", seed);
     render_context renderContext = {};
