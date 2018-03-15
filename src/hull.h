@@ -87,7 +87,6 @@ static void UpdateHull(render_context& renderContext, hull& h, HullType hullType
 
 static mesh& FullHull(render_context& renderContext, hull& h)
 {
-    auto before = glfwGetTime();
     switch(h.currentHullType)
     {
         case QH:
@@ -99,9 +98,6 @@ static mesh& FullHull(render_context& renderContext, hull& h)
             }
             auto& res = QuickHull(renderContext, qhContext.vertices, qhContext.numberOfPoints);
             
-            auto after = glfwGetTime();
-            auto total = after - before;
-            Log_A("Full: %f\n", total);
             return res;
         }
         break;
@@ -143,7 +139,7 @@ static mesh& StepHull(render_context& renderContext, hull& h)
     }
 }
 
-static mesh& TimedStepHull(render_context& renderContext, hull& h)
+static mesh& TimedStepHull(hull& h)
 {
     switch(h.currentHullType)
     {

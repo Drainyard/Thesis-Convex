@@ -146,7 +146,7 @@ int main()
     
     HullType hullType = HullType::QH;
     
-    int numberOfPoints = 17500;
+    int numberOfPoints = 20000;
     auto vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 100.0f);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ");
     hull h = {};
@@ -157,8 +157,7 @@ int main()
     
     auto fps = 0.0;
     auto currentFrameCount = 0;
-    auto fpsSum = 0.0;
-    auto averageFPS = 0.0;
+    
     auto totalDelta = 0.0;
     
     // Check if the ESC key was pressed or the window was closed
@@ -213,7 +212,7 @@ int main()
         
         if(KeyDown(Key_F))
         {
-            currentMesh = &TimedStepHull(renderContext, h);
+            currentMesh = &TimedStepHull(h);
         }
         
         if(KeyDown(Key_P))

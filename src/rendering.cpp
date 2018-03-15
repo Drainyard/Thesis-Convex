@@ -422,7 +422,7 @@ static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec
     glBindVertexArray(renderContext.lineVAO);
     glBindBuffer(GL_ARRAY_BUFFER, renderContext.lineVBO);
     
-    auto width = 0.21f; //0.05f * lineWidth;
+    auto width = 0.05f * lineWidth;
     
     // ONLY FOR 2D!!!
     auto dx = end.x - start.x;
@@ -637,6 +637,7 @@ static void FindNeighbours(int v1Handle, int v2Handle, mesh& m, face& f, vertex*
             if(neighbour.id == f.id)
             {
                 alreadyAdded = true;
+                break;
             }
         }
         
@@ -684,6 +685,13 @@ static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* 
     if(m.numFaces == 0)
     {
         m.faces = (face*)malloc(sizeof(face) * 2048 * 10);
+        TIME_START;
+        for(int i = 0; i < 20480; i++)
+        {
+            m.faces[i].outsideSet = (int*)malloc(sizeof(int) * numVertices);
+        }
+        TIME_END("Initial malloc");
+        
         m.faceCounter = 0;
     }
     
@@ -696,21 +704,20 @@ static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* 
         return nullptr;
     }
     
+    
     face& newFace = m.faces[m.numFaces++];
-    newFace.outsideSet = (int*)malloc(sizeof(int) * numVertices);
+    //newFace.outsideSet = (int*)malloc(sizeof(int) * numVertices);
     newFace.outsideSetCount = 0;
+    
     
     newFace.neighbourCount = 0;
     newFace.indexInMesh = m.numFaces - 1;
     newFace.id = m.faceCounter++;
     
-    TIME_START;
-    
     FindNeighbours(v1Handle, v2Handle, m, newFace, vertices);
     FindNeighbours(v1Handle, v3Handle, m, newFace, vertices);
     FindNeighbours(v2Handle, v3Handle, m, newFace, vertices);
     
-    TIME_END("Neighbours: ");
     
     Log("Neighbourcount in add face: %d\n", newFace.neighbourCount);
     Assert(newFace.neighbourCount <= 10);
