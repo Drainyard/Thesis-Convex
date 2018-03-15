@@ -137,7 +137,7 @@ int main()
     
     CreateLight(renderContext, glm::vec3(0.0f, 50.0f, 30.0f), glm::vec3(1, 1, 1), 2000.0f);
     
-    int numberOfPoints = 500;
+    int numberOfPoints = 30000;
     
     vertex* naiveVertices = nullptr;
     vertex* quickHullVertices = nullptr;
@@ -154,14 +154,24 @@ int main()
     auto& mn = InitEmptyMesh(renderContext);
     
     mesh* currentMesh = mq;
+    vertex* currentVertices = vertices;
     
-    qh_context qhContext = InitializeQHContext(vertices, numberOfPoints);
+    qh_context qhContext = {};
+    InitializeQHContext(qhContext, vertices, numberOfPoints);
     
-    qh_context timerContext = InitializeQHContext(vertices, numberOfPoints);
-    double qhTimer = 0.0;
-    double qhTimerInit = 0.03;
+    qh_context stepQHTimerContext = {};
+    InitializeQHContext(stepQHTimerContext, vertices, numberOfPoints);
+    double stepQHTimer = 0.0;
+    double stepQHTimerInit = 0.01;
     
-    bool timerStarted = false;
+    
+    bool fullTimerStarted = false;
+    auto fullQHTimer = 0.0;
+    auto fullQHTimerInit = 0.3;
+    mesh* fullQHMesh = nullptr;
+    vertex* fullQHVertices = nullptr;
+    
+    bool stepTimerStarted = false;
     
     // Check if the ESC key was pressed or the window was closed
     while(!KeyDown(Key_Escape) &&
@@ -177,54 +187,117 @@ int main()
         
         if(KeyDown(Key_Y))
         {
-            free(vertices);
-            free(naiveVertices);
-            free(quickHullVertices);
-            free(finalQHVertices);
-            free(timerContext.vertices);
+            if(vertices)
+            {
+                free(vertices);
+            }
+            
+            if(naiveVertices)
+            {
+                free(naiveVertices);
+            }
+            
+            if(quickHullVertices)
+            {
+                free(quickHullVertices);
+            }
+            
+            if(finalQHVertices)
+            {
+                free(finalQHVertices);
+            }
             
             vertices = GenerateNewPointSet(renderContext, &naiveVertices, &quickHullVertices, &finalQHVertices, numberOfPoints, 0.0, 100.0);
-            timerContext = InitializeQHContext(vertices, numberOfPoints);
+            InitializeQHContext(qhContext, vertices, numberOfPoints);
+            InitializeQHContext(stepQHTimerContext, vertices, numberOfPoints);
+            currentVertices = vertices;
+            if(mFinal)
+            {
+                free(mFinal->faces);
+            }
+            
             mFinal = nullptr;
+            currentMesh = nullptr;
         }
+        
         
         if(KeyDown(Key_H))
         {
             if(!mFinal)
             {
+                auto before = glfwGetTime();
                 mFinal = &QuickHull(renderContext, finalQHVertices, numberOfPoints);
+                auto after = glfwGetTime();
+                auto total = after - before;
+                Log_A("QuickHull took: %fs\n", total);
             }
             if(mFinal)
             {
                 currentMesh = mFinal;
+                currentVertices = finalQHVertices;
             }
         }
         
         if(KeyDown(Key_J))
         {
             QuickHullStep(renderContext, qhContext);
+            currentMesh = &qhContext.m;
+            currentVertices = qhContext.vertices;
         }
         
-        if(timerStarted)
+        if(fullTimerStarted)
         {
-            if(qhTimer <= 0.0)
+            if(fullQHTimer <= 0.0)
             {
-                QuickHullStep(renderContext, timerContext);
+                if(fullQHVertices)
+                {
+                    free(fullQHVertices);
+                }
+                
+                fullQHVertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0, 100.0);
+                fullQHMesh = &QuickHull(renderContext, fullQHVertices, numberOfPoints);
+                currentMesh = fullQHMesh;
+                currentVertices = fullQHVertices;
+                fullQHTimer = fullQHTimerInit;
             }
             else
             {
-                qhTimer -= deltaTime;
+                fullQHTimer -= deltaTime;
+            }
+        }
+        
+        if(KeyDown(Key_R))
+        {
+            fullTimerStarted= !fullTimerStarted;
+            if(fullTimerStarted)
+            {
+                fullQHTimer = fullQHTimerInit;
+            }
+            currentMesh = fullQHMesh;
+            currentVertices = fullQHVertices;
+        }
+        
+        if(stepTimerStarted)
+        {
+            if(stepQHTimer <= 0.0)
+            {
+                QuickHullStep(renderContext, stepQHTimerContext);
+            }
+            else
+            {
+                stepQHTimer -= deltaTime;
             }
         }
         
         if(KeyDown(Key_F))
         {
-            timerStarted = !timerStarted;
-            if(timerStarted)
+            stepTimerStarted = !stepTimerStarted;
+            if(stepTimerStarted)
             {
-                qhTimer = qhTimerInit;
+                stepQHTimer = stepQHTimerInit;
             }
-            currentMesh = &timerContext.m;
+            currentMesh = &stepQHTimerContext.m;
+            currentVertices = stepQHTimerContext.vertices;
         }
         
         if(KeyDown(Key_P))
@@ -244,13 +317,13 @@ int main()
         
         if(renderContext.renderPoints)
         {
-            RenderPointCloud(renderContext, vertices, numberOfPoints);
+            RenderPointCloud(renderContext, currentVertices, numberOfPoints);
         }
-        
         
         if(KeyDown(Key_Q))
         {
             currentMesh = &qhContext.m; //mq;
+            currentVertices = vertices;
         }
         
         if(KeyDown(Key_B))
@@ -260,7 +333,7 @@ int main()
         
         if(currentMesh)
         {
-            RenderMesh(renderContext, *currentMesh, vertices);
+            RenderMesh(renderContext, *currentMesh, currentVertices);
         }
         
         if(KeyDown(Key_9))

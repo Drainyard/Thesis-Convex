@@ -123,6 +123,7 @@ struct face
     int* outsideSet;
     int outsideSetCount;
     int outsideSetSize;
+    int furthestPointIndex;
     
     glm::vec3 centerPoint;
     
@@ -140,6 +141,7 @@ struct mesh
     glm::vec3 scale;
     glm::mat4 transform;
     
+    int meshIndex = -1;
     render_material material;
     
     bool dirty;

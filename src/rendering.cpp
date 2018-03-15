@@ -506,15 +506,22 @@ static void FindNeighbours(int v1Handle, int v2Handle, mesh& m, face& f, vertex*
     {
         auto v1Face = v1.faceHandles[v1FaceIndex];
         
+        if(v1Face == f.indexInMesh)
+            continue;
+        
         for(int v2FaceIndex = 0; v2FaceIndex < v2.numFaceHandles; v2FaceIndex++)
         {
             auto v2Face = v2.faceHandles[v2FaceIndex];
+            
+            if(v1Face == f.indexInMesh)
+                continue;
             
             if(v1Face == v2Face)
             {
                 bool alreadyAdded = false;
                 
                 auto& fe = m.faces[v1Face];
+                
                 for(int n = 0; n < fe.neighbourCount; n++)
                 {
                     auto& neigh = fe.neighbours[n];
@@ -557,6 +564,7 @@ static void FindNeighbours(int v1Handle, int v2Handle, mesh& m, face& f, vertex*
 
 static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* vertices, int numVertices)
 {
+    auto before = glfwGetTime();
     if(m.numFaces == 0)
     {
         m.faces = (face*)malloc(sizeof(face) * 2048 * 10);
@@ -584,7 +592,11 @@ static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* 
     FindNeighbours(v1Handle, v3Handle, m, newFace, vertices);
     FindNeighbours(v2Handle, v3Handle, m, newFace, vertices);
     
+    auto after = glfwGetTime();
+    auto total = after - before;
+    
     Log("Neighbourcount in add face: %d\n", newFace.neighbourCount);
+    Assert(newFace.neighbourCount <= 10);
     
     v1.faceHandles[v1.numFaceHandles++] = newFace.indexInMesh;
     v2.faceHandles[v2.numFaceHandles++] = newFace.indexInMesh;
@@ -595,7 +607,7 @@ static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* 
     newFace.vertices[2] = v3.vertexIndex;
     newFace.faceNormal = ComputeFaceNormal(newFace, vertices);
     
-    bool contained = false;
+    /*bool contained = false;
     for(int i = 0; i < vertices[newFace.vertices[0]].numFaceHandles; i++)
     {
         contained |= vertices[newFace.vertices[0]].faceHandles[i] == newFace.indexInMesh;
@@ -612,7 +624,7 @@ static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* 
     {
         contained |= vertices[newFace.vertices[2]].faceHandles[i] == newFace.indexInMesh;
     }
-    Assert(contained);
+    Assert(contained);*/
     
     newFace.faceColor = glm::vec4(0.0f, 1.0f, 1.0f, 0.7f);
     newFace.faceColor.w = 0.5f;
@@ -620,22 +632,26 @@ static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* 
     newFace.centerPoint = (vertices[newFace.vertices[0]].position + vertices[newFace.vertices[1]].position + vertices[newFace.vertices[2]].position) / 3.0f;
     
     m.dirty = true;
+    
+    
     return &m.faces[m.numFaces - 1];
 }
 
-static void RemoveFace(mesh& m, int faceId, vertex* vertices)
+// Returns index of moved mesh
+static int RemoveFace(mesh& m, int faceId, vertex* vertices)
 {
     if(m.numFaces == 0)
     {
-        return;
+        return -1;
     }
     
-    face* f = GetFaceById(faceId, m);
+    //face* f = GetFaceById(faceId, m);
+    face* f = &m.faces[faceId];
     
     if(!f)
     {
         Log("Can't remove face\n");
-        return;
+        return -1;
     }
     
     auto& v1 = vertices[f->vertices[0]];
@@ -687,9 +703,9 @@ static void RemoveFace(mesh& m, int faceId, vertex* vertices)
     }
     
     auto indexInMesh = f->indexInMesh;
+    
     // Invalidates the f pointer
     // But we only need to swap two faces to make this work
-    
     m.faces[indexInMesh] = m.faces[--m.numFaces];
     
     auto& newFace = m.faces[indexInMesh];
@@ -782,35 +798,55 @@ static void RemoveFace(mesh& m, int faceId, vertex* vertices)
     }
     
     newFace.indexInMesh = indexInMesh;
+    return indexInMesh;
 }
 
-static mesh& InitEmptyMesh(render_context& renderContext)
+static mesh& InitEmptyMesh(render_context& renderContext, int meshIndex = -1)
 {
-    mesh& object = renderContext.meshes[renderContext.meshCount++];
-    
-    glGenVertexArrays(1, &object.VAO);
-    glBindVertexArray(object.VAO);
-    glGenBuffers(1, &object.VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, object.VBO);
-    
-    auto& mat = object.material;
-    mat.specularColor = glm::vec3(1.0f);
-    mat.alpha = 1.0f;
-    mat.type = MT_color;
-    mat.diffuse.diffuseColor = glm::vec3(1.0f);
-    mat.materialShader = renderContext.colorShader;
-    
-    object.vertexCount = 0;
-    object.uvCount = 0;
-    object.colorCount = 0;
-    object.normalCount = 0;
-    object.dirty = true;
-    
-    glBindVertexArray(0);
-    object.numFaces = 0;
-    object.facesSize = 0;
-    
-    return object;
+    if(meshIndex != -1)
+    {
+        auto& m = renderContext.meshes[meshIndex];
+        free(m.faces);
+        m.vertexCount = 0;
+        m.uvCount = 0;
+        m.colorCount = 0;
+        m.normalCount = 0;
+        m.dirty = true;
+        m.numFaces = 0;
+        m.facesSize = 0;
+        
+        return m;
+    }
+    else
+    {
+        
+        mesh& object = renderContext.meshes[renderContext.meshCount++];
+        object.meshIndex = renderContext.meshCount - 1;
+        
+        glGenVertexArrays(1, &object.VAO);
+        glBindVertexArray(object.VAO);
+        glGenBuffers(1, &object.VBO);
+        glBindBuffer(GL_ARRAY_BUFFER, object.VBO);
+        
+        auto& mat = object.material;
+        mat.specularColor = glm::vec3(1.0f);
+        mat.alpha = 1.0f;
+        mat.type = MT_color;
+        mat.diffuse.diffuseColor = glm::vec3(1.0f);
+        mat.materialShader = renderContext.colorShader;
+        
+        object.vertexCount = 0;
+        object.uvCount = 0;
+        object.colorCount = 0;
+        object.normalCount = 0;
+        object.dirty = true;
+        
+        glBindVertexArray(0);
+        object.numFaces = 0;
+        object.facesSize = 0;
+        
+        return object;
+    }
 }
 
 static mesh& LoadMesh(render_context& renderContext, gl_buffer vbo, gl_buffer* uvBuffer = 0, gl_buffer* colorBuffer = 0, gl_buffer* normalBuffer = 0, glm::vec3 diffuseColor = glm::vec3(1.0f))

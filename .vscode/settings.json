@@ -1,0 +1,6 @@
+{
+	"files.associations": {
+		"*.jif": "java",
+		"limits": "cpp"
+	}
+}
