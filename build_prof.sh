@@ -6,7 +6,8 @@ DEBUG=""
 
 pushd build
 
-clang -Weverything $WIGNORE -O0 --std=c++14 $DEBUG ../src/main.cpp -isystem ../libs/glad/include -isystem ../libs -L/usr/local/lib -L../libs/glad -L../libs -ldl -lm -lGL -lglfw -lglad -lstdc++ -o main -Wl,-rpath,\$ORIGIN/../build
+clang -Weverything $WIGNORE -g --std=c++14 $DEBUG ../src/main.cpp -isystem ../libs/glad/include -isystem ../libs -L/usr/local/lib -L../libs/glad -L../libs -ldl -lm -lGL -lglfw -lglad -lstdc++ -o main -Wl,-rpath,\$ORIGIN/../build -Wl,--no-as-needed -lprofiler -Wl,--as-needed
 
 popd
+
 
