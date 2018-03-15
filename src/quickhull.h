@@ -547,9 +547,10 @@ mesh& QuickHull(render_context& renderContext, vertex* vertices, int numVertices
         currentFace = QuickHullFindNextIteration(renderContext, m, faceStack);
         if(currentFace)
         {
+            //Time("Horizon", QuickHullHorizon(renderContext, m, vertices, *currentFace, v, &previousIteration, epsilon));
             QuickHullHorizon(renderContext, m, vertices, *currentFace, v, &previousIteration, epsilon);
-            //QuickHullIteration(renderContext, m, vertices, faceStack, currentFace->id, v, previousIteration, numVertices, epsilon);
-            QuickHullIteration(renderContext, m, vertices, faceStack, currentFace->indexInMesh, v, previousIteration, numVertices, epsilon);
+            QuickHullIteration(renderContext, m, vertices, faceStack, currentFace->id, v, previousIteration, numVertices, epsilon);
+            //Time("Running iteration", QuickHullIteration(renderContext, m, vertices, faceStack, currentFace->indexInMesh, v, previousIteration, numVertices, epsilon));
             v.clear();
         }
     }
@@ -558,6 +559,7 @@ mesh& QuickHull(render_context& renderContext, vertex* vertices, int numVertices
 
 struct qh_context
 {
+    bool initialized;
     vertex* vertices;
     int numberOfPoints;
     std::vector<int> faceStack;
@@ -578,10 +580,10 @@ qh_context InitializeQHContext(vertex* vertices, int numberOfPoints)
     qhContext.iter = QHIteration::initQH;
     qhContext.currentFace = 0;
     qhContext.previousIteration = 0;
+    qhContext.initialized = true;
     
     return qhContext;
 }
-
 
 void InitializeQHContext(qh_context& qhContext, vertex* vertices, int numberOfPoints)
 {
@@ -599,20 +601,17 @@ void InitializeQHContext(qh_context& qhContext, vertex* vertices, int numberOfPo
     qhContext.iter = QHIteration::initQH;
     qhContext.currentFace = 0;
     qhContext.previousIteration = 0;
+    qhContext.initialized = true;
 }
 
 void QuickHullStep(render_context& renderContext, qh_context& context)
 {
-    auto before = glfwGetTime();
     switch(context.iter)
     {
         case QHIteration::initQH:
         {
             context.m = InitQuickHull(renderContext, context.vertices, context.numberOfPoints, context.faceStack, &context.epsilon);
             context.iter = QHIteration::findNextIter;
-            auto after = glfwGetTime();
-            auto total = after - before;
-            Log_A("Init took: %fs\n", total);
         }
         break;
         case QHIteration::findNextIter:
@@ -625,9 +624,6 @@ void QuickHullStep(render_context& renderContext, qh_context& context)
                 {
                     context.iter = QHIteration::findHorizon;
                 }
-                auto after = glfwGetTime();
-                auto total = after - before;
-                Log_A("Finding iter took: %fs\n", total);
             }
         }
         break;
@@ -638,9 +634,6 @@ void QuickHullStep(render_context& renderContext, qh_context& context)
                 Log("Finding horizon\n");
                 QuickHullHorizon(renderContext, context.m, context.vertices, *context.currentFace, context.v, &context.previousIteration, context.epsilon);
                 context.iter = QHIteration::doIter;
-                auto after = glfwGetTime();
-                auto total = after - before;
-                Log_A("Horizon took: %fs\n", total);
             }
         }
         break;
@@ -649,13 +642,9 @@ void QuickHullStep(render_context& renderContext, qh_context& context)
             if(context.currentFace)
             {
                 Log("Doing iteration\n");
-                //QuickHullIteration(renderContext, context.m, context.vertices, context.faceStack, context.currentFace->id, context.v, context.previousIteration, context.numberOfPoints, context.epsilon);
                 QuickHullIteration(renderContext, context.m, context.vertices, context.faceStack, context.currentFace->indexInMesh, context.v, context.previousIteration, context.numberOfPoints, context.epsilon);
                 context.iter = QHIteration::findNextIter;
                 context.v.clear();
-                auto after = glfwGetTime();
-                auto total = after - before;
-                Log_A("Iteration took: %fs\n", total);
             }
         }
         break;

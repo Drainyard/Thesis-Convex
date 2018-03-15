@@ -42,6 +42,12 @@ static glm::vec4 RandomColor()
     return glm::vec4((coord_t)RandomInt(0, 255) / 255.0, (coord_t)RandomInt(0, 255) / 255.0, (coord_t)RandomInt(0, 255) / 255.0, 1.0);
 }
 
+inline bool StartsWith(const char *a, const char *b)
+{
+    if(strncmp(a, b, strlen(b)) == 0) return 1;
+    return 0;
+}
+
 
 
 #define list(type)\

@@ -19,6 +19,50 @@ static void SetFloatUniform(GLuint programID, const char* name, float value)
 }
 
 
+static vertex* LoadObj(const char* filePath)
+{
+    vertex* vertices = nullptr;
+    auto file = fopen(filePath, "r");
+    if(file)
+    {
+        int vCount = 0;
+        char buffer[64];
+        
+        while(fgets(buffer, 64, file))
+        {
+            if(StartsWith(buffer, "v"))
+            {
+                vCount++;
+            }
+        }
+        
+        vertices = (vertex*)calloc(vCount, sizeof(vertex));
+        
+        rewind(file);
+        
+        int i = 0;
+        
+        while(fgets(buffer, 64, file))
+        {
+            if(StartsWith(buffer, "v"))
+            {
+                sscanf(buffer, "v %f %f %f", &vertices[i].position.x, &vertices[i].position.y, &vertices[i].position.z);
+                
+                vertices[i].position = vertices[i].position;
+                vertices[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
+                vertices[i].numFaceHandles = 0;
+                vertices[i].vertexIndex = i;
+                vertices[i].faceHandles = (int*)malloc(sizeof(int) * 1024);
+                i++;
+            }
+        }
+        
+        fclose(file);
+    }
+    
+    return vertices;
+}
+
 static vertex* CopyVertices(vertex* vertices, int numberOfPoints)
 {
     auto res = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
@@ -1103,21 +1147,17 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
             auto v2 = vertices[f.vertices[1]];
             auto v3 = vertices[f.vertices[2]];
             
-            RenderLine(renderContext, v1.position, v2.position, c1, lineWidth);
-            RenderLine(renderContext, v2.position, v3.position, c2, lineWidth);
-            RenderLine(renderContext, v3.position, v1.position, c3, lineWidth);
+            //RenderLine(renderContext, v1.position, v2.position, c1, lineWidth);
+            //RenderLine(renderContext, v2.position, v3.position, c2, lineWidth);
+            //RenderLine(renderContext, v3.position, v1.position, c3, lineWidth);
         }
     }
     
-    RenderQuad(renderContext, vertices[renderContext.debugContext.currentDistantPoint].position, glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(globalScale), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
+    //RenderQuad(renderContext, vertices[renderContext.debugContext.currentDistantPoint].position, glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(globalScale), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
     
     if(renderContext.debugContext.currentFaceIndex != -1)
     {
-        auto& currentFace = m.faces[renderContext.debugContext.currentFaceIndex];
-        for(int i = 0; i < currentFace.outsideSetCount; i++)
-        {
-            //RenderQuad(renderContext, vertices[currentFace.outsideSet[i]].position, glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(globalScale), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
-        }
+        
     }
     
     auto& edgeList = renderContext.debugContext.horizon;
@@ -1167,7 +1207,7 @@ static void ComputeMatrices(render_context& renderContext, double deltaTime)
     
     renderContext.projectionMatrix = glm::perspective(glm::radians(renderContext.FoV), (float)renderContext.screenWidth / (float)renderContext.screenHeight, renderContext.near, renderContext.far);
     
-    float panSpeed = 10.0f * (float)deltaTime;
+    float panSpeed = 30.0f * (float)deltaTime;
     if(Key(Key_W))
     {
         renderContext.position += panSpeed * renderContext.direction;

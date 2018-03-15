@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <algorithm>
+#include "timing.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <glad/glad.h>
@@ -28,8 +29,10 @@ static input_state inputState;
 
 #include "rendering.h"
 #include "rendering.cpp"
+
 #include "quickhull.h"
-#include "naive.h"
+
+#include "hull.h"
 
 #define Min(A,B) ((A < B) ? (A) : (B))
 #define Max(A,B) ((A > B) ? (A) : (B))
@@ -100,6 +103,7 @@ static vertex* GeneratePointsInSphere(render_context& renderContext, int numberO
 vertex* GenerateNewPointSet(render_context& renderContext, vertex** naive, vertex** quickhull, vertex** user, int numVertices, coord_t rangeMin, coord_t rangeMax)
 {
     auto vertices = GeneratePointsInSphere(renderContext, numVertices, rangeMin, rangeMax);
+    //auto vertices = LoadObj("../assets/obj/man in vest 40k.OBJ");
     *naive = CopyVertices(vertices, numVertices);
     *quickhull = CopyVertices(vertices, numVertices);
     *user = CopyVertices(vertices, numVertices);
@@ -135,43 +139,25 @@ int main()
     inputState.mouseYaw = -90.0f;
     inputState.mousePitch = -45.0f;
     
-    CreateLight(renderContext, glm::vec3(0.0f, 50.0f, 30.0f), glm::vec3(1, 1, 1), 2000.0f);
+    auto disableMouse = false;
     
-    int numberOfPoints = 30000;
+    
+    CreateLight(renderContext, glm::vec3(0.0f, 50.0f, 30.0f), glm::vec3(1, 1, 1), 2000.0f);
     
     vertex* naiveVertices = nullptr;
     vertex* quickHullVertices = nullptr;
     vertex* finalQHVertices = nullptr;
     
-    auto vertices = GenerateNewPointSet(renderContext, &naiveVertices, &quickHullVertices, &finalQHVertices, numberOfPoints, 0.0, 100.0);
     
-    auto disableMouse = false;
+    HullType hullType = HullType::QH;
     
-    mesh* mq = nullptr; 
-    mesh* mFinal = nullptr;
+    int numberOfPoints = 400;
+    auto vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 100.0f);
+    hull h = {};
+    InitializeHull(h, vertices, numberOfPoints, hullType);
     
-    //auto& mn = NaiveConvexHull(renderContext, naiveVertices, numberOfPoints);
-    auto& mn = InitEmptyMesh(renderContext);
-    
-    mesh* currentMesh = mq;
+    mesh* currentMesh = nullptr;
     vertex* currentVertices = vertices;
-    
-    qh_context qhContext = {};
-    InitializeQHContext(qhContext, vertices, numberOfPoints);
-    
-    qh_context stepQHTimerContext = {};
-    InitializeQHContext(stepQHTimerContext, vertices, numberOfPoints);
-    double stepQHTimer = 0.0;
-    double stepQHTimerInit = 0.01;
-    
-    
-    bool fullTimerStarted = false;
-    auto fullQHTimer = 0.0;
-    auto fullQHTimerInit = 0.3;
-    mesh* fullQHMesh = nullptr;
-    vertex* fullQHVertices = nullptr;
-    
-    bool stepTimerStarted = false;
     
     // Check if the ESC key was pressed or the window was closed
     while(!KeyDown(Key_Escape) &&
@@ -185,6 +171,8 @@ int main()
         
         ComputeMatrices(renderContext, deltaTime);
         
+        UpdateHull(renderContext, h, hullType, deltaTime);
+        
         if(KeyDown(Key_Y))
         {
             if(vertices)
@@ -192,112 +180,26 @@ int main()
                 free(vertices);
             }
             
-            if(naiveVertices)
-            {
-                free(naiveVertices);
-            }
+            auto vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 100.0f);
+            ReinitializeHull(h, vertices, numberOfPoints);
             
-            if(quickHullVertices)
-            {
-                free(quickHullVertices);
-            }
-            
-            if(finalQHVertices)
-            {
-                free(finalQHVertices);
-            }
-            
-            vertices = GenerateNewPointSet(renderContext, &naiveVertices, &quickHullVertices, &finalQHVertices, numberOfPoints, 0.0, 100.0);
-            InitializeQHContext(qhContext, vertices, numberOfPoints);
-            InitializeQHContext(stepQHTimerContext, vertices, numberOfPoints);
             currentVertices = vertices;
-            if(mFinal)
-            {
-                free(mFinal->faces);
-            }
-            
-            mFinal = nullptr;
             currentMesh = nullptr;
         }
         
-        
         if(KeyDown(Key_H))
         {
-            if(!mFinal)
-            {
-                auto before = glfwGetTime();
-                mFinal = &QuickHull(renderContext, finalQHVertices, numberOfPoints);
-                auto after = glfwGetTime();
-                auto total = after - before;
-                Log_A("QuickHull took: %fs\n", total);
-            }
-            if(mFinal)
-            {
-                currentMesh = mFinal;
-                currentVertices = finalQHVertices;
-            }
+            currentMesh = &FullHull(renderContext, h);
         }
         
         if(KeyDown(Key_J))
         {
-            QuickHullStep(renderContext, qhContext);
-            currentMesh = &qhContext.m;
-            currentVertices = qhContext.vertices;
-        }
-        
-        if(fullTimerStarted)
-        {
-            if(fullQHTimer <= 0.0)
-            {
-                if(fullQHVertices)
-                {
-                    free(fullQHVertices);
-                }
-                
-                fullQHVertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0, 100.0);
-                fullQHMesh = &QuickHull(renderContext, fullQHVertices, numberOfPoints);
-                currentMesh = fullQHMesh;
-                currentVertices = fullQHVertices;
-                fullQHTimer = fullQHTimerInit;
-            }
-            else
-            {
-                fullQHTimer -= deltaTime;
-            }
-        }
-        
-        if(KeyDown(Key_R))
-        {
-            fullTimerStarted= !fullTimerStarted;
-            if(fullTimerStarted)
-            {
-                fullQHTimer = fullQHTimerInit;
-            }
-            currentMesh = fullQHMesh;
-            currentVertices = fullQHVertices;
-        }
-        
-        if(stepTimerStarted)
-        {
-            if(stepQHTimer <= 0.0)
-            {
-                QuickHullStep(renderContext, stepQHTimerContext);
-            }
-            else
-            {
-                stepQHTimer -= deltaTime;
-            }
+            currentMesh = &StepHull(renderContext, h);
         }
         
         if(KeyDown(Key_F))
         {
-            stepTimerStarted = !stepTimerStarted;
-            if(stepTimerStarted)
-            {
-                stepQHTimer = stepQHTimerInit;
-            }
-            currentMesh = &stepQHTimerContext.m;
-            currentVertices = stepQHTimerContext.vertices;
+            currentMesh = &TimedStepHull(renderContext, h);
         }
         
         if(KeyDown(Key_P))
@@ -322,14 +224,19 @@ int main()
         
         if(KeyDown(Key_Q))
         {
-            currentMesh = &qhContext.m; //mq;
-            currentVertices = vertices;
+            hullType = HullType::QH;
         }
         
-        if(KeyDown(Key_B))
+        if(KeyDown(Key_I))
         {
-            currentMesh = &mn;
+            hullType = HullType::Inc;
         }
+        
+        if(KeyDown(Key_R))
+        {
+            hullType = HullType::RInc;
+        }
+        
         
         if(currentMesh)
         {
