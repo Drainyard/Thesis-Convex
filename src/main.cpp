@@ -141,17 +141,12 @@ int main()
     
     auto disableMouse = false;
     
-    
     CreateLight(renderContext, glm::vec3(0.0f, 50.0f, 30.0f), glm::vec3(1, 1, 1), 2000.0f);
-    
-    vertex* naiveVertices = nullptr;
-    vertex* quickHullVertices = nullptr;
-    vertex* finalQHVertices = nullptr;
-    
+    CreateLight(renderContext, glm::vec3(10.0f, -20.0f, 20.0f), glm::vec3(1, 1, 1), 2000.0f);
     
     HullType hullType = HullType::QH;
     
-    int numberOfPoints = 400;
+    int numberOfPoints = 500;
     auto vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 100.0f);
     hull h = {};
     InitializeHull(h, vertices, numberOfPoints, hullType);
@@ -180,7 +175,7 @@ int main()
                 free(vertices);
             }
             
-            auto vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 100.0f);
+            vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 100.0f);
             ReinitializeHull(h, vertices, numberOfPoints);
             
             currentVertices = vertices;
@@ -236,7 +231,6 @@ int main()
         {
             hullType = HullType::RInc;
         }
-        
         
         if(currentMesh)
         {

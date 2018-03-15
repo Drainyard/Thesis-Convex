@@ -38,6 +38,7 @@ static void InitializeHull(hull& h, vertex* vertices, int numberOfPoints, HullTy
     h.numberOfPoints = numberOfPoints;
     h.qhContext.initialized = false;
     h.stepQhContext.initialized = false;
+    h.timedStepQhContext.initialized = false;
     h.currentHullType = hullType;
 }
 
@@ -46,6 +47,8 @@ static void ReinitializeHull(hull& h, vertex* vertices, int numberOfPoints)
     h.vertices = vertices;
     h.numberOfPoints = numberOfPoints;
     h.qhContext.initialized = false;
+    h.stepQhContext.initialized = false;
+    h.timedStepQhContext.initialized = false;
 }
 
 static void UpdateHull(render_context& renderContext, hull& h, HullType hullType, double deltaTime)

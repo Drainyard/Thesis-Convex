@@ -1,3 +1,5 @@
+#define BUFFER_OFFSET(i) ((char *)NULL + (i))
+
 static void SetMatrixUniform(GLuint programID, const char* name, glm::mat4 matrix)
 {
     glUniformMatrix4fv(glGetUniformLocation(programID, name), 1, GL_FALSE, &matrix[0][0]);
@@ -11,6 +13,16 @@ static void SetVec3Uniform(GLuint programID, const char* name, glm::vec3 vec)
 static void SetVec4Uniform(GLuint programID, const char* name, glm::vec4 vec)
 {
     glUniform4f(glGetUniformLocation(programID, name), vec.x, vec.y, vec.z, vec.w);
+}
+
+static void SetVec3Uniform(GLuint programID, const char* name, glm::vec4 vec)
+{
+    glUniform3f(glGetUniformLocation(programID, name), vec.x, vec.y, vec.z);
+}
+
+static void SetVec2Uniform(GLuint programID, const char* name, glm::vec2 vec)
+{
+    glUniform2f(glGetUniformLocation(programID, name), vec.x, vec.y);
 }
 
 static void SetFloatUniform(GLuint programID, const char* name, float value)
@@ -319,12 +331,18 @@ static void InitializeOpenGL(render_context& renderContext)
     renderContext.particleShader = LoadShaders("../shaders/particle.vert", "../shaders/particle.frag");
     
     // Initialize line buffer
-    glGenVertexArrays(1, &renderContext.primitiveVAO);
-    glBindVertexArray(renderContext.primitiveVAO);
-    glGenBuffers(1, &renderContext.primitiveVBO);
-    glBindBuffer(GL_ARRAY_BUFFER, renderContext.primitiveVBO);
+    renderContext.lineShader = LoadShaders("../shaders/lineShader.vert", "../shaders/lineShader.frag");
+    glGenVertexArrays(1, &renderContext.lineVAO);
+    glBindVertexArray(renderContext.lineVAO);
+    glGenBuffers(1, &renderContext.lineVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, renderContext.lineVBO);
+    glGenBuffers(1, &renderContext.lineEBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderContext.lineEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * LINE_INDICES, renderContext.lineIndices, GL_STATIC_DRAW);
+    
     
     glBindVertexArray(0);
+    
     
     // Initialize Quad buffers
     glGenVertexArrays(1, &renderContext.quadVAO);
@@ -365,6 +383,7 @@ static void InitializeOpenGL(render_context& renderContext)
     glGenBuffers(1, &renderContext.particlesColorVBO);
 }
 
+/*
 static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec3(0.0f), glm::vec3 end = glm::vec3(0.0f), glm::vec4 color = glm::vec4(1.0f), float lineWidth = 2.0f)
 {
     glUseProgram(renderContext.basicShader.programID);
@@ -394,6 +413,59 @@ static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec
     SetVec4Uniform(renderContext.basicShader.programID, "c", color);
     
     glDrawArrays(GL_TRIANGLES, 0, 18);
+}*/
+
+static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec3(0.0f), glm::vec3 end = glm::vec3(0.0f), glm::vec4 color = glm::vec4(1.0f), float lineWidth = 2.0f)
+{
+    glUseProgram(renderContext.lineShader.programID);
+    
+    glBindVertexArray(renderContext.lineVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, renderContext.lineVBO);
+    
+    auto width = 0.21f; //0.05f * lineWidth;
+    
+    // ONLY FOR 2D!!!
+    auto dx = end.x - start.x;
+    auto dy = end.y - start.y;
+    auto normal =  glm::normalize(glm::vec2(-dy, dx));
+    
+    // Double vertices
+    // 1.0f and -1.0f are Miters
+    
+    GLfloat points[24] = {
+        start.x, start.y, start.z, normal.x, normal.y, -1.0f,
+        start.x, start.y, start.z, normal.x, normal.y, 1.0f,
+        end.x, end.y, end.z, normal.x, normal.y, -1.0f,
+        end.x, end.y, end.z, normal.x, normal.y, 1.0f};
+    
+    glBufferData(GL_ARRAY_BUFFER, 24 * sizeof(GLfloat), &points[0], GL_DYNAMIC_DRAW);
+    
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)0); // pos
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat))); // normals
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)(5 * sizeof(GLfloat))); // miter
+    
+    auto m = glm::scale(glm::mat4(1.0f), glm::vec3(globalScale));
+    
+    SetMatrixUniform(renderContext.lineShader.programID, "model", m);
+    SetMatrixUniform(renderContext.lineShader.programID, "view", renderContext.viewMatrix);
+    SetMatrixUniform(renderContext.lineShader.programID, "projection", renderContext.projectionMatrix);
+    SetVec4Uniform(renderContext.lineShader.programID, "color", color);
+    SetFloatUniform(renderContext.lineShader.programID, "thickness", width);
+    SetVec2Uniform(renderContext.lineShader.programID, "direction", glm::normalize(glm::vec2(dx, dy)));
+    
+    auto screenSize = glm::vec2((float)renderContext.screenWidth, (float)renderContext.screenHeight);
+    
+    float aspect = screenSize.x / screenSize.y;
+    
+    SetFloatUniform(renderContext.lineShader.programID, "aspect", aspect);
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderContext.lineEBO);
+    glDrawElements(GL_TRIANGLES, LINE_INDICES, GL_UNSIGNED_INT, BUFFER_OFFSET(0));
+    glBindVertexArray(0);
+    
 }
 
 static light& CreateLight(render_context& renderContext, glm::vec3 position = glm::vec3(0.0f), glm::vec3 color = glm::vec3(1.0f), float power = 2.0f)
@@ -608,7 +680,6 @@ static void FindNeighbours(int v1Handle, int v2Handle, mesh& m, face& f, vertex*
 
 static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* vertices, int numVertices)
 {
-    auto before = glfwGetTime();
     if(m.numFaces == 0)
     {
         m.faces = (face*)malloc(sizeof(face) * 2048 * 10);
@@ -635,9 +706,6 @@ static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* 
     FindNeighbours(v1Handle, v2Handle, m, newFace, vertices);
     FindNeighbours(v1Handle, v3Handle, m, newFace, vertices);
     FindNeighbours(v2Handle, v3Handle, m, newFace, vertices);
-    
-    auto after = glfwGetTime();
-    auto total = after - before;
     
     Log("Neighbourcount in add face: %d\n", newFace.neighbourCount);
     Assert(newFace.neighbourCount <= 10);
@@ -1147,9 +1215,9 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
             auto v2 = vertices[f.vertices[1]];
             auto v3 = vertices[f.vertices[2]];
             
-            //RenderLine(renderContext, v1.position, v2.position, c1, lineWidth);
-            //RenderLine(renderContext, v2.position, v3.position, c2, lineWidth);
-            //RenderLine(renderContext, v3.position, v1.position, c3, lineWidth);
+            RenderLine(renderContext, v1.position, v2.position, c1, lineWidth);
+            RenderLine(renderContext, v2.position, v3.position, c2, lineWidth);
+            RenderLine(renderContext, v3.position, v1.position, c3, lineWidth);
         }
     }
     

@@ -206,6 +206,7 @@ struct render_context
     shader colorShader;
     shader basicShader;
     shader particleShader;
+    shader lineShader;
     
     mesh meshes[64];
     int meshCount;
@@ -219,6 +220,18 @@ struct render_context
     
     GLuint primitiveVAO;
     GLuint primitiveVBO;
+    
+    GLuint lineVAO;
+    GLuint lineVBO;
+    GLuint lineEBO;
+    
+#define LINE_INDICES 6
+    
+    GLuint lineIndices[LINE_INDICES] = 
+    {
+        0, 1, 2,
+        1, 2, 3
+    };
     
     GLuint quadVAO;
     GLuint quadVBO;
