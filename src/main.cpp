@@ -31,6 +31,7 @@ static input_state inputState;
 #include "rendering.cpp"
 
 #include "quickhull.h"
+#include "incremental.h"
 
 #include "hull.h"
 

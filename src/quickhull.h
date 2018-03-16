@@ -573,7 +573,7 @@ mesh& QuickHull(render_context& renderContext, vertex* vertices, int numVertices
                              epsilon);
             //TIME_END("Horizon found");
             //TIME_START;
-            QuickHullIteration(renderContext, m, vertices, faceStack, currentFace->id, v, 
+            QuickHullIteration(renderContext, m, vertices, faceStack, currentFace->indexInMesh, v, 
                                previousIteration, numVertices, epsilon);
             //TIME_END("Iteration run");
             v.clear();
