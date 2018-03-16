@@ -146,7 +146,7 @@ int main()
     
     HullType hullType = HullType::QH;
     
-    int numberOfPoints = 20000;
+    int numberOfPoints = 5000;
     auto vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 100.0f);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ");
     hull h = {};

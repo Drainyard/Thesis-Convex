@@ -96,8 +96,10 @@ static mesh& FullHull(render_context& renderContext, hull& h)
             {
                 InitializeQHContext(qhContext, h.vertices, h.numberOfPoints);
             }
+            //TIME_START;
             auto& res = QuickHull(renderContext, qhContext.vertices, qhContext.numberOfPoints);
-            
+            //TIME_END("Full hull\n");
+            //QuickHull(renderContext, qhContext);
             return res;
         }
         break;
