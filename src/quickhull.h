@@ -9,6 +9,22 @@ enum QHIteration
     doIter
 };
 
+
+struct qh_context
+{
+    bool initialized;
+    vertex* vertices;
+    int numberOfPoints;
+    std::vector<int> faceStack;
+    float epsilon;
+    QHIteration iter;
+    face* currentFace;
+    std::vector<int> v;
+    mesh m;
+    int previousIteration;
+};
+
+
 float DistanceBetweenPoints(vertex& p1, vertex& p2)
 {
     return glm::distance(p1.position, p2.position);
@@ -309,8 +325,6 @@ void FindConvexHorizon(vertex& viewPoint, std::vector<int>& faces, mesh& m, std:
             }
             else if(!neighbourFace.visited)
             {
-                //possibleVisibleFaces.push_back(neighbour.id);
-                //faces.push_back(neighbourFace->id);
                 possibleVisibleFaces.push_back(neighbour.faceHandle);
                 faces.push_back(neighbourFace.indexInMesh);
             }
@@ -553,6 +567,29 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
     Log("Number of faces: %d\n", m.numFaces);
 }
 
+void QuickHull(render_context& renderContext, qh_context& qhContext)
+{
+    qhContext.currentFace = nullptr;
+    qhContext.faceStack.clear();
+    qhContext.faceStack.reserve(qhContext.numberOfPoints / 3);
+    qhContext.epsilon = 0.0;
+    qhContext.m = InitQuickHull(renderContext, qhContext.vertices, qhContext.numberOfPoints, qhContext.faceStack, &qhContext.epsilon);
+    qhContext.v.clear();
+    qhContext.v.reserve(qhContext.numberOfPoints / 3);
+    qhContext.previousIteration = 0;
+    while(qhContext.faceStack.size() > 0)
+    {
+        qhContext.currentFace = QuickHullFindNextIteration(renderContext, qhContext.m, qhContext.faceStack);
+        if(qhContext.currentFace)
+        {
+            QuickHullHorizon(renderContext, qhContext.m, qhContext.vertices, *qhContext.currentFace, qhContext.v, &qhContext.previousIteration, qhContext.epsilon);
+            QuickHullIteration(renderContext, qhContext.m, qhContext.vertices, qhContext.faceStack, qhContext.currentFace->indexInMesh, qhContext.v, 
+                               qhContext.previousIteration, qhContext.numberOfPoints, qhContext.epsilon);
+            qhContext.v.clear();
+        }
+    }
+}
+
 mesh& QuickHull(render_context& renderContext, vertex* vertices, int numVertices)
 {
     face* currentFace = nullptr;
@@ -568,14 +605,10 @@ mesh& QuickHull(render_context& renderContext, vertex* vertices, int numVertices
         currentFace = QuickHullFindNextIteration(renderContext, m, faceStack);
         if(currentFace)
         {
-            //TIME_START;
             QuickHullHorizon(renderContext, m, vertices, *currentFace, v, &previousIteration, 
                              epsilon);
-            //TIME_END("Horizon found");
-            //TIME_START;
             QuickHullIteration(renderContext, m, vertices, faceStack, currentFace->indexInMesh, v, 
                                previousIteration, numVertices, epsilon);
-            //TIME_END("Iteration run");
             v.clear();
         }
     }
@@ -583,20 +616,6 @@ mesh& QuickHull(render_context& renderContext, vertex* vertices, int numVertices
     Log_A("Number of triangles: %d\n", m.numFaces);
     return m;
 }
-
-struct qh_context
-{
-    bool initialized;
-    vertex* vertices;
-    int numberOfPoints;
-    std::vector<int> faceStack;
-    float epsilon;
-    QHIteration iter;
-    face* currentFace;
-    std::vector<int> v;
-    mesh m;
-    int previousIteration;
-};
 
 qh_context InitializeQHContext(vertex* vertices, int numberOfPoints)
 {
