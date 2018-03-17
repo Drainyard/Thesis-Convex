@@ -103,8 +103,8 @@ coord_t GenerateInitialSimplex(render_context& renderContext, vertex* vertices, 
         }
     }
     
-    auto epsilon = 3 * (extremePoints[1] + extremePoints[3] + extremePoints[5]) * FLT_EPSILON;
-    //auto epsilon = 0.0f;
+    //auto epsilon = 3 * (extremePoints[1] + extremePoints[3] + extremePoints[5]) * FLT_EPSILON;
+    auto epsilon = 0.0f;
     
     auto* f = AddFace(m, mostDist1, mostDist2, extremePointCurrentIndex, vertices, numVertices);
     if(!f)
@@ -321,7 +321,7 @@ void FindConvexHorizon(vertex& viewPoint, std::vector<int>& faces, mesh& m, std:
     {
         auto& f = m.faces[possibleVisibleFaces[faceIndex]];
         
-        for(int neighbourIndex = 0; neighbourIndex < f.neighbourCount; neighbourIndex++)
+        for(int neighbourIndex = 0; neighbourIndex < (int)f.neighbours.size(); neighbourIndex++)
         {
             auto& neighbour = f.neighbours[neighbourIndex];
             auto& neighbourFace = m.faces[neighbour.faceHandle];
@@ -413,7 +413,7 @@ void QuickHullHorizon(render_context& renderContext, mesh& m, vertex* vertices, 
         
         fa.visitedV = true;
         
-        for(int neighbourIndex = 0; neighbourIndex < fa.neighbourCount; neighbourIndex++)
+        for(int neighbourIndex = 0; neighbourIndex < (int)fa.neighbours.size(); neighbourIndex++)
         {
             auto& neighbour = m.faces[fa.neighbours[neighbourIndex].faceHandle];
             

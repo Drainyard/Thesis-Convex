@@ -108,7 +108,7 @@ struct vertex
             glm::vec4 color;
         };
     };
-    int* faceHandles; // Try with 64 for now. Optimize if less or more
+    int* faceHandles;
     int numFaceHandles;
     int vertexIndex;
     bool assigned;
@@ -128,9 +128,9 @@ struct face
     
     glm::vec3 centerPoint;
     
-    neighbour neighbours[512];
-    //std::vector<neighbour> neighbours;
-    int neighbourCount;
+    //neighbour neighbours[512];
+    std::vector<neighbour> neighbours;
+    //int neighbourCount;
     int indexInMesh;
     bool visited;
     bool visitedV;

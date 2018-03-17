@@ -134,7 +134,7 @@ int main()
     printf("Seed: %zd\n", seed);
     render_context renderContext = {};
     renderContext.FoV = 45.0f;
-    renderContext.position = glm::vec3(0.0f, 50.5f, 30.0f);
+    renderContext.position = glm::vec3(0.0f, 170.5f, 230.0f);
     renderContext.direction = glm::vec3(0.0f, -0.75f, -1.0f);
     renderContext.up = glm::vec3(0.0f, 1.0f, 0.0f);
     renderContext.nearPlane = 0.1f;
@@ -156,14 +156,18 @@ int main()
     
     auto disableMouse = false;
     
-    CreateLight(renderContext, glm::vec3(0.0f, 50.0f, 30.0f), glm::vec3(1, 1, 1), 2000.0f);
+    CreateLight(renderContext, glm::vec3(0.0f, 80.0f, 80.0f), glm::vec3(1, 1, 1), 2000.0f);
     CreateLight(renderContext, glm::vec3(10.0f, -20.0f, 20.0f), glm::vec3(1, 1, 1), 2000.0f);
     
     HullType hullType = HullType::QH;
     
-    int numberOfPoints = 500;
-    auto vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 100.0f);
+    //int numberOfPoints = 645932; // Man in vest numbers
+    //int numberOfPoints = 17536; // Arnold
+    int numberOfPoints = 900000;
+    auto vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 200.0f);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ");
+    //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
+    
     hull h = {};
     InitializeHull(h, vertices, numberOfPoints, hullType);
     
@@ -174,9 +178,6 @@ int main()
     auto currentFrameCount = 0;
     
     auto totalDelta = 0.0;
-    
-    Log_A("Sizeof vertex: %zd\n", sizeof(vertex));
-    Log_A("Sizeof all vertices: %zd\n", sizeof(vertex) * numberOfPoints);
     
     // Check if the ESC key was pressed or the window was closed
     while(!KeyDown(Key_Escape) &&
@@ -211,7 +212,7 @@ int main()
                 free(vertices);
             }
             
-            vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 100.0f);
+            vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 200.0f);
             ReinitializeHull(h, vertices, numberOfPoints);
             
             currentVertices = vertices;
@@ -270,7 +271,7 @@ int main()
         
         if(currentMesh)
         {
-            RenderMesh(renderContext, *currentMesh, currentVertices);
+            RenderMesh(renderContext, *currentMesh, currentVertices, deltaTime);
         }
         
         if(KeyDown(Key_9))
