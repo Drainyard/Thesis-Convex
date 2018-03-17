@@ -30,5 +30,3 @@ void main()
 
 	normal = mat3(V * transpose(inverse(M))) * vertexNormal;
 }
-
-

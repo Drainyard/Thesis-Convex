@@ -2,7 +2,11 @@
 #define UTIL_H
 
 #ifdef DEBUG
+#ifdef _WIN32
+#define Assert(Expression) if(!(Expression)) {printf("Assertion failed in: %s on line %d\n",__FILE__,__LINE__); __debugbreak();}
+#else
 #define Assert(Expression) if(!(Expression)) {printf("Assertion failed in: %s on line %d\n",__FILE__,__LINE__); asm("int $3");}
+#endif
 #else
 #define Assert(Expression)
 #endif

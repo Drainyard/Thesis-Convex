@@ -173,30 +173,44 @@ static void ComputeMeshTransformation(mesh& object)
     object.transform = ComputeTransformation(object.scale, object.orientation, object.position);
 }
 
-static char* LoadShaderFromFile(const char* Path)
+static char* LoadShaderFromFile(const char* path)
 {
-    GLchar* Source = {};
+    GLchar* source = nullptr;
     
-    FILE* File = fopen(Path, "r");
-    if(File)
+    FILE* file = fopen(path, "r");
+    if(file)
     {
-        fseek(File, 0, SEEK_END);
-        uint32_t Size = (uint32_t)ftell(File);
-        fseek(File, 0, SEEK_SET);
-        
-        Source = (GLchar*)malloc(Size + 1 * sizeof(GLchar));
-        
-        fread(Source, Size, 1, File);
-        Source[Size] = '\0';
-        
-        fclose(File);
-    }
-    else
-    {
-        fprintf(stderr, "Could not read file %s. File does not exist.\n",Path);
+        if(fseek(file, 0L, SEEK_END) == 0)
+        {
+            auto bufSize = ftell(file);
+            if(bufSize == -1) 
+            {
+                return source;
+            }
+            
+            source = (GLchar*)malloc(sizeof(GLchar) * (bufSize + 1));
+            
+            if(fseek(file, 0L, SEEK_SET) != 0)
+            {
+                Log_A("Error reading file");
+                free(source);
+                return nullptr;
+            }
+            
+            auto newLen = fread(source, sizeof(GLchar), bufSize, file);
+            if(ferror(file) != 0)
+            {
+                Log_A("Error reading file");
+            }
+            else
+            {
+                source[newLen++] = '\0';
+            }
+        }
+        fclose(file);
     }
     
-    return Source;
+    return source;
 }
 
 static shader LoadShaders(const char* vertexFilePath, const char* fragmentFilePath)
@@ -204,13 +218,13 @@ static shader LoadShaders(const char* vertexFilePath, const char* fragmentFilePa
     GLuint vertexShaderID = glCreateShader(GL_VERTEX_SHADER);
     GLuint fragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
     
-    auto VertexShaderCode = LoadShaderFromFile(vertexFilePath);
-    auto FragmentShaderCode = LoadShaderFromFile(fragmentFilePath);
-    if(!VertexShaderCode)
+    auto vertexShaderCode = LoadShaderFromFile(vertexFilePath);
+    auto fragmentShaderCode = LoadShaderFromFile(fragmentFilePath);
+    if(!vertexShaderCode)
     {
         fprintf(stderr, "Could not load vertex shader: %s\n", vertexFilePath);
     }
-    if(!FragmentShaderCode)
+    if(!fragmentShaderCode)
     {
         fprintf(stderr, "Could not load fragment shader: %s\n", fragmentFilePath);
     }
@@ -218,7 +232,7 @@ static shader LoadShaders(const char* vertexFilePath, const char* fragmentFilePa
     GLint result = GL_FALSE;
     int infoLogLength;
     
-    glShaderSource(vertexShaderID, 1, &VertexShaderCode, NULL);
+    glShaderSource(vertexShaderID, 1, &vertexShaderCode, NULL);
     glCompileShader(vertexShaderID);
     
     glGetShaderiv(vertexShaderID, GL_COMPILE_STATUS, &result);
@@ -231,7 +245,7 @@ static shader LoadShaders(const char* vertexFilePath, const char* fragmentFilePa
     }
     
     
-    glShaderSource(fragmentShaderID, 1, &FragmentShaderCode, NULL);
+    glShaderSource(fragmentShaderID, 1, &fragmentShaderCode, NULL);
     glCompileShader(fragmentShaderID);
     
     glGetShaderiv(fragmentShaderID, GL_COMPILE_STATUS, &result);
@@ -243,7 +257,7 @@ static shader LoadShaders(const char* vertexFilePath, const char* fragmentFilePa
         printf("%s\n", &buffer[0]);
     }
     
-    printf("Linking program\n");
+    printf("Linking program: %s\n", vertexFilePath);
     GLuint programID = glCreateProgram();
     glAttachShader(programID, vertexShaderID);
     glAttachShader(programID, fragmentShaderID);
@@ -264,8 +278,8 @@ static shader LoadShaders(const char* vertexFilePath, const char* fragmentFilePa
     
     glDeleteShader(vertexShaderID);
     glDeleteShader(fragmentShaderID);
-    free(VertexShaderCode);
-    free(FragmentShaderCode);
+    free(vertexShaderCode);
+    free(fragmentShaderCode);
     
     shader newShader = {};
     newShader.programID = programID;
@@ -321,8 +335,6 @@ static void InitializeOpenGL(render_context& renderContext)
     glEnable              (GL_DEBUG_OUTPUT);
     glDebugMessageCallback((GLDEBUGPROC) MessageCallback, 0);
     
-    //glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    
     glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     
     renderContext.textureShader = LoadShaders("../shaders/texture.vert", "../shaders/texture.frag");
@@ -361,7 +373,7 @@ static void InitializeOpenGL(render_context& renderContext)
     auto pos = glGetAttribLocation(renderContext.basicShader.programID, "position");
     
     glEnableVertexAttribArray(pos);
-    glVertexAttribPointer(pos, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    glVertexAttribPointer(pos, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
     
     glBindVertexArray(0);
     
@@ -422,30 +434,29 @@ static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec
     glBindVertexArray(renderContext.lineVAO);
     glBindBuffer(GL_ARRAY_BUFFER, renderContext.lineVBO);
     
-    auto width = 0.05f * lineWidth;
-    
-    // ONLY FOR 2D!!!
-    auto dx = end.x - start.x;
-    auto dy = end.y - start.y;
-    auto normal =  glm::normalize(glm::vec2(-dy, dx));
+    auto width = 0.21f;
     
     // Double vertices
-    // 1.0f and -1.0f are Miters
+    // Vertex                     Next                  
+    GLfloat points[40] = {
+        start.x, start.y, start.z, start.x, start.y, start.z, end.x, end.y, end.z,  1.0f,
+        start.x, start.y, start.z, start.x, start.y, start.z, end.x, end.y, end.z, -1.0f,
+        end.x, end.y, end.z, start.x, start.y, start.z, end.x, end.y, end.z,        1.0f,
+        end.x, end.y, end.z, start.x, start.y, start.z, end.x, end.y, end.z,       -1.0f};
     
-    GLfloat points[24] = {
-        start.x, start.y, start.z, normal.x, normal.y, 1.0f,
-        start.x, start.y, start.z, normal.x, normal.y, 1.0f,
-        end.x, end.y, end.z, normal.x, normal.y, -1.0f,
-        end.x, end.y, end.z, normal.x, normal.y, -1.0f};
-    
-    glBufferData(GL_ARRAY_BUFFER, 24 * sizeof(GLfloat), &points[0], GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 40 * sizeof(GLfloat), &points[0], GL_DYNAMIC_DRAW);
     
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)0); // pos
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(GLfloat), (void*)0); // pos
+    
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat))); // normals
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(GLfloat), (void*)(sizeof(GLfloat) * 3)); // nextScreen
+    
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (void*)(5 * sizeof(GLfloat))); // miter
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 10 * sizeof(GLfloat), (void*)(sizeof(GLfloat) * 6));
+    
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 10 * sizeof(GLfloat), (void*)(sizeof(GLfloat) * 9));
     
     auto m = glm::scale(glm::mat4(1.0f), glm::vec3(globalScale));
     
@@ -454,8 +465,6 @@ static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec
     SetMatrixUniform(renderContext.lineShader.programID, "projection", renderContext.projectionMatrix);
     SetVec4Uniform(renderContext.lineShader.programID, "color", color);
     SetFloatUniform(renderContext.lineShader.programID, "thickness", width);
-    SetVec3Uniform(renderContext.lineShader.programID, "start", start);
-    SetVec3Uniform(renderContext.lineShader.programID, "end", end);
     
     auto screenSize = glm::vec2((float)renderContext.screenWidth, (float)renderContext.screenHeight);
     
@@ -466,6 +475,9 @@ static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderContext.lineEBO);
     glDrawElements(GL_TRIANGLES, LINE_INDICES, GL_UNSIGNED_INT, BUFFER_OFFSET(0));
     glBindVertexArray(0);
+    //glDisableVertexAttribArray(0);
+    //glDisableVertexAttribArray(1);
+    //glDisableVertexAttribArray(2);
     
 }
 
@@ -583,7 +595,7 @@ static bool IsPointOnPositiveSide(face& f, glm::vec3 v, coord_t epsilon = 0.0f)
 
 static face* GetFaceById(int id, mesh& m)
 {
-    for(int i = 0; i < m.numFaces; i++)
+    for(int i = 0; i < (int)m.faces.size(); i++)
     {
         if(m.faces[i].id == id)
             return &m.faces[i];
@@ -682,16 +694,16 @@ static void FindNeighbours(int v1Handle, int v2Handle, mesh& m, face& f, vertex*
 
 static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* vertices, int numVertices)
 {
-    if(m.numFaces == 0)
+    if(m.faces.size() == 0)
     {
-        m.faces = (face*)malloc(sizeof(face) * 2048 * 10);
-        TIME_START;
+        //m.faces = (face*)malloc(sizeof(face) * 2048 * 10);
+        /*TIME_START;
         for(int i = 0; i < 20480; i++)
         {
             m.faces[i].outsideSet = (int*)malloc(sizeof(int) * numVertices);
         }
         TIME_END("Initial malloc");
-        
+        */
         m.faceCounter = 0;
     }
     
@@ -704,14 +716,16 @@ static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* 
         return nullptr;
     }
     
-    
-    face& newFace = m.faces[m.numFaces++];
+    //face& newFace = m.faces[m.numFaces++];
+    face newFace = {};
     //newFace.outsideSet = (int*)malloc(sizeof(int) * numVertices);
     newFace.outsideSetCount = 0;
+    newFace.outsideSetSize = 0;
     
     
     newFace.neighbourCount = 0;
-    newFace.indexInMesh = m.numFaces - 1;
+    //newFace.indexInMesh = m.numFaces - 1;
+    newFace.indexInMesh = (int)m.faces.size();
     newFace.id = m.faceCounter++;
     
     FindNeighbours(v1Handle, v2Handle, m, newFace, vertices);
@@ -720,7 +734,7 @@ static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* 
     
     
     Log("Neighbourcount in add face: %d\n", newFace.neighbourCount);
-    Assert(newFace.neighbourCount <= 10);
+    //Assert(newFace.neighbourCount <= 10);
     
     v1.faceHandles[v1.numFaceHandles++] = newFace.indexInMesh;
     v2.faceHandles[v2.numFaceHandles++] = newFace.indexInMesh;
@@ -756,15 +770,15 @@ static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* 
     newFace.centerPoint = (vertices[newFace.vertices[0]].position + vertices[newFace.vertices[1]].position + vertices[newFace.vertices[2]].position) / 3.0f;
     
     m.dirty = true;
+    m.faces.push_back(newFace);
     
-    
-    return &m.faces[m.numFaces - 1];
+    return &m.faces[m.faces.size() - 1];
 }
 
 // Returns index of moved mesh
 static int RemoveFace(mesh& m, int faceId, vertex* vertices)
 {
-    if(m.numFaces == 0)
+    if(m.faces.size() == 0)
     {
         return -1;
     }
@@ -802,6 +816,7 @@ static int RemoveFace(mesh& m, int faceId, vertex* vertices)
     Assert(contained);
     
     f->outsideSetCount = 0;
+    //free(f->outsideSet);
     
     m.dirty = true;
     
@@ -830,7 +845,9 @@ static int RemoveFace(mesh& m, int faceId, vertex* vertices)
     
     // Invalidates the f pointer
     // But we only need to swap two faces to make this work
-    m.faces[indexInMesh] = m.faces[--m.numFaces];
+    //m.faces[indexInMesh] = m.faces[--m.numFaces];
+    m.faces[indexInMesh] = m.faces[m.faces.size() - 1];
+    m.faces.erase(m.faces.begin() + m.faces.size() - 1);
     
     auto& newFace = m.faces[indexInMesh];
     
@@ -930,13 +947,13 @@ static mesh& InitEmptyMesh(render_context& renderContext, int meshIndex = -1)
     if(meshIndex != -1)
     {
         auto& m = renderContext.meshes[meshIndex];
-        free(m.faces);
+        //free(m.faces);
         m.vertexCount = 0;
         m.uvCount = 0;
         m.colorCount = 0;
         m.normalCount = 0;
         m.dirty = true;
-        m.numFaces = 0;
+        //m.numFaces = 0;
         m.facesSize = 0;
         
         return m;
@@ -966,7 +983,7 @@ static mesh& InitEmptyMesh(render_context& renderContext, int meshIndex = -1)
         object.dirty = true;
         
         glBindVertexArray(0);
-        object.numFaces = 0;
+        //object.numFaces = 0;
         object.facesSize = 0;
         
         return object;
@@ -1092,9 +1109,9 @@ static void RenderPointCloud(render_context& renderContext, vertex* inputPoints,
     glVertexAttribDivisor(2, 1);
     
     auto m = glm::scale(glm::mat4(1.0f), glm::vec3(globalScale));
-    SetMatrixUniform(renderContext.basicShader.programID, "M", m);
-    SetMatrixUniform(renderContext.basicShader.programID, "V", renderContext.viewMatrix);
-    SetMatrixUniform(renderContext.basicShader.programID, "P", renderContext.projectionMatrix);
+    SetMatrixUniform(renderContext.particleShader.programID, "M", m);
+    SetMatrixUniform(renderContext.particleShader.programID, "V", renderContext.viewMatrix);
+    SetMatrixUniform(renderContext.particleShader.programID, "P", renderContext.projectionMatrix);
     
     glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, numPoints);
     
@@ -1106,23 +1123,83 @@ static void RenderPointCloud(render_context& renderContext, vertex* inputPoints,
 static void RenderQuad(render_context& renderContext, glm::vec3 position = glm::vec3(0.0f), glm::quat orientation = glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3 scale = glm::vec3(1.0f), glm::vec4 color = glm::vec4(1.0f))
 {
     glBindVertexArray(renderContext.quadVAO);
-    
-    renderContext.right = glm::normalize(glm::cross(renderContext.direction, renderContext.up));
+    glUseProgram(renderContext.basicShader.programID);
     
     auto m = ComputeTransformation(scale, orientation, position);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, renderContext.quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(GLfloat), &renderContext.quadVertices[0], GL_STATIC_DRAW);
+    
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
     
     SetMatrixUniform(renderContext.basicShader.programID, "M", m);
     SetMatrixUniform(renderContext.basicShader.programID, "V", renderContext.viewMatrix);
     SetMatrixUniform(renderContext.basicShader.programID, "P", renderContext.projectionMatrix);
     SetVec4Uniform(renderContext.basicShader.programID, "c", color);
     
+    
     glDrawElements(GL_TRIANGLES, sizeof(renderContext.quadIndices), GL_UNSIGNED_INT, (void*)0);
     glBindVertexArray(0);
 }
 
+static void RenderFaceEdges(render_context& renderContext, std::vector<edge>& edges, vertex v1, vertex v2, vertex v3, glm::vec4 edgeColor, float lineWidth)
+{
+    bool e1Drawn = false;
+    bool e2Drawn = false;
+    bool e3Drawn = false;
+    
+    for(const auto& e : edges)
+    {
+        if(e.origin == v1.vertexIndex && e.end == v2.vertexIndex || e.origin == v2.vertexIndex && e.end == v1.vertexIndex)
+        {
+            e1Drawn = true;
+        }
+        
+        if(e.origin == v2.vertexIndex && e.end == v3.vertexIndex || e.origin == v3.vertexIndex && e.end == v2.vertexIndex)
+        {
+            e2Drawn = true;
+        }
+        
+        if(e.origin == v1.vertexIndex && e.end == v3.vertexIndex || e.origin == v3.vertexIndex && e.end == v1.vertexIndex)
+        {
+            e3Drawn = true;
+        }
+    }
+    
+    if(!e1Drawn)
+    {
+        RenderLine(renderContext, v1.position, v2.position, edgeColor, lineWidth);
+        edge e = {};
+        e.origin = v1.vertexIndex;
+        e.end = v2.vertexIndex;
+        edges.push_back(e);
+    }
+    
+    if(!e2Drawn)
+    {
+        RenderLine(renderContext, v2.position, v3.position, edgeColor, lineWidth);
+        edge e = {};
+        e.origin = v2.vertexIndex;
+        e.end = v3.vertexIndex;
+        edges.push_back(e);
+    }
+    
+    if(!e3Drawn)
+    {
+        RenderLine(renderContext, v3.position, v1.position, edgeColor, lineWidth);
+        edge e = {};
+        e.origin = v1.vertexIndex;
+        e.end = v3.vertexIndex;
+        edges.push_back(e);
+    }
+    
+    
+}
+
 static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
 {
-    if(m.numFaces == 0)
+    if(m.faces.size() == 0)
     {
         return;
     }
@@ -1165,10 +1242,11 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
     {
         free(m.currentVBO);
         m.dirty = false;
-        m.currentVBO = BuildVertexBuffer(renderContext, m.faces, m.numFaces, vertices);
+        m.currentVBO = BuildVertexBuffer(renderContext, m.faces.data(), (int)m.faces.size(), vertices);
     }
     
-    m.vertexCount = m.numFaces * 3;
+    //m.vertexCount = m.numFaces * 3;
+    m.vertexCount = (int)m.faces.size() * 3;
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_info) * m.vertexCount, &m.currentVBO[0], GL_STATIC_DRAW);
     
     glEnableVertexAttribArray(0);
@@ -1188,7 +1266,7 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
     glBindVertexArray(0);
     
     //auto lineColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    auto lineWidth = 10.0f;
+    auto lineWidth = 1.0f;
     auto normalColor = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
     auto faceNormalColor = glm::vec4(191.0f / 255.0f, 0.0f, 0.0f, 1.0f);
     
@@ -1198,9 +1276,11 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
     auto c2 = faceNormalColor; //glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
     auto c3 = faceNormalColor; //glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
     
+    std::vector<edge> edges;
+    
     if(renderContext.renderNormals)
     {
-        for(int i = 0; i < m.numFaces; i++)
+        for(int i = 0; i < (int)m.faces.size(); i++)
         {
             auto& f = m.faces[i];
             
@@ -1208,19 +1288,20 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
             auto v2 = vertices[f.vertices[1]];
             auto v3 = vertices[f.vertices[2]];
             
+            //RenderFaceEdges(renderContext, edges, v1, v2, v3, faceNormalColor, lineWidth);
+            
             RenderLine(renderContext, v1.position, v1.position + f.faceNormal * lineLength, normalColor, lineWidth);
+            
             RenderLine(renderContext, v2.position, v2.position + f.faceNormal * lineLength, normalColor, lineWidth);
+            
             RenderLine(renderContext, v3.position, v3.position + f.faceNormal * lineLength, normalColor, lineWidth);
-            RenderLine(renderContext, v1.position, v2.position, c1, lineWidth);
-            RenderLine(renderContext, v2.position, v3.position, c2, lineWidth);
-            RenderLine(renderContext, v3.position, v1.position, c3, lineWidth);
             
             RenderLine(renderContext, f.centerPoint, f.centerPoint + lineLength * f.faceNormal, faceNormalColor, lineWidth);
         }
     }
     else
     {
-        for(int i = 0; i < m.numFaces; i++)
+        for(int i = 0; i < (int)m.faces.size(); i++)
         {
             auto& f = m.faces[i];
             
@@ -1228,13 +1309,11 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
             auto v2 = vertices[f.vertices[1]];
             auto v3 = vertices[f.vertices[2]];
             
-            RenderLine(renderContext, v1.position, v2.position, c1, lineWidth);
-            RenderLine(renderContext, v2.position, v3.position, c2, lineWidth);
-            RenderLine(renderContext, v3.position, v1.position, c3, lineWidth);
+            //RenderFaceEdges(renderContext, edges, v1, v2, v3, faceNormalColor, lineWidth);
         }
     }
     
-    //RenderQuad(renderContext, vertices[renderContext.debugContext.currentDistantPoint].position, glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(globalScale), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
+    RenderQuad(renderContext, vertices[renderContext.debugContext.currentDistantPoint].position, glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(globalScale), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
     
     if(renderContext.debugContext.currentFaceIndex != -1)
     {
@@ -1246,7 +1325,7 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices)
     {
         auto v1 = vertices[e.origin];
         auto v2 = vertices[e.end];
-        RenderLine(renderContext, v1.position, v2.position, glm::vec4(1.0f), 30.0f);
+        RenderLine(renderContext, v1.position, v2.position, glm::vec4(1.0f), lineWidth);
     }
 }
 
@@ -1286,7 +1365,7 @@ static void ComputeMatrices(render_context& renderContext, double deltaTime)
     if(renderContext.FoV >= 45.0f)
         renderContext.FoV = 45.0f;
     
-    renderContext.projectionMatrix = glm::perspective(glm::radians(renderContext.FoV), (float)renderContext.screenWidth / (float)renderContext.screenHeight, renderContext.near, renderContext.far);
+    renderContext.projectionMatrix = glm::perspective(glm::radians(renderContext.FoV), (float)renderContext.screenWidth / (float)renderContext.screenHeight, renderContext.nearPlane, renderContext.farPlane);
     
     float panSpeed = 30.0f * (float)deltaTime;
     if(Key(Key_W))

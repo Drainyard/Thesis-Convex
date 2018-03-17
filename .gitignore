@@ -5,6 +5,7 @@
 4sh.sh
 
 build/main
+.vs
 
 ### C ###
 # Prerequisites

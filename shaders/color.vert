@@ -30,6 +30,3 @@ void main()
 	normal = mat3(transpose(inverse(V * M))) * vertexNormal;
 	c = color;
 }
-
-
-

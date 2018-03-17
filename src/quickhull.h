@@ -155,7 +155,19 @@ coord_t GenerateInitialSimplex(render_context& renderContext, vertex* vertices, 
 
 void AddToOutsideSet(face& f, vertex& v)
 {
-    f.outsideSet[f.outsideSetCount++] = v.vertexIndex;
+    /*if(f.outsideSetSize == 0)
+    {
+        f.outsideSetSize = 32;
+        f.outsideSet = (int*)malloc(sizeof(int) * f.outsideSetSize);
+    }
+    if(f.outsideSetCount + 1 > f.outsideSetSize)
+    {
+        f.outsideSetSize *= 2;
+        f.outsideSet = (int*)realloc(f.outsideSet, f.outsideSetSize);
+    }
+    
+    f.outsideSet[f.outsideSetCount++] = v.vertexIndex;*/
+    f.outsideSet.push_back(v.vertexIndex);
     v.assigned = true;
 }
 /*
@@ -237,6 +249,8 @@ void AssignToOutsideSets(vertex* vertices, int numVertices, face* faces, int num
             }
         }
     }
+    
+    
 }
 
 bool EdgeUnique(edge& input, std::vector<edge>& list)
@@ -345,14 +359,14 @@ mesh& InitQuickHull(render_context& renderContext, vertex* vertices, int numVert
     auto& m = InitEmptyMesh(renderContext);
     m.position = glm::vec3(0.0f);
     m.scale = glm::vec3(globalScale);
-    m.numFaces = 0;
+    //m.numFaces = 0;
     m.facesSize = 0;
     *epsilon = GenerateInitialSimplex(renderContext, vertices, numVertices, m);
-    AssignToOutsideSets(vertices, numVertices, m.faces,  m.numFaces, *epsilon);
+    AssignToOutsideSets(vertices, numVertices, m.faces.data(),  (int)m.faces.size(), *epsilon);
     
-    for(int i = 0; i < m.numFaces; i++)
+    for(int i = 0; i < (int)m.faces.size(); i++)
     {
-        if(m.faces[i].outsideSetCount > 0)
+        if(m.faces[i].outsideSet.size() > 0)
         {
             faceStack.push_back(m.faces[i].indexInMesh);
         }
@@ -362,14 +376,14 @@ mesh& InitQuickHull(render_context& renderContext, vertex* vertices, int numVert
 
 face* QuickHullFindNextIteration(render_context& renderContext, mesh& m, std::vector<int>& faceStack)
 {
-    if(faceStack.size() <= 0)
+    if(faceStack.size() == 0)
         return nullptr;
     
     face* res = nullptr;
     
     auto f = &m.faces[faceStack[faceStack.size() - 1]];
     
-    if(f && f->outsideSetCount > 0)
+    if(f && f->outsideSet.size() > 0)
     {
         renderContext.debugContext.currentFaceIndex = f->indexInMesh;
         renderContext.debugContext.currentDistantPoint = f->furthestPointIndex;
@@ -389,7 +403,7 @@ void QuickHullHorizon(render_context& renderContext, mesh& m, vertex* vertices, 
 { 
     v.push_back(f.indexInMesh);
     
-    auto& p = vertices[renderContext.debugContext.currentDistantPoint];
+    auto& p = vertices[f.furthestPointIndex];
     
     for(size_t i = 0; i < v.size(); i++)
     {
@@ -412,7 +426,8 @@ void QuickHullHorizon(render_context& renderContext, mesh& m, vertex* vertices, 
     }
     
     Log("V size: %zd\n", v.size());
-    *prevIterationFaces = m.numFaces;
+    //*prevIterationFaces = m.numFaces;
+    *prevIterationFaces = (int)m.faces.size();
     
     //std::vector<edge> horizon;
     renderContext.debugContext.horizon.clear();
@@ -422,13 +437,15 @@ void QuickHullHorizon(render_context& renderContext, mesh& m, vertex* vertices, 
 
 void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices, std::vector<int>& faceStack, int fHandle, std::vector<int>& v, int prevIterationFaces, int numVertices, coord_t epsilon)
 {
-    face& f = m.faces[fHandle];
+    
     
     Log("Horizon: %zd\n", renderContext.debugContext.horizon.size());
     
     for(const auto& e : renderContext.debugContext.horizon)
     {
         auto* newF = AddFace(m, e.origin, e.end, renderContext.debugContext.currentDistantPoint, vertices, numVertices);
+        
+        face& f = m.faces[fHandle];
         
         if(newF)
         {
@@ -449,7 +466,7 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
     {
         auto& fInV = m.faces[handle];
         
-        for(int osIndex = 0; osIndex < fInV.outsideSetCount; osIndex++)
+        for(int osIndex = 0; osIndex < (int)fInV.outsideSet.size(); osIndex++)
         {
             auto osHandle = fInV.outsideSet[osIndex];
             auto& q = vertices[osHandle];
@@ -460,40 +477,41 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
     // The way we understand this, is that unassigned now means any point that was
     // assigned in the first round, but is part of a face that is about to be
     // removed. Thus about to be unassigned.
-    for(int newFaceIndex = prevIterationFaces; newFaceIndex < m.numFaces; newFaceIndex++)
+    for(int newFaceIndex = prevIterationFaces; newFaceIndex < (int)m.faces.size(); newFaceIndex++)
     {
-        if(m.faces[newFaceIndex].outsideSetCount > 0)
+        if(m.faces[newFaceIndex].outsideSet.size() > 0)
             continue;
         
         coord_t currentDist = 0.0;
         int currentDistIndex = 0;
+        auto& newFace = m.faces[newFaceIndex];
         
         for(const auto& handle : v)
         {
             auto& fInV = m.faces[handle];
-            for(int osIndex = 0; osIndex < fInV.outsideSetCount; osIndex++)
+            for(int osIndex = 0; osIndex < (int)fInV.outsideSet.size(); osIndex++)
             {
                 auto osHandle = fInV.outsideSet[osIndex];
                 auto& q = vertices[osHandle];
-                if(!q.assigned && q.numFaceHandles == 0 && IsPointOnPositiveSide(m.faces[newFaceIndex], q, epsilon))
+                if(!q.assigned && q.numFaceHandles == 0 && IsPointOnPositiveSide(newFace, q, epsilon))
                 {
-                    auto newDist = DistancePointToFace(m.faces[newFaceIndex], q);
+                    auto newDist = DistancePointToFace(newFace, q);
                     if(newDist > currentDist)
                     {
                         currentDist = newDist;
                         currentDistIndex = q.vertexIndex;
-                        m.faces[newFaceIndex].furthestPointIndex = q.vertexIndex;
+                        newFace.furthestPointIndex = q.vertexIndex;
                     }
                     
-                    Assert(m.faces[newFaceIndex].outsideSetCount <= numVertices);
-                    AddToOutsideSet(m.faces[newFaceIndex], q);
+                    Assert((int)newFace.outsideSet.size() <= numVertices);
+                    AddToOutsideSet(newFace, q);
                 }
             }
         }
     }
     
     std::vector<int> uniqueInV;
-    uniqueInV.reserve(numVertices / 3);
+    uniqueInV.reserve(v.size());
     for(size_t i = 0; i < v.size(); i++)
     {
         bool alreadyAdded = false;
@@ -512,13 +530,14 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
         }
     }
     
-    Log("Faces before: %d\n", m.numFaces);
+    //Log("Faces before: %d\n", m.numFaces);
+    Log("Faces before: %d\n", m.faces.size());
     
     for(size_t vIndex = 0; vIndex < uniqueInV.size(); vIndex++)
     {
-        Log("Removing face: %d\n", id);
+        Log("Removing face: %d\n", uniqueInV[vIndex]);
         
-        auto movedHandle = m.numFaces - 1;
+        auto movedHandle = m.faces.size() - 1;//m.numFaces - 1;
         
         auto newHandle = RemoveFace(m, uniqueInV[vIndex], vertices);
         if(newHandle == -1)
@@ -557,25 +576,26 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
     }
     renderContext.debugContext.currentFaceIndex = -1;
     
-    Log("Faces After: %d\n", m.numFaces);
+    //Log("Faces After: %d\n", m.numFaces);
+    Log("Faces After: %d\n", m.faces.size());
     
-    for(int i = 0; i < m.numFaces; i++)
+    for(int i = 0; i < (int)m.faces.size(); i++)
     {
         m.faces[i].visited = false;
     }
     
-    Log("Number of faces: %d\n", m.numFaces);
+    //Log("Number of faces: %d\n", m.numFaces);
 }
 
 void QuickHull(render_context& renderContext, qh_context& qhContext)
 {
     qhContext.currentFace = nullptr;
     qhContext.faceStack.clear();
-    qhContext.faceStack.reserve(qhContext.numberOfPoints / 3);
+    //qhContext.faceStack.reserve(qhContext.numberOfPoints / 3);
     qhContext.epsilon = 0.0;
     qhContext.m = InitQuickHull(renderContext, qhContext.vertices, qhContext.numberOfPoints, qhContext.faceStack, &qhContext.epsilon);
     qhContext.v.clear();
-    qhContext.v.reserve(qhContext.numberOfPoints / 3);
+    //qhContext.v.reserve(qhContext.numberOfPoints / 3);
     qhContext.previousIteration = 0;
     while(qhContext.faceStack.size() > 0)
     {
@@ -594,11 +614,11 @@ mesh& QuickHull(render_context& renderContext, vertex* vertices, int numVertices
 {
     face* currentFace = nullptr;
     std::vector<int> faceStack;
-    faceStack.reserve(numVertices / 3);
+    //faceStack.reserve(numVertices / 3);
     coord_t epsilon;
     auto& m = InitQuickHull(renderContext, vertices, numVertices, faceStack, &epsilon);
     std::vector<int> v;
-    v.reserve(numVertices / 3);
+    //v.reserve(numVertices / 3);
     int previousIteration = 0;
     while(faceStack.size() > 0)
     {
@@ -613,22 +633,8 @@ mesh& QuickHull(render_context& renderContext, vertex* vertices, int numVertices
         }
     }
     
-    Log_A("Number of triangles: %d\n", m.numFaces);
+    //Log_A("Number of triangles: %d\n", m.numFaces);
     return m;
-}
-
-qh_context InitializeQHContext(vertex* vertices, int numberOfPoints)
-{
-    qh_context qhContext = {};
-    qhContext.vertices = CopyVertices(vertices, numberOfPoints);
-    qhContext.numberOfPoints = numberOfPoints;
-    qhContext.epsilon = 0.0f;
-    qhContext.iter = QHIteration::initQH;
-    qhContext.currentFace = 0;
-    qhContext.previousIteration = 0;
-    qhContext.initialized = true;
-    
-    return qhContext;
 }
 
 void InitializeQHContext(qh_context& qhContext, vertex* vertices, int numberOfPoints)
@@ -645,7 +651,7 @@ void InitializeQHContext(qh_context& qhContext, vertex* vertices, int numberOfPo
     qhContext.numberOfPoints = numberOfPoints;
     qhContext.epsilon = 0.0f;
     qhContext.iter = QHIteration::initQH;
-    qhContext.currentFace = 0;
+    qhContext.currentFace = nullptr;
     qhContext.previousIteration = 0;
     qhContext.initialized = true;
 }

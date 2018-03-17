@@ -120,7 +120,8 @@ struct face
     int vertices[3];
     glm::vec3 faceNormal;
     glm::vec4 faceColor;
-    int* outsideSet;
+    std::vector<int> outsideSet;
+    //int* outsideSet;
     int outsideSetCount;
     int outsideSetSize;
     int furthestPointIndex;
@@ -148,8 +149,9 @@ struct mesh
     bool dirty;
     GLfloat* currentVBO;
     
-    face* faces;
-    int numFaces;
+    //face* faces;
+    //int numFaces;
+    std::vector<face> faces;
     int facesSize;
     
     GLuint VAO;
@@ -192,8 +194,8 @@ struct render_context
     glm::vec3 up;
     glm::vec3 right;
     
-    float near;
-    float far;
+    float nearPlane;
+    float farPlane;
     
     glm::vec3 originOffset;
     

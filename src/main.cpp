@@ -5,6 +5,8 @@
 #include <stack>
 #include <cstdio>
 #include <cstdlib>
+
+#define _USE_MATH_DEFINES
 #include <cmath>
 #include <algorithm>
 #include "timing.h"
@@ -12,11 +14,23 @@
 #include <stb_image.h>
 #include <glad/glad.h>
 #include "GLFW/glfw3.h"
+
+// BEGIN IGNORE WARNINGS IN LIBS ON Windows
+#ifdef _WIN32
+#pragma warning(push, 0)
+#endif
+
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp> 
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+
+// END IGNORE WARNINGS  IN LIBS ON Windows
+#ifdef _WIN32
+#pragma warning(pop)
+#endif
+
 
 #include "util.h"
 #include "keys.h"
@@ -31,7 +45,7 @@ static input_state inputState;
 #include "rendering.cpp"
 
 #include "quickhull.h"
-#include "incremental.h"
+//#include "incremental.h"
 
 #include "hull.h"
 
@@ -114,17 +128,17 @@ vertex* GenerateNewPointSet(render_context& renderContext, vertex** naive, verte
 int main()
 {
     // Degenerate: 1520515408
-    //auto seed = 1520515408; //1520254626;//time(NULL);
+    //auto seed = 1521294278;
     auto seed = time(NULL);
     srand((unsigned int)seed);
-    printf("Seed: %ld\n", seed);
+    printf("Seed: %zd\n", seed);
     render_context renderContext = {};
     renderContext.FoV = 45.0f;
     renderContext.position = glm::vec3(0.0f, 50.5f, 30.0f);
     renderContext.direction = glm::vec3(0.0f, -0.75f, -1.0f);
     renderContext.up = glm::vec3(0.0f, 1.0f, 0.0f);
-    renderContext.near = 0.1f;
-    renderContext.far =  10000.0f;
+    renderContext.nearPlane = 0.1f;
+    renderContext.farPlane =  10000.0f;
     renderContext.originOffset = glm::vec3(5.0f, 0.0f, 5.0f);
     renderContext.renderPoints = false;
     renderContext.renderNormals = false;
@@ -147,7 +161,7 @@ int main()
     
     HullType hullType = HullType::QH;
     
-    int numberOfPoints = 5000;
+    int numberOfPoints = 500;
     auto vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 100.0f);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ");
     hull h = {};
@@ -160,6 +174,9 @@ int main()
     auto currentFrameCount = 0;
     
     auto totalDelta = 0.0;
+    
+    Log_A("Sizeof vertex: %zd\n", sizeof(vertex));
+    Log_A("Sizeof all vertices: %zd\n", sizeof(vertex) * numberOfPoints);
     
     // Check if the ESC key was pressed or the window was closed
     while(!KeyDown(Key_Escape) &&
