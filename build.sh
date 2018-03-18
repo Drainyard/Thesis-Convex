@@ -9,4 +9,3 @@ pushd build
 clang -Weverything $WIGNORE -g -O0 --std=c++14 $DEBUG ../src/main.cpp -isystem ../libs/glad/include -isystem ../libs -L/usr/local/lib -L../libs/glad -L../libs -ldl -lm -lGL -lglfw -lglad -lstdc++ -o main -Wl,-rpath,\$ORIGIN/../build
 
 popd
-

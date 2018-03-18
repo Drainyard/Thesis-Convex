@@ -6,7 +6,10 @@
 #include <cstdio>
 #include <cstdlib>
 
+#ifdef _WIN32
 #define _USE_MATH_DEFINES
+#endif
+
 #include <cmath>
 #include <algorithm>
 #include "timing.h"
@@ -163,7 +166,7 @@ int main()
     
     //int numberOfPoints = 645932; // Man in vest numbers
     //int numberOfPoints = 17536; // Arnold
-    int numberOfPoints = 700000;
+    int numberOfPoints = 7000;
     auto vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 200.0f);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ");
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");

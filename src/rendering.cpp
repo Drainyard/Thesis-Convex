@@ -402,7 +402,7 @@ static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec
     glBindVertexArray(renderContext.lineVAO);
     glBindBuffer(GL_ARRAY_BUFFER, renderContext.lineVBO);
     
-    auto width = 0.21f;
+    auto width = 0.21f * lineWidth;
     
     // Double vertices
     // Vertex                     Next                  
@@ -658,7 +658,7 @@ static void FindNeighbours(int v1Handle, int v2Handle, mesh& m, face& f, vertex*
     }
 }
 
-static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* vertices, int numVertices)
+static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* vertices)
 {
     auto& v1 = vertices[v1Handle];
     auto& v2 = vertices[v2Handle];
@@ -1081,17 +1081,17 @@ static void RenderFaceEdges(render_context& renderContext, std::vector<edge>& ed
     
     for(const auto& e : edges)
     {
-        if(e.origin == v1.vertexIndex && e.end == v2.vertexIndex || e.origin == v2.vertexIndex && e.end == v1.vertexIndex)
+        if((e.origin == v1.vertexIndex && e.end == v2.vertexIndex) || (e.origin == v2.vertexIndex && e.end == v1.vertexIndex))
         {
             e1Drawn = true;
         }
         
-        if(e.origin == v2.vertexIndex && e.end == v3.vertexIndex || e.origin == v3.vertexIndex && e.end == v2.vertexIndex)
+        if((e.origin == v2.vertexIndex && e.end == v3.vertexIndex) || (e.origin == v3.vertexIndex && e.end == v2.vertexIndex))
         {
             e2Drawn = true;
         }
         
-        if(e.origin == v1.vertexIndex && e.end == v3.vertexIndex || e.origin == v3.vertexIndex && e.end == v1.vertexIndex)
+        if((e.origin == v1.vertexIndex && e.end == v3.vertexIndex) || (e.origin == v3.vertexIndex && e.end == v1.vertexIndex))
         {
             e3Drawn = true;
         }
@@ -1212,10 +1212,6 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices,
     
     auto lineLength = 20.0f;
     
-    auto c1 = faceNormalColor; //glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    auto c2 = faceNormalColor; //glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    auto c3 = faceNormalColor; //glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    
     std::vector<edge> edges;
     
     if(renderContext.renderNormals)
@@ -1241,7 +1237,7 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices,
     }
     else
     {
-        for(int i = 0; i < (int)m.faces.size(); i++)
+        /*for(int i = 0; i < (int)m.faces.size(); i++)
         {
             auto& f = m.faces[i];
             
@@ -1249,8 +1245,8 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices,
             auto v2 = vertices[f.vertices[1]];
             auto v3 = vertices[f.vertices[2]];
             
-            //RenderFaceEdges(renderContext, edges, v1, v2, v3, faceNormalColor, lineWidth);
-        }
+            RenderFaceEdges(renderContext, edges, v1, v2, v3, faceNormalColor, lineWidth);
+        }*/
     }
     
     RenderQuad(renderContext, vertices[renderContext.debugContext.currentDistantPoint].position, glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(globalScale), glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
