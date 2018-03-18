@@ -443,9 +443,9 @@ static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderContext.lineEBO);
     glDrawElements(GL_TRIANGLES, LINE_INDICES, GL_UNSIGNED_INT, BUFFER_OFFSET(0));
     glBindVertexArray(0);
-    //glDisableVertexAttribArray(0);
-    //glDisableVertexAttribArray(1);
-    //glDisableVertexAttribArray(2);
+    glDisableVertexAttribArray(0);
+    glDisableVertexAttribArray(1);
+    glDisableVertexAttribArray(2);
     
 }
 
@@ -636,26 +636,15 @@ static void FindNeighbours(int v1Handle, int v2Handle, mesh& m, face& f, vertex*
                 auto& foundNeighbour = m.faces[v1Face];
                 
                 // Set neighbour on current face
-                //auto index = f.neighbourCount++;
-                
                 neighbour newN = {};
                 newN.faceHandle = v1Face;
                 newN.originVertex = v1.vertexIndex;
                 newN.endVertex = v2.vertexIndex;
-                /*f.neighbours[index].faceHandle = v1Face;
-                f.neighbours[index].originVertex = v1.vertexIndex;
-                f.neighbours[index].endVertex = v2.vertexIndex;
-                f.neighbours[index].id = neighbour.id;*/
+                
                 newN.id = foundNeighbour.id;
                 f.neighbours.push_back(newN);
                 
                 // Set neighbour on other face
-                /*auto neighbourIndex = neighbour.neighbourCount++;
-                neighbour.neighbours[neighbourIndex].faceHandle = f.indexInMesh;
-                neighbour.neighbours[neighbourIndex].endVertex = v1.vertexIndex;
-                neighbour.neighbours[neighbourIndex].originVertex = v2.vertexIndex;
-                neighbour.neighbours[neighbourIndex].id = f.id;*/
-                
                 neighbour fN = {};
                 fN.faceHandle = f.indexInMesh;
                 fN.endVertex = v1.vertexIndex;
@@ -664,11 +653,6 @@ static void FindNeighbours(int v1Handle, int v2Handle, mesh& m, face& f, vertex*
                 foundNeighbour.neighbours.push_back(fN);
                 
                 foundNeighbour.visited = false;
-                
-                // Can we have 3+ neighbours while we're constructing?
-                // Meaning: Can we temporarily have malformed triangles?
-                //Assert(neighbour.neighbourCount <= 3);
-                //Assert(f.neighbourCount <= 3);
             }
         }
     }
@@ -676,19 +660,6 @@ static void FindNeighbours(int v1Handle, int v2Handle, mesh& m, face& f, vertex*
 
 static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* vertices, int numVertices)
 {
-    if(m.faces.size() == 0)
-    {
-        //m.faces = (face*)malloc(sizeof(face) * 2048 * 10);
-        /*TIME_START;
-        for(int i = 0; i < 20480; i++)
-        {
-            m.faces[i].outsideSet = (int*)malloc(sizeof(int) * numVertices);
-        }
-        TIME_END("Initial malloc");
-        */
-        m.faceCounter = 0;
-    }
-    
     auto& v1 = vertices[v1Handle];
     auto& v2 = vertices[v2Handle];
     auto& v3 = vertices[v3Handle];
@@ -698,15 +669,8 @@ static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* 
         return nullptr;
     }
     
-    //face& newFace = m.faces[m.numFaces++];
     face newFace = {};
-    //newFace.outsideSet = (int*)malloc(sizeof(int) * numVertices);
-    newFace.outsideSetCount = 0;
-    newFace.outsideSetSize = 0;
     
-    
-    //newFace.neighbourCount = 0;
-    //newFace.indexInMesh = m.numFaces - 1;
     newFace.indexInMesh = (int)m.faces.size();
     newFace.id = m.faceCounter++;
     
@@ -715,8 +679,7 @@ static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* 
     FindNeighbours(v2Handle, v3Handle, m, newFace, vertices);
     
     
-    //Log("Neighbourcount in add face: %d\n", newFace.neighbourCount);
-    //Assert(newFace.neighbourCount <= 10);
+    Log("Neighbourcount in add face: %d\n", newFace.neighbours.size());
     
     v1.faceHandles[v1.numFaceHandles++] = newFace.indexInMesh;
     v2.faceHandles[v2.numFaceHandles++] = newFace.indexInMesh;
@@ -765,7 +728,6 @@ static int RemoveFace(mesh& m, int faceId, vertex* vertices)
         return -1;
     }
     
-    //face* f = GetFaceById(faceId, m);
     face& f = m.faces[faceId];
     
     auto& v1 = vertices[f.vertices[0]];
@@ -791,9 +753,6 @@ static int RemoveFace(mesh& m, int faceId, vertex* vertices)
     }
     Assert(contained);
     
-    f.outsideSetCount = 0;
-    //free(f->outsideSet);
-    
     m.dirty = true;
     
     // Go through all of f's neighbours to remove itself
@@ -809,10 +768,8 @@ static int RemoveFace(mesh& m, int faceId, vertex* vertices)
             if(neighbourFace.neighbours[i].faceHandle == f.indexInMesh)
             {
                 Log("Removing\n");
-                neighbourFace.neighbours.erase(neighbourFace.neighbours.begin() + i);
                 // Found the neighbour
-                //neighbourFace.neighbours[i] = neighbourFace.neighbours[neighbourFace.neighbourCount - 1];
-                //neighbourFace.neighbourCount--;
+                neighbourFace.neighbours.erase(neighbourFace.neighbours.begin() + i);
                 break;
             }
         }
@@ -822,7 +779,6 @@ static int RemoveFace(mesh& m, int faceId, vertex* vertices)
     
     // Invalidates the f pointer
     // But we only need to swap two faces to make this work
-    //m.faces[indexInMesh] = m.faces[--m.numFaces];
     m.faces[indexInMesh] = m.faces[m.faces.size() - 1];
     m.faces.erase(m.faces.begin() + m.faces.size() - 1);
     
@@ -924,13 +880,11 @@ static mesh& InitEmptyMesh(render_context& renderContext, int meshIndex = -1)
     if(meshIndex != -1)
     {
         auto& m = renderContext.meshes[meshIndex];
-        //free(m.faces);
         m.vertexCount = 0;
         m.uvCount = 0;
         m.colorCount = 0;
         m.normalCount = 0;
         m.dirty = true;
-        //m.numFaces = 0;
         m.facesSize = 0;
         
         return m;
@@ -960,7 +914,6 @@ static mesh& InitEmptyMesh(render_context& renderContext, int meshIndex = -1)
         object.dirty = true;
         
         glBindVertexArray(0);
-        //object.numFaces = 0;
         object.facesSize = 0;
         
         return object;
@@ -1233,7 +1186,6 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices,
         m.currentVBO = BuildVertexBuffer(renderContext, m.faces.data(), (int)m.faces.size(), vertices);
     }
     
-    //m.vertexCount = m.numFaces * 3;
     m.vertexCount = (int)m.faces.size() * 3;
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_info) * m.vertexCount, &m.currentVBO[0], GL_STATIC_DRAW);
     
