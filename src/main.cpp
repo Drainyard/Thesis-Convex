@@ -6,10 +6,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-#ifdef _WIN32
 #define _USE_MATH_DEFINES
-#endif
-
 #include <cmath>
 #include <algorithm>
 #include "timing.h"
@@ -132,8 +129,7 @@ int main()
 {
     // Degenerate: 1520515408
     //auto seed = 1521294278;
-    auto seed = 1521467456;
-    //auto seed = time(NULL);
+    auto seed = time(NULL);
     srand((unsigned int)seed);
     printf("Seed: %zd\n", seed);
     render_context renderContext = {};
@@ -167,7 +163,7 @@ int main()
     
     //int numberOfPoints = 645932; // Man in vest numbers
     //int numberOfPoints = 17536; // Arnold
-    int numberOfPoints = 40;
+    int numberOfPoints = 90000;
     auto vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 200.0f);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ");
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
