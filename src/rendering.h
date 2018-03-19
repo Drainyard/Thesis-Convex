@@ -122,8 +122,6 @@ struct face
     glm::vec4 faceColor;
     std::vector<int> outsideSet;
     //int* outsideSet;
-    int outsideSetCount;
-    int outsideSetSize;
     int furthestPointIndex;
     
     glm::vec3 centerPoint;
