@@ -33,6 +33,9 @@ struct iVertexStruct
 {
     int v[3];
     int vNum; //id?
+    iEdge duplicate; //pointer to incident cone edge
+    bool isOnHull;
+    bool isProcessed;   
     iVertex next, prev;
 };
 
@@ -40,6 +43,8 @@ struct iEdgeStruct
 {
     iFace adjFace[2];
     iVertex endPoints[2];
+    iFace newFace; //pointer to incident cone face
+    bool shouldBeDeleted;
     iEdge next, prev;
 };
 
@@ -47,12 +52,55 @@ struct iFaceStruct
 {
     iEdge edge[3];
     iVertex vertex[3];
+    bool isVisible;
     iFace next, prev;
 };
-
+ //Head pointers to each of the three lists
 iVertex iVertices = nullptr;
 iEdge iEdges = nullptr;
 iFace iFaces = nullptr;
+
+iVertex createNullVertex()
+{
+    iVertex v;
+
+    INC_NEW(v, iVertexStruct);
+    v->duplicate = nullptr;
+    v->isOnHull = false;
+    v->isProcessed = false;
+    INC_ADD(iVertices, v);
+
+    return v;
+}
+
+iEdge createNullEdge()
+{
+    iEdge e;
+
+    INC_NEW(v, iEdgeStruct);
+    e->adjFace[0] = e->adjFace[1] = e->newFace = nullptr;
+    e->endPoints[0] = e->endPoints[1] = nullptr;
+    e->shouldBeDeleted = false;
+    INC_ADD(iEdges, e);
+
+    return e;
+}
+
+iFace createNullFace()
+{
+    iFace f;
+    int i;
+
+    INC_NEW(f, iFaceStruct);
+    for (i=1; i<4; i++) {
+        f->edge[i] = nullptr;
+        f->vertex[i] = nullptr;
+    }
+    f->isVisible = false;
+    INC_ADD(iFaces, f);
+
+    return f;
+}
 
 mesh& InitIncHull(render_context &renderContext, vertex* vertices, int numVertices)
 {
@@ -77,18 +125,13 @@ void IncHullIteration(render_context &renderContext, mesh &m, vertex *vertices, 
     
 }
 
-mesh &IncHull(render_context &renderContext, vertex *vertices, int numVertices)
+void IncHull(render_context& renderContext, inc_context& incContext)
 {
-    face *currentFace = nullptr;
-    std::vector<int> faceStack;
-    auto &m = InitIncHull(renderContext, vertices, numVertices);
-    std::vector<int> v;
-    v.reserve(numVertices / 3);
-    int previousIteration = 0;
-    return m;
+    incContext.currentFace = nullptr;
+    incContext.m = InitIncHull(renderContext, incContext.vertices, incContext.numberOfPoints);
+    incContext.v.clear();
+    incContext.previousIteration = 0;
 }
-
-
 
 void InitializeIncContext(inc_context &incContext, vertex *vertices, int numberOfPoints)
 {
@@ -162,10 +205,6 @@ not removed.
 #include <stdio.h>
 #include <math.h>
 
-/*Define Boolean type */
-typedef enum { FALSE,
-               TRUE } bool;
-
 /* Define vertex indices. */
 #define X 0
 #define Y 1
@@ -209,18 +248,18 @@ struct tFaceStructure
 };
 
 /* Define flags */
-#define ONHULL TRUE
-#define REMOVED TRUE
-#define VISIBLE TRUE
-#define PROCESSED TRUE
+#define ONHULL true
+#define REMOVED true
+#define VISIBLE true
+#define PROCESSED true
 #define SAFE 1000000 /* Range of safe coord values. */
 
 /* Global variable definitions */
-tVertex vertices = NULL;
-tEdge edges = NULL;
-tFace faces = NULL;
-bool debug = FALSE;
-bool check = FALSE;
+tVertex vertices = nullptr;
+tEdge edges = nullptr;
+tFace faces = nullptr;
+bool debug = false;
+bool check = false;
 
 /* Function declarations */
 tVertex MakeNullVertex(void);
@@ -254,8 +293,6 @@ void PrintFaces(void);
 void CheckEndpts(void);
 void EdgeOrderOnFaces(void);
 
-#include "macros.h"
-
 /*-------------------------------------------------------------------*/
 main(int argc, char *argv[])
 {
@@ -264,13 +301,13 @@ main(int argc, char *argv[])
     {
         if (argv[1][1] == 'd')
         {
-            debug = TRUE;
-            check = TRUE;
+            debug = true;
+            check = true;
             fprintf(stderr, "Debug and check mode\n");
         }
         if (argv[1][1] == 'c')
         {
-            check = TRUE;
+            check = true;
             fprintf(stderr, "Check mode\n");
         }
     }
@@ -295,11 +332,11 @@ tVertex MakeNullVertex(void)
 {
     tVertex v;
 
-    NEW(v, tsVertex);
-    v->duplicate = NULL;
+    INC_NEW(v, tsVertex);
+    v->duplicate = nullptr;
     v->onhull = !ONHULL;
     v->mark = !PROCESSED;
-    ADD(vertices, v);
+    INC_ADD(vertices, v);
 
     return v;
 }
@@ -454,7 +491,7 @@ void Print(void)
 
     printf("\nshowpage\n\n");
 
-    check = TRUE;
+    check = true;
     CheckEuler(V, E, F);
 }
 
@@ -481,7 +518,7 @@ void SubVec(int a[3], int b[3], int c[3])
 void DoubleTriangle(void)
 {
     tVertex v0, v1, v2, v3, t;
-    tFace f0, f1 = NULL;
+    tFace f0, f1 = nullptr;
     tEdge e0, e1, e2, s;
     int vol;
 
@@ -574,7 +611,7 @@ bool AddOne(tVertex p)
     tFace f;
     tEdge e, temp;
     int vol;
-    bool vis = FALSE;
+    bool vis = false;
 
     if (debug)
     {
@@ -593,7 +630,7 @@ bool AddOne(tVertex p)
         if (vol < 0)
         {
             f->visible = VISIBLE;
-            vis = TRUE;
+            vis = true;
         }
         f = f->next;
     } while (f != faces);
@@ -602,7 +639,7 @@ bool AddOne(tVertex p)
     if (!vis)
     {
         p->onhull = !ONHULL;
-        return FALSE;
+        return false;
     }
 
     /* Mark edges in interior of visible region for deletion.
@@ -619,7 +656,7 @@ bool AddOne(tVertex p)
             e->newface = MakeConeFace(e, p);
         e = temp;
     } while (e != edges);
-    return TRUE;
+    return true;
 }
 
 /*---------------------------------------------------------------------
@@ -775,7 +812,7 @@ void MakeCcw(tFace f, tEdge e, tVertex p)
     {
         f->vertex[0] = e->endpts[0];
         f->vertex[1] = e->endpts[1];
-        SWAP(s, f->edge[1], f->edge[2]);
+        INC_SWAP(s, f->edge[1], f->edge[2]);
     }
     /* This swap is tricky. e is edge[0]. edge[1] is based on endpt[0],
       edge[2] on endpt[1].  So if e is oriented "forwards," we
@@ -792,11 +829,11 @@ tEdge MakeNullEdge(void)
 {
     tEdge e;
 
-    NEW(e, tsEdge);
-    e->adjface[0] = e->adjface[1] = e->newface = NULL;
-    e->endpts[0] = e->endpts[1] = NULL;
+    INC_NEW(e, tsEdge);
+    e->adjface[0] = e->adjface[1] = e->newface = nullptr;
+    e->endpts[0] = e->endpts[1] = nullptr;
     e->delete = !REMOVED;
-    ADD(edges, e);
+    INC_ADD(edges, e);
     return e;
 }
 
@@ -810,14 +847,14 @@ tFace MakeNullFace(void)
     tFace f;
     int i;
 
-    NEW(f, tsFace);
+    INC_NEW(f, tsFace);
     for (i = 0; i < 3; ++i)
     {
-        f->edge[i] = NULL;
-        f->vertex[i] = NULL;
+        f->edge[i] = nullptr;
+        f->vertex[i] = nullptr;
     }
     f->visible = !VISIBLE;
-    ADD(faces, f);
+    INC_ADD(faces, f);
     return f;
 }
 
@@ -907,7 +944,7 @@ void CleanEdges(void)
     while (edges && edges->delete)
     {
         e = edges;
-        DELETE(edges, e);
+        INC_DELETE(edges, e);
     }
     e = edges->next;
     do
@@ -916,7 +953,7 @@ void CleanEdges(void)
         {
             t = e;
             e = e->next;
-            DELETE(edges, t);
+            INC_DELETE(edges, t);
         }
         else
             e = e->next;
@@ -934,7 +971,7 @@ void CleanFaces(void)
     while (faces && faces->visible)
     {
         f = faces;
-        DELETE(faces, f);
+        INC_DELETE(faces, f);
     }
     f = faces->next;
     do
@@ -943,7 +980,7 @@ void CleanFaces(void)
         {
             t = f;
             f = f->next;
-            DELETE(faces, t);
+            INC_DELETE(faces, t);
         }
         else
             f = f->next;
@@ -978,7 +1015,7 @@ void CleanVertices(tVertex *pvnext)
         v = vertices;
         if (v == *pvnext)
             *pvnext = v->next;
-        DELETE(vertices, v);
+        INC_DELETE(vertices, v);
     }
     v = vertices->next;
     do
@@ -989,7 +1026,7 @@ void CleanVertices(tVertex *pvnext)
             v = v->next;
             if (t == *pvnext)
                 *pvnext = t->next;
-            DELETE(vertices, t);
+            INC_DELETE(vertices, t);
         }
         else
             v = v->next;
@@ -999,7 +1036,7 @@ void CleanVertices(tVertex *pvnext)
     v = vertices;
     do
     {
-        v->duplicate = NULL;
+        v->duplicate = nullptr;
         v->onhull = !ONHULL;
         v = v->next;
     } while (v != vertices);
@@ -1252,7 +1289,7 @@ void CheckEndpts(void)
     tFace fstart;
     tEdge e;
     tVertex v;
-    bool error = FALSE;
+    bool error = false;
 
     fstart = faces;
     if (faces)
@@ -1264,7 +1301,7 @@ void CheckEndpts(void)
                 e = faces->edge[i];
                 if (v != e->endpts[0] && v != e->endpts[1])
                 {
-                    error = TRUE;
+                    error = true;
                     fprintf(stderr, "CheckEndpts: Error!\n");
                     fprintf(stderr, "  addr: %8x;", faces);
                     fprintf(stderr, "  edges:");

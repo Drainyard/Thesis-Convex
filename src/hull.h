@@ -141,7 +141,7 @@ static mesh& FullHull(render_context& renderContext, hull& h)
             {
                 InitializeIncContext(incContext, h.vertices, h.numberOfPoints);
             }
-            auto& res = IncHull(renderContext, incContext.vertices, incContext.numberOfPoints);
+            auto& res = IncHull(renderContext, incContext);
             
             return res;*/
         }

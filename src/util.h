@@ -52,8 +52,6 @@ inline bool StartsWith(const char *a, const char *b)
     return 0;
 }
 
-
-
 #define list(type)\
 struct type ## _list\
 {\
@@ -110,6 +108,40 @@ struct edge
 };
 
 list(edge)
+
+#define SWAP(t,x,y)	{ t = x; x = y; y = t; }
+
+char *malloc();
+
+#define INC_NEW(p,type)	if ((p=(type *) malloc (sizeof(type))) == NULL) {\
+				printf ("Out of Memory!\n");\
+				exit(0);\
+			}
+
+#define INC_FREE(p)		if (p) { free ((char *) p); p = NULL; }
+
+
+#define INC_ADD( head, p )  if ( head )  { \
+				p->next = head; \
+				p->prev = head->prev; \
+				head->prev = p; \
+				p->prev->next = p; \
+			} \
+			else { \
+				head = p; \
+				head->next = head->prev = p; \
+			}
+
+#define INC_DELETE( head, p ) if ( head )  { \
+				if ( head == head->next ) \
+					head = NULL;  \
+				else if ( p == head ) \
+					head = head->next; \
+				p->next->prev = p->prev;  \
+				p->prev->next = p->next;  \
+				INC_FREE( p ); \
+			} 
+
 
 
 #endif
