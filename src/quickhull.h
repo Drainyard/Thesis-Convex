@@ -106,7 +106,7 @@ coord_t GenerateInitialSimplex(render_context& renderContext, vertex* vertices, 
     //auto epsilon = 3 * (extremePoints[1] + extremePoints[3] + extremePoints[5]) * FLT_EPSILON;
     auto epsilon = 0.0f;
     
-    auto* f = AddFace(m, mostDist1, mostDist2, extremePointCurrentIndex, vertices, numVertices);
+    auto* f = AddFace(m, mostDist1, mostDist2, extremePointCurrentIndex, vertices);
     if(!f)
     {
         return epsilon;
@@ -139,15 +139,15 @@ coord_t GenerateInitialSimplex(render_context& renderContext, vertex* vertices, 
         f->vertices[0] = f->vertices[1];
         f->vertices[1] = t;
         f->faceNormal = ComputeFaceNormal(*f, vertices);
-        AddFace(m, mostDist1, currentIndex, extremePointCurrentIndex, vertices, numVertices);
-        AddFace(m, currentIndex, mostDist2, extremePointCurrentIndex, vertices, numVertices);
-        AddFace(m, mostDist1, mostDist2, currentIndex, vertices, numVertices);
+        AddFace(m, mostDist1, currentIndex, extremePointCurrentIndex, vertices);
+        AddFace(m, currentIndex, mostDist2, extremePointCurrentIndex, vertices);
+        AddFace(m, mostDist1, mostDist2, currentIndex, vertices);
     }
     else
     {
-        AddFace(m, currentIndex, mostDist1, extremePointCurrentIndex, vertices, numVertices);
-        AddFace(m, mostDist2, currentIndex, extremePointCurrentIndex, vertices, numVertices);
-        AddFace(m, mostDist2, mostDist1, currentIndex, vertices, numVertices);
+        AddFace(m, currentIndex, mostDist1, extremePointCurrentIndex, vertices);
+        AddFace(m, mostDist2, currentIndex, extremePointCurrentIndex, vertices);
+        AddFace(m, mostDist2, mostDist1, currentIndex, vertices);
     }
     
     return epsilon;
@@ -321,7 +321,7 @@ void FindConvexHorizon(vertex& viewPoint, std::vector<int>& faces, mesh& m, std:
     {
         auto& f = m.faces[possibleVisibleFaces[faceIndex]];
         
-        for(int neighbourIndex = 0; neighbourIndex < (int)f.neighbours.size(); neighbourIndex++)
+        for(int neighbourIndex = 0; neighbourIndex < (int)f.neighbourCount; neighbourIndex++)
         {
             auto& neighbour = f.neighbours[neighbourIndex];
             auto& neighbourFace = m.faces[neighbour.faceHandle];
@@ -413,7 +413,7 @@ void QuickHullHorizon(render_context& renderContext, mesh& m, vertex* vertices, 
         
         fa.visitedV = true;
         
-        for(int neighbourIndex = 0; neighbourIndex < (int)fa.neighbours.size(); neighbourIndex++)
+        for(int neighbourIndex = 0; neighbourIndex < (int)fa.neighbourCount; neighbourIndex++)
         {
             auto& neighbour = m.faces[fa.neighbours[neighbourIndex].faceHandle];
             
@@ -443,7 +443,7 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
     
     for(const auto& e : renderContext.debugContext.horizon)
     {
-        auto* newF = AddFace(m, e.origin, e.end, renderContext.debugContext.currentDistantPoint, vertices, numVertices);
+        auto* newF = AddFace(m, e.origin, e.end, renderContext.debugContext.currentDistantPoint, vertices);
         
         face& f = m.faces[fHandle];
         
@@ -531,7 +531,7 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
     }
     
     //Log("Faces before: %d\n", m.numFaces);
-    Log("Faces before: %d\n", m.faces.size());
+    Log("Faces before: %zu\n", m.faces.size());
     
     for(size_t vIndex = 0; vIndex < uniqueInV.size(); vIndex++)
     {
@@ -545,7 +545,7 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
         
         for(size_t j = 0; j < uniqueInV.size(); j++)
         {
-            if(uniqueInV[j] == movedHandle)
+            if(uniqueInV[j] == (int)movedHandle)
             {
                 uniqueInV[j] = newHandle;
             }
@@ -568,7 +568,7 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
         
         for(size_t i = 0; i < faceStack.size(); i++)
         {
-            if(movedHandle == faceStack[i])
+            if((int)movedHandle == faceStack[i])
             {
                 faceStack[i] = newHandle;
             }
@@ -577,7 +577,7 @@ void QuickHullIteration(render_context& renderContext, mesh& m, vertex* vertices
     renderContext.debugContext.currentFaceIndex = -1;
     
     //Log("Faces After: %d\n", m.numFaces);
-    Log("Faces After: %d\n", m.faces.size());
+    Log("Faces After: %zu\n", m.faces.size());
     
     for(int i = 0; i < (int)m.faces.size(); i++)
     {

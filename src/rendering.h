@@ -128,9 +128,9 @@ struct face
     
     glm::vec3 centerPoint;
     
-    //neighbour neighbours[512];
-    std::vector<neighbour> neighbours;
-    //int neighbourCount;
+    neighbour neighbours[512];
+    //std::vector<neighbour> neighbours;
+    int neighbourCount;
     int indexInMesh;
     bool visited;
     bool visitedV;

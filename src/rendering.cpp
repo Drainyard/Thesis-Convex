@@ -402,7 +402,7 @@ static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec
     glBindVertexArray(renderContext.lineVAO);
     glBindBuffer(GL_ARRAY_BUFFER, renderContext.lineVBO);
     
-    auto width = 0.21f;
+    auto width = 0.21f * lineWidth;
     
     // Double vertices
     // Vertex                     Next                  
@@ -471,7 +471,7 @@ static GLfloat* BuildVertexBuffer(render_context& renderContext, face* faces, in
         auto currentColor = faces[i].faceColor;
         if(i == renderContext.debugContext.currentFaceIndex)
         {
-            if(faces[i].neighbours.size() >= 3)
+            /*if(faces[i].neighbours.size() >= 3)
             {
                 currentColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
                 ns[0] = faces[i].neighbours[0].faceHandle;
@@ -490,7 +490,7 @@ static GLfloat* BuildVertexBuffer(render_context& renderContext, face* faces, in
                 {
                     Log("Neighbours: %d, %d, %d\n", ns[0], ns[1], ns[2]);
                 }
-            }
+            }*/
         }
         
         if(i == ns[0] || i == ns[1] || i == ns[2])
@@ -613,7 +613,7 @@ static void FindNeighbours(int v1Handle, int v2Handle, mesh& m, face& f, vertex*
         
         auto& fe = m.faces[v1Face];
         
-        for(int n = 0; n < (int)fe.neighbours.size(); n++)
+        for(int n = 0; n < (int)fe.neighbourCount; n++)
         {
             auto& neigh = fe.neighbours[n];
             auto& neighbour = m.faces[neigh.faceHandle];
@@ -636,32 +636,34 @@ static void FindNeighbours(int v1Handle, int v2Handle, mesh& m, face& f, vertex*
                 auto& foundNeighbour = m.faces[v1Face];
                 
                 // Set neighbour on current face
-                //auto index = f.neighbourCount++;
+                auto index = f.neighbourCount++;
                 
-                neighbour newN = {};
-                newN.faceHandle = v1Face;
-                newN.originVertex = v1.vertexIndex;
-                newN.endVertex = v2.vertexIndex;
-                /*f.neighbours[index].faceHandle = v1Face;
+                //neighbour newN = {};
+                //newN.faceHandle = v1Face;
+                //newN.originVertex = v1.vertexIndex;
+                //newN.endVertex = v2.vertexIndex;
+                //newN.id = foundNeighbour.id;
+                //f.neighbours.push_back(newN);
+                
+                f.neighbours[index].faceHandle = v1Face;
                 f.neighbours[index].originVertex = v1.vertexIndex;
                 f.neighbours[index].endVertex = v2.vertexIndex;
-                f.neighbours[index].id = neighbour.id;*/
-                newN.id = foundNeighbour.id;
-                f.neighbours.push_back(newN);
+                f.neighbours[index].id = foundNeighbour.id;
+                
                 
                 // Set neighbour on other face
-                /*auto neighbourIndex = neighbour.neighbourCount++;
-                neighbour.neighbours[neighbourIndex].faceHandle = f.indexInMesh;
-                neighbour.neighbours[neighbourIndex].endVertex = v1.vertexIndex;
-                neighbour.neighbours[neighbourIndex].originVertex = v2.vertexIndex;
-                neighbour.neighbours[neighbourIndex].id = f.id;*/
+                auto neighbourIndex = foundNeighbour.neighbourCount++;
+                foundNeighbour.neighbours[neighbourIndex].faceHandle = f.indexInMesh;
+                foundNeighbour.neighbours[neighbourIndex].endVertex = v1.vertexIndex;
+                foundNeighbour.neighbours[neighbourIndex].originVertex = v2.vertexIndex;
+                foundNeighbour.neighbours[neighbourIndex].id = f.id;
                 
-                neighbour fN = {};
+                /*neighbour fN = {};
                 fN.faceHandle = f.indexInMesh;
                 fN.endVertex = v1.vertexIndex;
                 fN.originVertex = v2.vertexIndex;
                 fN.id = f.id;
-                foundNeighbour.neighbours.push_back(fN);
+                foundNeighbour.neighbours.push_back(fN);*/
                 
                 foundNeighbour.visited = false;
                 
@@ -674,21 +676,8 @@ static void FindNeighbours(int v1Handle, int v2Handle, mesh& m, face& f, vertex*
     }
 }
 
-static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* vertices, int numVertices)
+static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* vertices)
 {
-    if(m.faces.size() == 0)
-    {
-        //m.faces = (face*)malloc(sizeof(face) * 2048 * 10);
-        /*TIME_START;
-        for(int i = 0; i < 20480; i++)
-        {
-            m.faces[i].outsideSet = (int*)malloc(sizeof(int) * numVertices);
-        }
-        TIME_END("Initial malloc");
-        */
-        m.faceCounter = 0;
-    }
-    
     auto& v1 = vertices[v1Handle];
     auto& v2 = vertices[v2Handle];
     auto& v3 = vertices[v3Handle];
@@ -705,7 +694,7 @@ static face* AddFace(mesh& m, int v1Handle, int v2Handle, int v3Handle, vertex* 
     newFace.outsideSetSize = 0;
     
     
-    //newFace.neighbourCount = 0;
+    newFace.neighbourCount = 0;
     //newFace.indexInMesh = m.numFaces - 1;
     newFace.indexInMesh = (int)m.faces.size();
     newFace.id = m.faceCounter++;
@@ -797,22 +786,22 @@ static int RemoveFace(mesh& m, int faceId, vertex* vertices)
     m.dirty = true;
     
     // Go through all of f's neighbours to remove itself
-    for(int n = 0; n < (int)f.neighbours.size(); n++)
+    for(int n = 0; n < (int)f.neighbourCount; n++)
     {
         // Get the neighbour of f and corresponding face
         auto& neighbour = f.neighbours[n];
         auto& neighbourFace = m.faces[neighbour.faceHandle];
         
         // go through the neighbours of the neighbour to find f
-        for(int i = 0; i < (int)neighbourFace.neighbours.size(); i++)
+        for(int i = 0; i < (int)neighbourFace.neighbourCount; i++)
         {
             if(neighbourFace.neighbours[i].faceHandle == f.indexInMesh)
             {
                 Log("Removing\n");
-                neighbourFace.neighbours.erase(neighbourFace.neighbours.begin() + i);
+                //neighbourFace.neighbours.erase(neighbourFace.neighbours.begin() + i);
                 // Found the neighbour
-                //neighbourFace.neighbours[i] = neighbourFace.neighbours[neighbourFace.neighbourCount - 1];
-                //neighbourFace.neighbourCount--;
+                neighbourFace.neighbours[i] = neighbourFace.neighbours[neighbourFace.neighbourCount - 1];
+                neighbourFace.neighbourCount--;
                 break;
             }
         }
@@ -828,12 +817,12 @@ static int RemoveFace(mesh& m, int faceId, vertex* vertices)
     
     auto& newFace = m.faces[indexInMesh];
     
-    for(int neighbourIndex = 0; neighbourIndex < (int)newFace.neighbours.size(); neighbourIndex++)
+    for(int neighbourIndex = 0; neighbourIndex < (int)newFace.neighbourCount; neighbourIndex++)
     {
         auto& neighbour = newFace.neighbours[neighbourIndex];
         auto& neighbourFace = m.faces[neighbour.faceHandle];
         
-        for(int n = 0; n < (int)neighbourFace.neighbours.size(); n++)
+        for(int n = 0; n < (int)neighbourFace.neighbourCount; n++)
         {
             if(neighbourFace.neighbours[n].faceHandle == newFace.indexInMesh)
             {
@@ -1128,17 +1117,17 @@ static void RenderFaceEdges(render_context& renderContext, std::vector<edge>& ed
     
     for(const auto& e : edges)
     {
-        if(e.origin == v1.vertexIndex && e.end == v2.vertexIndex || e.origin == v2.vertexIndex && e.end == v1.vertexIndex)
+        if((e.origin == v1.vertexIndex && e.end == v2.vertexIndex) || (e.origin == v2.vertexIndex && e.end == v1.vertexIndex))
         {
             e1Drawn = true;
         }
         
-        if(e.origin == v2.vertexIndex && e.end == v3.vertexIndex || e.origin == v3.vertexIndex && e.end == v2.vertexIndex)
+        if((e.origin == v2.vertexIndex && e.end == v3.vertexIndex) || (e.origin == v3.vertexIndex && e.end == v2.vertexIndex))
         {
             e2Drawn = true;
         }
         
-        if(e.origin == v1.vertexIndex && e.end == v3.vertexIndex || e.origin == v3.vertexIndex && e.end == v1.vertexIndex)
+        if((e.origin == v1.vertexIndex && e.end == v3.vertexIndex) || (e.origin == v3.vertexIndex && e.end == v1.vertexIndex))
         {
             e3Drawn = true;
         }
@@ -1260,10 +1249,6 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices,
     
     auto lineLength = 20.0f;
     
-    auto c1 = faceNormalColor; //glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    auto c2 = faceNormalColor; //glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    auto c3 = faceNormalColor; //glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    
     std::vector<edge> edges;
     
     if(renderContext.renderNormals)
@@ -1291,13 +1276,13 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices,
     {
         for(int i = 0; i < (int)m.faces.size(); i++)
         {
-            auto& f = m.faces[i];
+            /*auto& f = m.faces[i];
             
             auto v1 = vertices[f.vertices[0]];
             auto v2 = vertices[f.vertices[1]];
             auto v3 = vertices[f.vertices[2]];
             
-            //RenderFaceEdges(renderContext, edges, v1, v2, v3, faceNormalColor, lineWidth);
+            RenderFaceEdges(renderContext, edges, v1, v2, v3, faceNormalColor, lineWidth);*/
         }
     }
     
