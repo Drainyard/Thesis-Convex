@@ -1,6 +1,7 @@
 {
-	"files.associations": {
-		"*.jif": "java",
-		"limits": "cpp"
-	}
+    "files.associations": {
+        "*.jif": "java",
+        "limits": "cpp",
+        "array": "cpp"
+    }
 }

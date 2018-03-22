@@ -20,88 +20,195 @@ struct inc_context
     int previousIteration;
 };
 
-typedef struct iVertexStruct isVertex;
-typedef isVertex *iVertex;
+struct incEdge;
+struct incFace;
 
-typedef struct iEdgeStruct isEdge;
-typedef isEdge *iEdge;
-
-typedef struct iFaceStruct isFace;
-typedef isFace *iFace;
-
-struct iVertexStruct
+struct incVertex
 {
-    int v[3];
-    int vNum; //id?
-    iEdge duplicate; //pointer to incident cone edge
+    glm::vec3 vector;
+    int vNum;           //id?
+    incEdge *duplicate; //pointer to incident cone edge
     bool isOnHull;
-    bool isProcessed;   
-    iVertex next, prev;
+    bool isProcessed;
+    incVertex *next;
+    incVertex *prev;
 };
 
-struct iEdgeStruct
+struct incEdge
 {
-    iFace adjFace[2];
-    iVertex endPoints[2];
-    iFace newFace; //pointer to incident cone face
+    incFace *adjFace[2];
+    incVertex *endPoints[2];
+    incFace *newFace; //pointer to incident cone face
     bool shouldBeDeleted;
-    iEdge next, prev;
+    incEdge *next;
+    incEdge *prev;
 };
 
-struct iFaceStruct
+struct incFace
 {
-    iEdge edge[3];
-    iVertex vertex[3];
+    incEdge *edge[3];
+    incVertex *vertex[3];
     bool isVisible;
-    iFace next, prev;
+    incFace *next;
+    incFace *prev;
 };
- //Head pointers to each of the three lists
-iVertex iVertices = nullptr;
-iEdge iEdges = nullptr;
-iFace iFaces = nullptr;
+//Head pointers to each of the three lists
+incVertex *incVertices = nullptr;
+incEdge *incEdges = nullptr;
+incFace *incFaces = nullptr;
 
-iVertex createNullVertex()
+template <typename T>
+void incAddToHead(T head, T pointer)
 {
-    iVertex v;
+    if (head)
+    {
+        pointer->next = head;
+        pointer->prev = head->prev;
+        head->prev = pointer;
+        pointer->prev->next = pointer;
+    }
+    else
+    {
+        head = pointer;
+        head->next = head->prev = pointer;
+    }
+};
 
-    INC_NEW(v, iVertexStruct);
+template <typename T>
+void incRemoveFromHead(T head, T pointer)
+{
+    if (head)
+    {
+        if (head == head->next)
+        {
+            head = nullptr;
+        }
+        else if (pointer == head)
+        {
+            head = head->next;
+        }
+        pointer->next->prev = pointer->prev;
+        pointer->prev->next = pointer->next;
+        free(pointer);
+        pointer = nullptr;
+    }
+};
+
+incVertex *incCreateNullVertex()
+{
+    incVertex *v = (incVertex *)malloc(sizeof(incVertex));
     v->duplicate = nullptr;
     v->isOnHull = false;
     v->isProcessed = false;
-    INC_ADD(iVertices, v);
+    incAddToHead(incVertices, v);
 
     return v;
 }
 
-iEdge createNullEdge()
+incEdge *incCreateNullEdge()
 {
-    iEdge e;
-
-    INC_NEW(v, iEdgeStruct);
+    incEdge *e = (incEdge *)malloc(sizeof(incEdge));
     e->adjFace[0] = e->adjFace[1] = e->newFace = nullptr;
     e->endPoints[0] = e->endPoints[1] = nullptr;
     e->shouldBeDeleted = false;
-    INC_ADD(iEdges, e);
+    incAddToHead(incEdges, e);
 
     return e;
 }
 
-iFace createNullFace()
+incFace *incCreateNullFace()
 {
-    iFace f;
+    incFace *f = (incFace *)malloc(sizeof(incFace));
     int i;
-
-    INC_NEW(f, iFaceStruct);
-    for (i=1; i<4; i++) {
+    for (i = 0; i < 3; i++)
+    {
         f->edge[i] = nullptr;
         f->vertex[i] = nullptr;
     }
     f->isVisible = false;
-    INC_ADD(iFaces, f);
+    incAddToHead(incFaces, f);
 
     return f;
 }
 
+//PREPROCESSING
+void incReadVertices()
+{ /*
+    int vnum = 0;
+    while(vertices) 
+    {
+        v = createNullVertex();
+        v->v[0] = x;
+        v->v[1] = y;
+        v->v[2] = z;
+        v->vnum = vnum++;
+    }*/
+}
+
+//double sided triangle from points NOT collinear
+void incCreateBihedron()
+{
+    incVertex *v0, *v1, *v2, *v3, *t;
+    int vol;
+
+    //find 3 noncollinear points
+    v0 = incVertices;
+    while (incCollinear(v0, v0->next, v0->next->next))
+    {
+        v0 = v0->next;
+        if (v0 == incVertices)
+        {
+            //ERROR ONLY COLLINEAR POINTS
+            printf("incCreateBihedron - collinear points");
+            exit(0);
+        }
+    }
+    v1 = v0->next;
+    v2 = v1->next;
+
+    v0->isProcessed = true;
+    v1->isProcessed = true;
+    v2->isProcessed = true;
+
+    incFace *f0, *f1 = nullptr;
+
+    f0 = incMakeFace(v0, v1, v2, f1);
+    f1 = incMakeFace(v2, v1, v0, f0);
+
+    f0->edge[0]->adjFace[1] = f1;
+    f0->edge[1]->adjFace[1] = f1;
+    f0->edge[2]->adjFace[1] = f1;
+    f1->edge[0]->adjFace[1] = f0;
+    f1->edge[1]->adjFace[1] = f0;
+    f1->edge[2]->adjFace[1] = f0;
+
+    v3 = v2->next;
+    vol = incVolumeSign(f0, v3);
+    while (!vol)
+    {
+        v3 = v3->next;
+        if (v3 == v0)
+        {
+            //ERROR ONLY COPLANAR PLANAR
+            printf("incCreateBihedron - coplanar points");
+            exit(0);
+        }
+        vol = incVolumeSign(f0, v3);
+    }
+    incVertices = v3;
+}
+
+/*
+(a-b) and (b-c) are direction vectors in the plane
+If they are on the same line, the angle between them is 0.
+So collinear if (a-b)x(b-c)=0
+*/
+bool incCollinear(incVertex *v0, incVertex *v1, incVertex *v2)
+{
+    return glm::cross((v0->vector - v1->vector), (v1->vector - v2->vector)) == glm::vec3(0,0,0);
+}
+
+/*
 mesh& InitIncHull(render_context &renderContext, vertex* vertices, int numVertices)
 {
     auto &m = InitEmptyMesh(renderContext);
@@ -176,7 +283,7 @@ void IncHullStep(render_context &renderContext, inc_context &context)
     }
     break;
     }
-}
+}*/
 
 #endif
 
@@ -210,8 +317,8 @@ not removed.
 #define Y 1
 #define Z 2
 
-/* Define structures for vertices, edges and faces */
-typedef struct tVertexStructure tsVertex;
+    /* Define structures for vertices, edges and faces */
+    typedef struct tVertexStructure tsVertex;
 typedef tsVertex *tVertex;
 
 typedef struct tEdgeStructure tsEdge;
