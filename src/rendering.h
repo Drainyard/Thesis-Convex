@@ -88,14 +88,6 @@ struct vertex_info
     glm::vec4 color;
 };
 
-struct neighbour
-{
-    int faceHandle;
-    int originVertex;
-    int endVertex;
-    int id;
-};
-
 struct vertex
 {
     union
@@ -108,32 +100,16 @@ struct vertex
             glm::vec4 color;
         };
     };
-    int* faceHandles;
-    int numFaceHandles;
     int vertexIndex;
-    bool assigned;
 };
 
 struct face
 {
-    int id;
     int vertices[3];
     glm::vec3 faceNormal;
     glm::vec4 faceColor;
-    std::vector<int> outsideSet;
-    //int* outsideSet;
-    int outsideSetCount;
-    int outsideSetSize;
-    int furthestPointIndex;
     
     glm::vec3 centerPoint;
-    
-    neighbour neighbours[512];
-    //std::vector<neighbour> neighbours;
-    int neighbourCount;
-    int indexInMesh;
-    bool visited;
-    bool visitedV;
 };
 
 struct mesh
@@ -149,26 +125,11 @@ struct mesh
     bool dirty;
     GLfloat* currentVBO;
     
-    //face* faces;
-    //int numFaces;
     std::vector<face> faces;
-    int facesSize;
     
     GLuint VAO;
     GLuint VBO;
     int vertexCount;
-    
-    GLuint uvBufferHandle;
-    int uvCount;
-    bool hasUV;
-    
-    GLuint colorBufferHandle;
-    int colorCount;
-    bool hasColor;
-    
-    GLuint normalBufferHandle;
-    int normalCount;
-    bool hasNormals;
     
     int faceCounter;
 };
