@@ -81,7 +81,7 @@ static void UpdateHull(render_context& renderContext, hull& h, HullType hullType
             {
                 if(h.qhTimer.currentTime <= 0.0)
                 {
-                    QuickHullStep(renderContext, qhContext);
+                    qhStep(renderContext, qhContext);
                     h.qhTimer.currentTime = h.qhTimer.timerInit;
                 }
                 else
@@ -125,13 +125,13 @@ static mesh& FullHull(render_context& renderContext, hull& h)
             auto& qhContext = h.qhContext;
             if(!qhContext.initialized)
             {
-                InitializeQHContext(qhContext, h.vertices, h.numberOfPoints);
+                qhInitializeContext(qhContext, h.vertices, h.numberOfPoints);
             }
             //auto& res = QuickHull(renderContext, qhContext.vertices, qhContext.numberOfPoints);
             TIME_START;
-            QuickHull(renderContext, qhContext);
+            qhFullHull(renderContext, qhContext);
             TIME_END("Full hull");
-            return qhContext.m;
+            return qhConvertToMesh(renderContext, qhContext.qHull);
         }
         break;
         case Inc:
@@ -163,10 +163,10 @@ static mesh& StepHull(render_context& renderContext, hull& h)
             auto& qhContext = h.stepQhContext;
             if(!qhContext.initialized)
             {
-                InitializeQHContext(qhContext, h.vertices, h.numberOfPoints);
+                qhInitializeContext(qhContext, h.vertices, h.numberOfPoints);
             }
-            QuickHullStep(renderContext, qhContext);
-            return qhContext.m;
+            qhStep(renderContext, qhContext);
+            return qhConvertToMesh(renderContext, qhContext.qHull);
         }
         break;
         case Inc:
@@ -187,7 +187,7 @@ static mesh& StepHull(render_context& renderContext, hull& h)
     }
 }
 
-static mesh& TimedStepHull(hull& h)
+static mesh& TimedStepHull(render_context& renderContext, hull& h)
 {
     switch(h.currentHullType)
     {
@@ -196,11 +196,11 @@ static mesh& TimedStepHull(hull& h)
             auto& qhContext = h.timedStepQhContext;
             if(!qhContext.initialized)
             {
-                InitializeQHContext(qhContext, h.vertices, h.numberOfPoints);
+                qhInitializeContext(qhContext, h.vertices, h.numberOfPoints);
             }
             
             h.qhTimer.running = !h.qhTimer.running;
-            return qhContext.m;
+            return qhConvertToMesh(renderContext, qhContext.qHull);
         }
         break;
         case Inc:

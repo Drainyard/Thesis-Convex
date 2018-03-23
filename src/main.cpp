@@ -67,9 +67,6 @@ static vertex* GeneratePoints(render_context& renderContext, int numberOfPoints,
         
         res[i].position = glm::vec3(x, y, z) - renderContext.originOffset;
         res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
-        res[i].numFaceHandles = 0;
-        res[i].vertexIndex = i;
-        res[i].faceHandles = (int*)malloc(sizeof(int) * 2048);
     }
     return res;
 }
@@ -87,9 +84,6 @@ static vertex* GeneratePointsOnSphere(render_context& renderContext, int numberO
         
         res[i].position = glm::vec3(x, y, z) - renderContext.originOffset;
         res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
-        res[i].numFaceHandles = 0;
-        res[i].vertexIndex = i;
-        res[i].faceHandles = (int*)malloc(sizeof(int) * 1024);
     }
     return res;
 }
@@ -110,23 +104,10 @@ static vertex* GeneratePointsInSphere(render_context& renderContext, int numberO
         
         res[i].position = glm::vec3(x, y, z) - renderContext.originOffset;
         res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
-        res[i].numFaceHandles = 0;
-        res[i].vertexIndex = i;
-        res[i].faceHandles = (int*)malloc(sizeof(int) * 1024);
     }
     return res;
 }
 
-
-vertex* GenerateNewPointSet(render_context& renderContext, vertex** naive, vertex** quickhull, vertex** user, int numVertices, coord_t rangeMin, coord_t rangeMax)
-{
-    auto vertices = GeneratePointsInSphere(renderContext, numVertices, rangeMin, rangeMax);
-    //auto vertices = LoadObj("../assets/obj/man in vest 40k.OBJ");
-    *naive = CopyVertices(vertices, numVertices);
-    *quickhull = CopyVertices(vertices, numVertices);
-    *user = CopyVertices(vertices, numVertices);
-    return vertices;
-}
 
 int main()
 {
@@ -166,10 +147,12 @@ int main()
     
     //int numberOfPoints = 645932; // Man in vest numbers
     //int numberOfPoints = 17536; // Arnold
-    int numberOfPoints = 10000;
+    //int numberOfPoints = 27948;
+    int numberOfPoints = 10;
     auto vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 200.0f);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ");
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
+    //auto vertices = LoadObj("../assets/obj/CarpetBit.obj");
     
     hull h = {};
     InitializeHull(h, vertices, numberOfPoints, hullType);
@@ -234,7 +217,7 @@ int main()
         
         if(KeyDown(Key_F))
         {
-            currentMesh = &TimedStepHull(h);
+            currentMesh = &TimedStepHull(renderContext, h);
         }
         
         if(KeyDown(Key_P))
