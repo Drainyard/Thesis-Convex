@@ -20,6 +20,7 @@ struct inc_context
     int previousIteration;
 };
 
+//edges have faces and faces have edges, so forward declare here
 struct incEdge;
 struct incFace;
 
@@ -27,7 +28,7 @@ struct incVertex
 {
     glm::vec3 vector;
     int vNum;           //id?
-    incEdge *duplicate; //pointer to incident cone edge
+    incEdge *isDuplicate; //pointer to incident cone edge
     bool isOnHull;
     bool isProcessed;
     incVertex *next;
@@ -39,7 +40,7 @@ struct incEdge
     incFace *adjFace[2];
     incVertex *endPoints[2];
     incFace *newFace; //pointer to incident cone face
-    bool shouldBeDeleted;
+    bool shouldBeRemoved;
     incEdge *next;
     incEdge *prev;
 };
@@ -97,7 +98,7 @@ void incRemoveFromHead(T head, T pointer)
 incVertex *incCreateNullVertex()
 {
     incVertex *v = (incVertex *)malloc(sizeof(incVertex));
-    v->duplicate = nullptr;
+    v->isDuplicate = nullptr;
     v->isOnHull = false;
     v->isProcessed = false;
     incAddToHead(incVertices, v);
@@ -110,7 +111,7 @@ incEdge *incCreateNullEdge()
     incEdge *e = (incEdge *)malloc(sizeof(incEdge));
     e->adjFace[0] = e->adjFace[1] = e->newFace = nullptr;
     e->endPoints[0] = e->endPoints[1] = nullptr;
-    e->shouldBeDeleted = false;
+    e->shouldBeRemoved = false;
     incAddToHead(incEdges, e);
 
     return e;
@@ -145,13 +146,105 @@ void incReadVertices()
     }*/
 }
 
+/*
+(a-b) and (b-c) are direction vectors in the plane
+If they are on the same line, the angle between them is 0.
+So collinear if (a-b)x(b-c)=0
+
+This is short hand of
+return
+    ((v1->vector.y - v0->vector.y)(v2->vector.z - v0->vector.z)-(v2->vector.y - v0->vector.y)(v1->vector.z - v0->vector.z) == 0) &&
+    ((v2->vector.x - v0->vector.x)(v1->vector.z - v0->vector.z)-(v1->vector.x - v0->vector.x)(v2->vector.z - v0->vector.z) == 0) &&
+    ((v1->vector.x - v0->vector.x)(v2->vector.y - v0->vector.y)-(v2->vector.x - v0->vector.x)(v1->vector.y - v0->vector.y) == 0)
+
+*/
+bool incCollinear(incVertex *v0, incVertex *v1, incVertex *v2)
+{
+    return glm::cross((v0->vector - v1->vector), (v1->vector - v2->vector)) == glm::vec3(0, 0, 0);
+}
+
+incFace *incMakeFace(incVertex *v0, incVertex *v1, incVertex *v2, incFace *face)
+{
+    incEdge *e0, *e1, *e2;
+    //initial hedron, no edges to copy from
+    if (!face)
+    {
+        e0 = incCreateNullEdge();
+        e1 = incCreateNullEdge();
+        e2 = incCreateNullEdge();
+    }
+    //copy edges in reverse order
+    else
+    {
+        e0 = face->edge[2];
+        e1 = face->edge[1];
+        e2 = face->edge[0];
+    }
+    e0->endPoints[0] = v0;
+    e0->endPoints[1] = v1;
+    e1->endPoints[0] = v1;
+    e1->endPoints[1] = v2;
+    e2->endPoints[0] = v2;
+    e2->endPoints[1] = v0;
+
+    incFace *f = incCreateNullFace();
+    f->edge[0] = e0;
+    f->edge[1] = e1;
+    f->edge[2] = e2;
+    f->vertex[0] = v0;
+    f->vertex[1] = v1;
+    f->vertex[2] = v2;
+
+    e0->adjFace[0] = e1->adjFace[0] = e2->adjFace[0] = f;
+
+    return f;
+}
+/*
+wiki: For a tetrahedron a, b, c, d, the volume is 
+(1/6)|det(a-d,b-d,c-d)| 
+
+The volume is signed; it is positive if (a,b,c) form a counterclockwise circuit
+when viewed from the side away from d, so that the face normal determined by the
+right-hand rule points toward the outside.
+
+6V(tetra) = 
+|a0 a1 a2 1
+ b0 b1 b2 1
+ c0 c1 c2 1
+ d0 d1 d2 1|
+ =
+-(a2-d2)(b1-d1)(c0-d0)
++(a1-d1)(b2-d2)(c0-d0)
++(a2-d2)(b0-d0)(c1-d1)
+-(a0-d0)(b2-d2)(c1-d1)
+-(a1-d1)(b0-d0)(c2-d2)
++(a0-d0)(b1-d1)(c2-d2)
+*/
+int incVolumeSign(incFace *f, incVertex *d)
+{
+    incVertex *a = f->vertex[0];
+    incVertex *b = f->vertex[1];
+    incVertex *c = f->vertex[2];
+
+    double vol = -1 * (a->vector.z - d->vector.z) * (b->vector.y - d->vector.y) * (c->vector.x - d->vector.x) + (a->vector.y - d->vector.y) * (b->vector.z - d->vector.z) * (c->vector.x - d->vector.x) + (a->vector.z - d->vector.z) * (b->vector.x - d->vector.x) * (c->vector.y - d->vector.y) - (a->vector.x - d->vector.x) * (b->vector.z - d->vector.z) * (c->vector.y - d->vector.y) - (a->vector.y - d->vector.y) * (b->vector.x - d->vector.x) * (c->vector.z - d->vector.z) + (a->vector.x - d->vector.x) * (b->vector.y - d->vector.y) * (c->vector.z - d->vector.z);
+    //TODO add real epsilon
+    if (vol > 0.5)
+    {
+        return 1;
+    }
+    if (vol < -0.5)
+    {
+        return -1;
+    }
+    return 0;
+}
+
 //double sided triangle from points NOT collinear
 void incCreateBihedron()
 {
     incVertex *v0, *v1, *v2, *v3, *t;
     int vol;
 
-    //find 3 noncollinear points
     v0 = incVertices;
     while (incCollinear(v0, v0->next, v0->next->next))
     {
@@ -198,17 +291,69 @@ void incCreateBihedron()
     incVertices = v3;
 }
 
-/*
-(a-b) and (b-c) are direction vectors in the plane
-If they are on the same line, the angle between them is 0.
-So collinear if (a-b)x(b-c)=0
-*/
-bool incCollinear(incVertex *v0, incVertex *v1, incVertex *v2)
+incFace* incMakeConeFace(incEdge *e, incVertex* v)
 {
-    return glm::cross((v0->vector - v1->vector), (v1->vector - v2->vector)) == glm::vec3(0,0,0);
+    //TODO ayy here
 }
 
-/*
+void incAddOne(incVertex *v)
+{
+    incFace *f = incFaces;
+    bool visible = false;
+
+    do
+    {
+        if (incVolumeSign(f, v))
+        {
+            f->isVisible = visible = true;
+        }
+        f = f->next;
+    } while (f != incFaces);
+
+    if (!visible) 
+    {
+        //No faces are visible and we are inside hull
+        v->isOnHull = false;
+        return;
+    }
+
+    incEdge *e = incEdges;
+    incEdge *nextEdge = incEdges;
+    do {
+        nextEdge = e->next;
+        if (e->adjFace[0]->isVisible && e->adjFace[1]->isVisible)
+        {
+            //both are visible: inside cone and should be removed
+            e->shouldBeRemoved = true;
+        }
+        else if (e->adjFace[0]->isVisible || e->adjFace[1]->isVisible)
+        {
+            //only one is visible: border edge, erect face for cone
+            e->newFace = incMakeConeFace(e, v);
+        }
+        e = nextEdge;
+    } while (e != incEdges);
+}
+
+void incConstructHull()
+{
+    incVertex *v = incVertices;
+    incVertex *nextVertex;
+    //loop until we are about to
+    do
+    {
+        nextVertex = v->next;
+        if (!v->isProcessed)
+        {
+            incAddOne(v);
+            v->isProcessed = true;
+            incCleanUp(); /* TODO Pass down vnext in case it gets deleted. */
+        }
+        v = nextVertex;
+    } while (v != incVertices);
+}
+
+    /*
 mesh& InitIncHull(render_context &renderContext, vertex* vertices, int numVertices)
 {
     auto &m = InitEmptyMesh(renderContext);
@@ -317,8 +462,8 @@ not removed.
 #define Y 1
 #define Z 2
 
-    /* Define structures for vertices, edges and faces */
-    typedef struct tVertexStructure tsVertex;
+/* Define structures for vertices, edges and faces */
+typedef struct tVertexStructure tsVertex;
 typedef tsVertex *tVertex;
 
 typedef struct tEdgeStructure tsEdge;
