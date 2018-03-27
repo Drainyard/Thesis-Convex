@@ -245,7 +245,7 @@ int incVolumeSign(incFace *f, incVertex *d)
 //double sided triangle from points NOT collinear
 void incCreateBihedron()
 {
-    incVertex *v0, *v1, *v2, *v3, *t;
+    incVertex *v0, *v1, *v2, *v3;
     int vol;
 
     v0 = incVertices;
@@ -392,7 +392,8 @@ void incAddToHull(incVertex *v)
         return;
     }
 
-    incEdge *e, *nextEdge = incEdges;
+    incEdge *e, *nextEdge;
+    e = nextEdge = incEdges;
     do
     {
         nextEdge = e->next;
