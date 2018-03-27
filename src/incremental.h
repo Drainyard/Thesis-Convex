@@ -120,12 +120,8 @@ incEdge *incCreateNullEdge()
 incFace *incCreateNullFace()
 {
     incFace *f = (incFace *)malloc(sizeof(incFace));
-    int i;
-    for (i = 0; i < 3; i++)
-    {
-        f->edge[i] = nullptr;
-        f->vertex[i] = nullptr;
-    }
+    f->edge[0] = f->edge[1] = f->edge[2] = nullptr;
+    f->vertex[0] = f->vertex[1] = f->vertex[2] = nullptr;
     f->isVisible = false;
     incAddToHead(incFaces, f);
 
@@ -245,10 +241,7 @@ int incVolumeSign(incFace *f, incVertex *d)
 //double sided triangle from points NOT collinear
 void incCreateBihedron()
 {
-    incVertex *v0, *v1, *v2, *v3;
-    int vol;
-
-    v0 = incVertices;
+    incVertex *v0 = incVertices;
     while (incCollinear(v0, v0->next, v0->next->next))
     {
         v0 = v0->next;
@@ -259,14 +252,15 @@ void incCreateBihedron()
             exit(0);
         }
     }
-    v1 = v0->next;
-    v2 = v1->next;
+    incVertex *v1 = v0->next;
+    incVertex *v2 = v1->next;
 
     v0->isProcessed = true;
     v1->isProcessed = true;
     v2->isProcessed = true;
 
-    incFace *f0, *f1 = nullptr;
+    incFace *f0, *f1;
+    f0 = f1 = nullptr;
 
     f0 = incMakeFace(v0, v1, v2, f1);
     f1 = incMakeFace(v2, v1, v0, f0);
@@ -278,8 +272,8 @@ void incCreateBihedron()
     f1->edge[1]->adjFace[1] = f0;
     f1->edge[2]->adjFace[1] = f0;
 
-    v3 = v2->next;
-    vol = incVolumeSign(f0, v3);
+    incVertex *v3 = v2->next;
+    int vol = incVolumeSign(f0, v3);
     while (!vol)
     {
         v3 = v3->next;
@@ -306,6 +300,7 @@ void incEnforceCounterClockWise(incFace *newFace, incEdge *e, incVertex *v)
     {
         visibleFace = e->adjFace[1];
     }
+    //TODO woot
     for (int i = 0; visibleFace->vertex[i] != e->endPoints[0]; ++i)
     {
         if (visibleFace->vertex[(i + 1) % 3] != e->endPoints[1])
@@ -373,17 +368,16 @@ incFace *incMakeConeFace(incEdge *e, incVertex *v)
 
 void incAddToHull(incVertex *v)
 {
-    incFace *f = incFaces;
+    incFace *headFace = incFaces;
     bool visible = false;
-
     do
     {
-        if (incVolumeSign(f, v))
+        if (incVolumeSign(headFace, v))
         {
-            f->isVisible = visible = true;
+            headFace->isVisible = visible = true;
         }
-        f = f->next;
-    } while (f != incFaces);
+        headFace = headFace->next;
+    } while (headFace != incFaces);
 
     if (!visible)
     {
@@ -392,23 +386,23 @@ void incAddToHull(incVertex *v)
         return;
     }
 
-    incEdge *e, *nextEdge;
-    e = nextEdge = incEdges;
+    incEdge *headEdge, *nextEdge;
+    headEdge = incEdges;
     do
     {
-        nextEdge = e->next;
-        if (e->adjFace[0]->isVisible && e->adjFace[1]->isVisible)
+        nextEdge = headEdge->next;
+        if (headEdge->adjFace[0]->isVisible && headEdge->adjFace[1]->isVisible)
         {
             //both are visible: inside cone and should be removed
-            e->shouldBeRemoved = true;
+            headEdge->shouldBeRemoved = true;
         }
-        else if (e->adjFace[0]->isVisible || e->adjFace[1]->isVisible)
+        else if (headEdge->adjFace[0]->isVisible || headEdge->adjFace[1]->isVisible)
         {
             //only one is visible: border edge, erect face for cone
-            e->newFace = incMakeConeFace(e, v);
+            headEdge->newFace = incMakeConeFace(headEdge, v);
         }
-        e = nextEdge;
-    } while (e != incEdges);
+        headEdge = nextEdge;
+    } while (headEdge != incEdges);
 }
 
 void incCleanEdges()
@@ -527,7 +521,7 @@ void incCleanVertices(incVertex *nextVertex)
 
 void incCleanStuff(incVertex *nextVertex)
 {
-    //cleanedges called before faces, as we need acces to isVisible
+    //cleanEdges called before faces, as we need acces to isVisible
     incCleanEdges();
     incCleanFaces();
     incCleanVertices(nextVertex);
@@ -535,6 +529,8 @@ void incCleanStuff(incVertex *nextVertex)
 
 void incConstructHull()
 {
+    //Preprocess() here
+    incCreateBihedron();
     incVertex *v = incVertices;
     incVertex *nextVertex;
     do
@@ -548,6 +544,7 @@ void incConstructHull()
         }
         v = nextVertex;
     } while (v != incVertices);
+    //all done, output faces for mesh
 }
 
     /*
