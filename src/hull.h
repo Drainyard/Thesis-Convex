@@ -131,7 +131,7 @@ static mesh& FullHull(render_context& renderContext, hull& h)
             TIME_START;
             qhFullHull(renderContext, qhContext);
             TIME_END("Full hull");
-            return qhConvertToMesh(renderContext, qhContext.qHull);
+            return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
         }
         break;
         case Inc:
@@ -166,7 +166,7 @@ static mesh& StepHull(render_context& renderContext, hull& h)
                 qhInitializeContext(qhContext, h.vertices, h.numberOfPoints);
             }
             qhStep(renderContext, qhContext);
-            return qhConvertToMesh(renderContext, qhContext.qHull);
+            return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
         }
         break;
         case Inc:
@@ -200,7 +200,7 @@ static mesh& TimedStepHull(render_context& renderContext, hull& h)
             }
             
             h.qhTimer.running = !h.qhTimer.running;
-            return qhConvertToMesh(renderContext, qhContext.qHull);
+            return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
         }
         break;
         case Inc:

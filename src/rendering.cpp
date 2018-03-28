@@ -464,9 +464,9 @@ static GLfloat* BuildVertexBuffer(render_context& renderContext, face* faces, in
     {
         auto currentColor = faces[i].faceColor;
         
-        auto v1 = input[faces[i].vertices[0]];
-        auto v2 = input[faces[i].vertices[1]];
-        auto v3 = input[faces[i].vertices[2]];
+        auto v1 = faces[i].vertices[0];
+        auto v2 = faces[i].vertices[1];
+        auto v3 = faces[i].vertices[2];
         // First vertex
         vertices[i * 30] = v1.position.x;
         vertices[i * 30 + 1] = v1.position.y;
@@ -538,8 +538,8 @@ static glm::vec3 ComputeFaceNormal(face f, vertex* vertices)
     
     for(int i = 0; i < 3; i++)
     {
-        auto& current = vertices[f.vertices[i]].position;
-        auto& next = vertices[f.vertices[(i + 1) % 3]].position;
+        auto& current = f.vertices[i].position;
+        auto& next = f.vertices[(i + 1) % 3].position;
         
         normal.x = normal.x + (current.y - next.y) * (current.z + next.z);
         normal.y = normal.y + (current.z - next.z) * (current.x + next.x);
