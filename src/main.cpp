@@ -51,62 +51,11 @@ static input_state inputState;
 #include "incremental.h"
 
 #include "hull.h"
+#include "point_generator.h"
 
 #define Min(A,B) ((A < B) ? (A) : (B))
 #define Max(A,B) ((A > B) ? (A) : (B))
 #define Abs(x) ((x) < 0 ? -(x) : (x))
-
-static vertex* GeneratePoints(render_context& renderContext, int numberOfPoints, coord_t min = 0.0f, coord_t max = 200.0f)
-{
-    auto res = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
-    for(int i = 0; i < numberOfPoints; i++)
-    {
-        coord_t x = RandomCoord(min, max);
-        coord_t y = RandomCoord(min, max);
-        coord_t z = RandomCoord(min, max);
-        
-        res[i].position = glm::vec3(x, y, z) - renderContext.originOffset;
-        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
-    }
-    return res;
-}
-
-static vertex* GeneratePointsOnSphere(render_context& renderContext, int numberOfPoints, coord_t radius)
-{
-    auto res = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
-    for(int i = 0; i < numberOfPoints; i++) 
-    {
-        coord_t theta = 2 * (coord_t)M_PI * RandomCoord(0.0, 1.0);
-        coord_t phi = (coord_t)acos(1 - 2 * RandomCoord(0.0, 1.0));
-        coord_t x = (coord_t)sin(phi) * (coord_t)cos(theta) * radius;
-        coord_t y = (coord_t)sin(phi) * (coord_t)sin(theta) * radius;
-        coord_t z = (coord_t)cos(phi) * radius;
-        
-        res[i].position = glm::vec3(x, y, z) - renderContext.originOffset;
-        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
-    }
-    return res;
-}
-
-
-static vertex* GeneratePointsInSphere(render_context& renderContext, int numberOfPoints, coord_t min = 0.0f, coord_t max = 200.0f)
-{
-    auto res = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
-    for(int i = 0; i < numberOfPoints; i++) 
-    {
-        coord_t theta = 2 * (coord_t)M_PI * RandomCoord(0.0, 1.0);
-        coord_t phi = (coord_t)acos(1 - 2 * RandomCoord(0.0, 1.0));
-        
-        auto r = RandomCoord(min, max);
-        coord_t x = r * (coord_t)sin(phi) * (coord_t)cos(theta);
-        coord_t y = r * (coord_t)sin(phi) * (coord_t)sin(theta);
-        coord_t z = r * (coord_t)cos(phi);
-        
-        res[i].position = glm::vec3(x, y, z) - renderContext.originOffset;
-        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
-    }
-    return res;
-}
 
 
 int main()
@@ -145,17 +94,20 @@ int main()
     
     HullType hullType = HullType::QH;
     
+    point_generator pointGenerator = {};
+    pointGenerator.generatorFunction = GeneratePoints;
+    
     //int numberOfPoints = 645932; // Man in vest numbers
     //int numberOfPoints = 17536; // Arnold
     //int numberOfPoints = 27948;
-    int numberOfPoints = 10;
-    auto vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 200.0f);
+    pointGenerator.numberOfPoints = 50000;
+    auto vertices = pointGenerator.generatorFunction(pointGenerator, renderContext, 0.0f, 200.0f);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ");
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
     //auto vertices = LoadObj("../assets/obj/CarpetBit.obj");
     
     hull h = {};
-    InitializeHull(h, vertices, numberOfPoints, hullType);
+    InitializeHull(h, vertices, pointGenerator.numberOfPoints, hullType);
     
     mesh* currentMesh = nullptr;
     vertex* currentVertices = vertices;
@@ -198,8 +150,8 @@ int main()
                 free(vertices);
             }
             
-            vertices = GeneratePointsInSphere(renderContext, numberOfPoints, 0.0f, 200.0f);
-            ReinitializeHull(h, vertices, numberOfPoints);
+            vertices = pointGenerator.generatorFunction(pointGenerator, renderContext, 0.0f, 200.0f);
+            ReinitializeHull(h, vertices, pointGenerator.numberOfPoints);
             
             currentVertices = vertices;
             currentMesh = nullptr;
@@ -237,7 +189,7 @@ int main()
         
         if(renderContext.renderPoints)
         {
-            RenderPointCloud(renderContext, currentVertices, numberOfPoints);
+            RenderPointCloud(renderContext, currentVertices, pointGenerator.numberOfPoints);
         }
         
         if(KeyDown(Key_Q))

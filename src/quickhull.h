@@ -14,7 +14,6 @@ struct qh_neighbour
     int faceHandle;
     int originVertex;
     int endVertex;
-    int id;
 };
 
 struct qh_vertex
@@ -24,29 +23,22 @@ struct qh_vertex
     bool assigned;
     int vertexIndex;
     
-    union
-    {
-        vertex_info info;
-        struct
-        {
-            glm::vec3 position;
-            glm::vec3 normal;
-            glm::vec4 color;
-        };
-    };
+    glm::vec3 position;
+    glm::vec3 normal;
+    glm::vec4 color;
 };
 
 struct qh_face
 {
     int vertices[3];
-    int id;
     std::vector<int> outsideSet;
+    
     int furthestPointIndex;
     
-    qh_neighbour neighbours[64];
+    qh_neighbour neighbours[6];
     int neighbourCount;
     
-    int indexInMesh;
+    int indexInHull;
     bool visited;
     bool visitedV;
     
@@ -60,7 +52,6 @@ struct qh_hull
     std::vector<qh_face> faces;
     
     int faceCounter;
-    
     bool dirty;
 };
 
@@ -104,7 +95,7 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f,
     {
         auto v1Face = v1.faceHandles[v1FaceIndex];
         
-        if(v1Face == f.indexInMesh)
+        if(v1Face == f.indexInHull)
             continue;
         
         bool alreadyAdded = false;
@@ -115,7 +106,7 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f,
         {
             auto& neigh = fe.neighbours[n];
             auto& neighbour = q.faces[neigh.faceHandle];
-            if(neighbour.id == f.id)
+            if(neighbour.indexInHull == f.indexInHull)
             {
                 alreadyAdded = true;
                 break;
@@ -139,14 +130,12 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f,
                 f.neighbours[index].faceHandle = v1Face;
                 f.neighbours[index].originVertex = v1.vertexIndex;
                 f.neighbours[index].endVertex = v2.vertexIndex;
-                f.neighbours[index].id = foundNeighbour.id;
                 
                 // Set neighbour on other face
                 auto neighbourIndex = foundNeighbour.neighbourCount++;
-                foundNeighbour.neighbours[neighbourIndex].faceHandle = f.indexInMesh;
+                foundNeighbour.neighbours[neighbourIndex].faceHandle = f.indexInHull;
                 foundNeighbour.neighbours[neighbourIndex].endVertex = v1.vertexIndex;
                 foundNeighbour.neighbours[neighbourIndex].originVertex = v2.vertexIndex;
-                foundNeighbour.neighbours[neighbourIndex].id = f.id;
                 
                 foundNeighbour.visited = false;
                 
@@ -178,7 +167,7 @@ static glm::vec3 ComputeFaceNormal(qh_face f, qh_vertex* vertices)
     return glm::normalize(normal);
 }
 
-static qh_face* qhAddFace(qh_hull& q, int v1Handle, int v2Handle, int v3Handle, qh_vertex* vertices)
+static qh_face* qhAddFace(qh_hull& q, int v1Handle, int v2Handle, int v3Handle, qh_vertex* vertices, int numberOfPoints)
 {
     auto& v1 = vertices[v1Handle];
     auto& v2 = vertices[v2Handle];
@@ -192,16 +181,15 @@ static qh_face* qhAddFace(qh_hull& q, int v1Handle, int v2Handle, int v3Handle, 
     qh_face newFace = {};
     
     newFace.neighbourCount = 0;
-    newFace.indexInMesh = (int)q.faces.size();
-    newFace.id = q.faceCounter++;
+    newFace.indexInHull = (int)q.faces.size();
     
     qhFindNeighbours(v1Handle, v2Handle, q, newFace, vertices);
     qhFindNeighbours(v1Handle, v3Handle, q, newFace, vertices);
     qhFindNeighbours(v2Handle, v3Handle, q, newFace, vertices);
     
-    v1.faceHandles[v1.numFaceHandles++] = newFace.indexInMesh;
-    v2.faceHandles[v2.numFaceHandles++] = newFace.indexInMesh;
-    v3.faceHandles[v3.numFaceHandles++] = newFace.indexInMesh;
+    v1.faceHandles[v1.numFaceHandles++] = newFace.indexInHull;
+    v2.faceHandles[v2.numFaceHandles++] = newFace.indexInHull;
+    v3.faceHandles[v3.numFaceHandles++] = newFace.indexInHull;
     
     newFace.vertices[0] = v1.vertexIndex;
     newFace.vertices[1] = v2.vertexIndex;
@@ -233,24 +221,26 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     auto& v2 = vertices[f.vertices[1]];
     auto& v3 = vertices[f.vertices[2]];
     
+#ifdef DEBUG
     bool contained = false;
     for(int i = 0; i < v1.numFaceHandles; i++)
     {
-        contained |= v1.faceHandles[i] == f.indexInMesh;
+        contained |= v1.faceHandles[i] == f.indexInHull;
     }
     Assert(contained);
     contained = false;
     for(int i = 0; i < v2.numFaceHandles; i++)
     {
-        contained |= v2.faceHandles[i] == f.indexInMesh;
+        contained |= v2.faceHandles[i] == f.indexInHull;
     }
     Assert(contained);
     contained = false;
     for(int i = 0; i < v3.numFaceHandles; i++)
     {
-        contained |= v3.faceHandles[i] == f.indexInMesh;
+        contained |= v3.faceHandles[i] == f.indexInHull;
     }
     Assert(contained);
+#endif
     
     qHull.dirty = true;
     
@@ -264,7 +254,7 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
         // go through the neighbours of the neighbour to find f
         for(int i = 0; i < (int)neighbourFace.neighbourCount; i++)
         {
-            if(neighbourFace.neighbours[i].faceHandle == f.indexInMesh)
+            if(neighbourFace.neighbours[i].faceHandle == f.indexInHull)
             {
                 Log("Removing\n");
                 // Found the neighbour
@@ -275,14 +265,14 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
         }
     }
     
-    auto indexInMesh = f.indexInMesh;
+    auto indexInHull = f.indexInHull;
     
     // Invalidates the f pointer
     // But we only need to swap two faces to make this work
-    qHull.faces[indexInMesh] = qHull.faces[qHull.faces.size() - 1];
+    qHull.faces[indexInHull] = qHull.faces[qHull.faces.size() - 1];
     qHull.faces.erase(qHull.faces.begin() + qHull.faces.size() - 1);
     
-    auto& newFace = qHull.faces[indexInMesh];
+    auto& newFace = qHull.faces[indexInHull];
     
     for(int neighbourIndex = 0; neighbourIndex < (int)newFace.neighbourCount; neighbourIndex++)
     {
@@ -291,10 +281,10 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
         
         for(int n = 0; n < (int)neighbourFace.neighbourCount; n++)
         {
-            if(neighbourFace.neighbours[n].faceHandle == newFace.indexInMesh)
+            if(neighbourFace.neighbours[n].faceHandle == newFace.indexInHull)
             {
                 // Set it to the new index in the mesh
-                neighbourFace.neighbours[n].faceHandle = indexInMesh;
+                neighbourFace.neighbours[n].faceHandle = indexInHull;
                 break;
             }
         }
@@ -306,7 +296,7 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     
     for(int fIndex = 0; fIndex < v1.numFaceHandles; fIndex++)
     {
-        if(v1.faceHandles[fIndex] == indexInMesh)
+        if(v1.faceHandles[fIndex] == indexInHull)
         {
             Log("Removing facehandle for v1\n");
             v1.faceHandles[fIndex] = v1.faceHandles[v1.numFaceHandles - 1];
@@ -317,7 +307,7 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     
     for(int fIndex = 0; fIndex < v2.numFaceHandles; fIndex++)
     {
-        if(v2.faceHandles[fIndex] == indexInMesh)
+        if(v2.faceHandles[fIndex] == indexInHull)
         {
             Log("Removing facehandle for v2\n");
             v2.faceHandles[fIndex] = v2.faceHandles[v2.numFaceHandles - 1];
@@ -328,7 +318,7 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     
     for(int fIndex = 0; fIndex < v3.numFaceHandles; fIndex++)
     {
-        if(v3.faceHandles[fIndex] == indexInMesh)
+        if(v3.faceHandles[fIndex] == indexInHull)
         {
             Log("Removing facehandle for v3\n");
             v3.faceHandles[fIndex] = v3.faceHandles[v3.numFaceHandles - 1];
@@ -344,9 +334,9 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     auto& v1new = vertices[newFace.vertices[0]];
     for(int fIndex = 0; fIndex < v1new.numFaceHandles; fIndex++)
     {
-        if(v1new.faceHandles[fIndex] == newFace.indexInMesh)
+        if(v1new.faceHandles[fIndex] == newFace.indexInHull)
         {
-            v1new.faceHandles[fIndex] = indexInMesh;
+            v1new.faceHandles[fIndex] = indexInHull;
             break;
         }
     }
@@ -354,9 +344,9 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     auto& v2new = vertices[newFace.vertices[1]];
     for(int fIndex = 0; fIndex < v2new.numFaceHandles; fIndex++)
     {
-        if(v2new.faceHandles[fIndex] == newFace.indexInMesh)
+        if(v2new.faceHandles[fIndex] == newFace.indexInHull)
         {
-            v2new.faceHandles[fIndex] = indexInMesh;
+            v2new.faceHandles[fIndex] = indexInHull;
             break;
         }
     }
@@ -364,15 +354,15 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     auto& v3new = vertices[newFace.vertices[2]];
     for(int fIndex = 0; fIndex < v3new.numFaceHandles; fIndex++)
     {
-        if(v3new.faceHandles[fIndex] == newFace.indexInMesh)
+        if(v3new.faceHandles[fIndex] == newFace.indexInHull)
         {
-            v3new.faceHandles[fIndex] = indexInMesh;
+            v3new.faceHandles[fIndex] = indexInHull;
             break;
         }
     }
     
-    newFace.indexInMesh = indexInMesh;
-    return indexInMesh;
+    newFace.indexInHull = indexInHull;
+    return indexInHull;
 }
 
 
@@ -525,7 +515,7 @@ coord_t qhGenerateInitialSimplex(render_context& renderContext, qh_vertex* verti
     //auto epsilon = 3 * (extremePoints[1] + extremePoints[3] + extremePoints[5]) * FLT_EPSILON;
     auto epsilon = 0.0f;
     
-    auto* f = qhAddFace(q, mostDist1, mostDist2, extremePointCurrentIndex, vertices);
+    auto* f = qhAddFace(q, mostDist1, mostDist2, extremePointCurrentIndex, vertices, numVertices);
     if(!f)
     {
         return epsilon;
@@ -550,7 +540,7 @@ coord_t qhGenerateInitialSimplex(render_context& renderContext, qh_vertex* verti
         }
     }
     
-    renderContext.debugContext.currentFaceIndex = f->indexInMesh;
+    renderContext.debugContext.currentFaceIndex = f->indexInHull;
     renderContext.debugContext.currentDistantPoint = currentIndex;
     if(IsPointOnPositiveSide(*f, vertices[currentIndex], epsilon))
     {
@@ -558,15 +548,15 @@ coord_t qhGenerateInitialSimplex(render_context& renderContext, qh_vertex* verti
         f->vertices[0] = f->vertices[1];
         f->vertices[1] = t;
         f->faceNormal = ComputeFaceNormal(*f, vertices);
-        qhAddFace(q, mostDist1, currentIndex, extremePointCurrentIndex, vertices);
-        qhAddFace(q, currentIndex, mostDist2, extremePointCurrentIndex, vertices);
-        qhAddFace(q, mostDist1, mostDist2, currentIndex, vertices);
+        qhAddFace(q, mostDist1, currentIndex, extremePointCurrentIndex, vertices, numVertices);
+        qhAddFace(q, currentIndex, mostDist2, extremePointCurrentIndex, vertices, numVertices);
+        qhAddFace(q, mostDist1, mostDist2, currentIndex, vertices, numVertices);
     }
     else
     {
-        qhAddFace(q, currentIndex, mostDist1, extremePointCurrentIndex, vertices);
-        qhAddFace(q, mostDist2, currentIndex, extremePointCurrentIndex, vertices);
-        qhAddFace(q, mostDist2, mostDist1, currentIndex, vertices);
+        qhAddFace(q, currentIndex, mostDist1, extremePointCurrentIndex, vertices, numVertices);
+        qhAddFace(q, mostDist2, currentIndex, extremePointCurrentIndex, vertices, numVertices);
+        qhAddFace(q, mostDist2, mostDist1, currentIndex, vertices, numVertices);
     }
     
     return epsilon;
@@ -574,7 +564,9 @@ coord_t qhGenerateInitialSimplex(render_context& renderContext, qh_vertex* verti
 
 void qhAddToOutsideSet(qh_face& f, qh_vertex& v)
 {
+    //TIME_START_ACC;
     f.outsideSet.push_back(v.vertexIndex);
+    //TIME_END_ACC("Outside set add");
     v.assigned = true;
 }
 
@@ -704,7 +696,7 @@ void qhFindConvexHorizon(qh_vertex& viewPoint, std::vector<int>& faces, qh_hull&
             else if(!neighbourFace.visited)
             {
                 possibleVisibleFaces.push_back(neighbour.faceHandle);
-                faces.push_back(neighbourFace.indexInMesh);
+                faces.push_back(neighbourFace.indexInHull);
             }
             neighbourFace.visited = true;
         }
@@ -716,7 +708,7 @@ void qhFindConvexHorizon(qh_vertex& viewPoint, std::vector<int>& faces, qh_hull&
     }*/
 }
 
-mesh& qhConvertToMesh(render_context& renderContext, qh_hull& qHull)
+mesh& qhConvertToMesh(render_context& renderContext, qh_hull& qHull, vertex* vertices)
 {
     auto& m = InitEmptyMesh(renderContext);
     m.position = glm::vec3(0.0f);
@@ -726,9 +718,9 @@ mesh& qhConvertToMesh(render_context& renderContext, qh_hull& qHull)
     for(const auto& f : qHull.faces)
     {
         face newFace = {};
-        newFace.vertices[0] = f.vertices[0];
-        newFace.vertices[1] = f.vertices[1];
-        newFace.vertices[2] = f.vertices[2];
+        newFace.vertices[0] = vertices[f.vertices[0]];
+        newFace.vertices[1] = vertices[f.vertices[1]];
+        newFace.vertices[2] = vertices[f.vertices[2]];
         newFace.faceNormal = f.faceNormal;
         newFace.faceColor = f.faceColor;
         newFace.centerPoint = f.centerPoint;
@@ -751,7 +743,7 @@ qh_hull qhInit(render_context& renderContext, qh_vertex* vertices, int numVertic
     {
         if(qHull.faces[i].outsideSet.size() > 0)
         {
-            faceStack.push_back(qHull.faces[i].indexInMesh);
+            faceStack.push_back(qHull.faces[i].indexInHull);
         }
     }
     return qHull;
@@ -768,7 +760,7 @@ qh_face* qhFindNextIteration(render_context& renderContext, qh_hull& qHull, std:
     
     if(f && f->outsideSet.size() > 0)
     {
-        renderContext.debugContext.currentFaceIndex = f->indexInMesh;
+        renderContext.debugContext.currentFaceIndex = f->indexInHull;
         renderContext.debugContext.currentDistantPoint = f->furthestPointIndex;
         
         res = f;
@@ -784,7 +776,7 @@ qh_face* qhFindNextIteration(render_context& renderContext, qh_hull& qHull, std:
 
 void qhHorizonStep(render_context& renderContext, qh_hull& qHull, qh_vertex* vertices, qh_face& f, std::vector<int>& v, int* prevIterationFaces, coord_t epsilon)
 { 
-    v.push_back(f.indexInMesh);
+    v.push_back(f.indexInHull);
     
     auto& p = vertices[f.furthestPointIndex];
     
@@ -803,7 +795,7 @@ void qhHorizonStep(render_context& renderContext, qh_hull& qHull, qh_vertex* ver
             auto& newF = qHull.faces[fa.neighbours[neighbourIndex].faceHandle];
             if(!newF.visitedV && IsPointOnPositiveSide(neighbour, p, epsilon))
             {
-                v.push_back(newF.indexInMesh);
+                v.push_back(newF.indexInHull);
             }
         }
     }
@@ -824,7 +816,7 @@ void qhIteration(render_context& renderContext, qh_hull& qHull, qh_vertex* verti
     
     for(const auto& e : renderContext.debugContext.horizon)
     {
-        auto* newF = qhAddFace(qHull, e.origin, e.end, renderContext.debugContext.currentDistantPoint, vertices);
+        auto* newF = qhAddFace(qHull, e.origin, e.end, renderContext.debugContext.currentDistantPoint, vertices, numVertices);
         
         auto& f = qHull.faces[fHandle];
         
@@ -839,7 +831,7 @@ void qhIteration(render_context& renderContext, qh_hull& qHull, qh_vertex* verti
                 newF->faceNormal = ComputeFaceNormal(*newF, vertices);
             }
             
-            faceStack.push_back(newF->indexInMesh);
+            faceStack.push_back(newF->indexInHull);
         }
     }
     
@@ -890,6 +882,7 @@ void qhIteration(render_context& renderContext, qh_hull& qHull, qh_vertex* verti
             }
         }
     }
+    
     
     std::vector<int> uniqueInV;
     uniqueInV.reserve(v.size());
@@ -979,7 +972,7 @@ void qhFullHull(render_context& renderContext, qh_context& qhContext)
         if(qhContext.currentFace)
         {
             qhHorizonStep(renderContext, qhContext.qHull, qhContext.vertices, *qhContext.currentFace, qhContext.v, &qhContext.previousIteration, qhContext.epsilon);
-            qhIteration(renderContext, qhContext.qHull, qhContext.vertices, qhContext.faceStack, qhContext.currentFace->indexInMesh, qhContext.v, 
+            qhIteration(renderContext, qhContext.qHull, qhContext.vertices, qhContext.faceStack, qhContext.currentFace->indexInHull, qhContext.v, 
                         qhContext.previousIteration, qhContext.numberOfPoints, qhContext.epsilon);
             qhContext.v.clear();
         }
@@ -1003,7 +996,7 @@ qh_hull qhFullHull(render_context& renderContext, qh_vertex* vertices, int numVe
         {
             qhHorizonStep(renderContext, qHull, vertices, *currentFace, v, &previousIteration, 
                           epsilon);
-            qhIteration(renderContext, qHull, vertices, faceStack, currentFace->indexInMesh, v, 
+            qhIteration(renderContext, qHull, vertices, faceStack, currentFace->indexInHull, v, 
                         previousIteration, numVertices, epsilon);
             v.clear();
         }
@@ -1070,7 +1063,7 @@ void qhStep(render_context& renderContext, qh_context& context)
             if(context.currentFace)
             {
                 Log("Doing iteration\n");
-                qhIteration(renderContext, context.qHull, context.vertices, context.faceStack, context.currentFace->indexInMesh, context.v, context.previousIteration, context.numberOfPoints, context.epsilon);
+                qhIteration(renderContext, context.qHull, context.vertices, context.faceStack, context.currentFace->indexInHull, context.v, context.previousIteration, context.numberOfPoints, context.epsilon);
                 context.iter = QHIteration::findNextIter;
                 context.v.clear();
             }
