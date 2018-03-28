@@ -2,6 +2,8 @@
     "files.associations": {
         "*.jif": "java",
         "limits": "cpp",
-        "array": "cpp"
+        "array": "cpp",
+        "*.tcc": "cpp",
+        "system_error": "cpp"
     }
 }

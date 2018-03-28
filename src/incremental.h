@@ -8,18 +8,6 @@ enum class IHIteration
     doIter
 };
 
-struct inc_context
-{
-    bool initialized;
-    vertex *vertices;
-    int numberOfPoints;
-    IHIteration iter;
-    face *currentFace;
-    std::vector<int> v;
-    mesh m;
-    int previousIteration;
-};
-
 //edges have faces and faces have edges, so forward declare here
 struct incEdge;
 struct incFace;
@@ -27,7 +15,7 @@ struct incFace;
 struct incVertex
 {
     glm::vec3 vector;
-    int vNum; //id?
+    int vIndex;
     incEdge *duplicate;
     bool isOnHull;
     bool isProcessed;
@@ -53,6 +41,22 @@ struct incFace
     incFace *next;
     incFace *prev;
 };
+
+struct inc_hull
+{
+    //Could move head pointers up here...
+};
+
+struct inc_context
+{
+    bool initialized;
+    incVertex *vertices;
+    int numberOfPoints;
+    IHIteration iter;
+    mesh m;
+    int previousIteration;
+};
+
 //Head pointers to each of the three lists
 incVertex *incVertices = nullptr;
 incEdge *incEdges = nullptr;
@@ -95,15 +99,19 @@ void incRemoveFromHead(T head, T pointer)
     }
 };
 
-incVertex *incCreateNullVertex()
+static void incCopyVertices(inc_context &incContext, vertex *vertices, int numberOfPoints)
 {
-    incVertex *v = (incVertex *)malloc(sizeof(incVertex));
-    v->duplicate = nullptr;
-    v->isOnHull = false;
-    v->isProcessed = false;
-    incAddToHead(incVertices, v);
-
-    return v;
+    incContext.vertices = (incVertex *)malloc(sizeof(incVertex) * numberOfPoints);
+    for (int i = 0; i < numberOfPoints; i++)
+    {
+        incVertex *v = &incContext.vertices[i];
+        v->duplicate = nullptr;
+        v->isOnHull = false;
+        v->isProcessed = false;
+        v->vIndex = i;
+        v->vector = vertices[i].position;
+        incAddToHead(incVertices, v);
+    }
 }
 
 incEdge *incCreateNullEdge()
@@ -126,20 +134,6 @@ incFace *incCreateNullFace()
     incAddToHead(incFaces, f);
 
     return f;
-}
-
-//PREPROCESSING
-void incReadVertices()
-{ /*
-    int vnum = 0;
-    while(vertices) 
-    {
-        v = createNullVertex();
-        v->v[0] = x;
-        v->v[1] = y;
-        v->v[2] = z;
-        v->vnum = vnum++;
-    }*/
 }
 
 /*
@@ -368,16 +362,16 @@ incFace *incMakeConeFace(incEdge *e, incVertex *v)
 
 void incAddToHull(incVertex *v)
 {
-    incFace *headFace = incFaces;
+    incFace *f = incFaces;
     bool visible = false;
     do
     {
-        if (incVolumeSign(headFace, v))
+        if (incVolumeSign(f, v))
         {
-            headFace->isVisible = visible = true;
+            f->isVisible = visible = true;
         }
-        headFace = headFace->next;
-    } while (headFace != incFaces);
+        f = f->next;
+    } while (f != incFaces);
 
     if (!visible)
     {
@@ -386,117 +380,117 @@ void incAddToHull(incVertex *v)
         return;
     }
 
-    incEdge *headEdge, *nextEdge;
-    headEdge = incEdges;
+    incEdge *e, *tempEdge;
+    e = incEdges;
     do
     {
-        nextEdge = headEdge->next;
-        if (headEdge->adjFace[0]->isVisible && headEdge->adjFace[1]->isVisible)
+        tempEdge = e->next;
+        if (e->adjFace[0]->isVisible && e->adjFace[1]->isVisible)
         {
             //both are visible: inside cone and should be removed
-            headEdge->shouldBeRemoved = true;
+            e->shouldBeRemoved = true;
         }
-        else if (headEdge->adjFace[0]->isVisible || headEdge->adjFace[1]->isVisible)
+        else if (e->adjFace[0]->isVisible || e->adjFace[1]->isVisible)
         {
             //only one is visible: border edge, erect face for cone
-            headEdge->newFace = incMakeConeFace(headEdge, v);
+            e->newFace = incMakeConeFace(e, v);
         }
-        headEdge = nextEdge;
-    } while (headEdge != incEdges);
+        e = tempEdge;
+    } while (e != incEdges);
 }
 
 void incCleanEdges()
 {
-    incEdge *headEdge, *tempEdge;
-    headEdge = incEdges;
+    incEdge *e, *tempEdge;
+    e = incEdges;
     do
     {
-        if (headEdge->newFace)
+        if (e->newFace)
         {
-            if (headEdge->adjFace[0]->isVisible)
+            if (e->adjFace[0]->isVisible)
             {
-                headEdge->adjFace[0] = headEdge->newFace;
+                e->adjFace[0] = e->newFace;
             }
             else
             {
-                headEdge->adjFace[1] = headEdge->newFace;
+                e->adjFace[1] = e->newFace;
             }
-            headEdge->newFace = nullptr;
+            e->newFace = nullptr;
         }
-        headEdge = headEdge->next;
-    } while (headEdge != incEdges);
+        e = e->next;
+    } while (e != incEdges);
 
     while (incEdges && incEdges->shouldBeRemoved)
     {
-        headEdge = incEdges;
-        incRemoveFromHead(incEdges, headEdge);
+        e = incEdges;
+        incRemoveFromHead(incEdges, e);
     }
-    headEdge = incEdges->next;
+    e = incEdges->next;
     do
     {
-        if (headEdge->shouldBeRemoved)
+        if (e->shouldBeRemoved)
         {
-            tempEdge = headEdge;
-            headEdge = headEdge->next;
+            tempEdge = e;
+            e = e->next;
             incRemoveFromHead(incEdges, tempEdge);
         }
         else
         {
-            headEdge = headEdge->next;
+            e = e->next;
         }
-    } while (headEdge != incEdges);
+    } while (e != incEdges);
 }
 
 void incCleanFaces()
 {
-    incFace *headFace, *tempFace;
+    incFace *f, *tempFace;
     while (incFaces && incFaces->isVisible)
     {
-        headFace = incFaces;
-        incRemoveFromHead(incFaces, headFace);
+        f = incFaces;
+        incRemoveFromHead(incFaces, f);
     }
-    headFace = incFaces->next;
+    f = incFaces->next;
     do
     {
-        if (headFace->isVisible)
+        if (f->isVisible)
         {
-            tempFace = headFace;
-            headFace = headFace->next;
+            tempFace = f;
+            f = f->next;
             incRemoveFromHead(incFaces, tempFace);
         }
         else
         {
-            headFace = headFace->next;
+            f = f->next;
         }
-    } while (headFace != incFaces);
+    } while (f != incFaces);
 }
 
 void incCleanVertices(incVertex *nextVertex)
 {
-    incVertex *headVertex, *tempVertex;
-    incEdge *headEdge = incEdges;
+    incVertex *v, *tempVertex;
+    incEdge *e = incEdges;
     do
     {
-        headEdge->endPoints[0]->isOnHull = headEdge->endPoints[1]->isOnHull = true;
-        headEdge = headEdge->next;
-    } while (headEdge != incEdges);
+        e->endPoints[0]->isOnHull = e->endPoints[1]->isOnHull = true;
+        e = e->next;
+    } while (e != incEdges);
 
     while (incVertices && incVertices->isProcessed && !incVertices->isOnHull)
     {
         //if we are about to delete nextVertex, go to the one after
-        headVertex = incVertices;
+        v = incVertices;
         //he dereferences here *nextVertex???
-        if (headVertex == nextVertex)
-            nextVertex = headVertex->next;
-        incRemoveFromHead(incVertices, headVertex);
+        if (v == nextVertex)
+            nextVertex = v->next;
+        incRemoveFromHead(incVertices, v);
     }
-    headVertex = incVertices->next;
+    v = incVertices->next;
     do
     {
-        if (headVertex->isProcessed && !headVertex->isOnHull)
+        if (v->isProcessed && !v->isOnHull)
         {
-            tempVertex = headVertex;
-            headVertex = headVertex->next;
+            tempVertex = v;
+            v = v->next;
             //he dereferences here *nextVertex???
             if (tempVertex == nextVertex)
             {
@@ -506,17 +500,17 @@ void incCleanVertices(incVertex *nextVertex)
         }
         else
         {
-            headVertex = headVertex->next;
+            v = v->next;
         }
-    } while (headVertex != incVertices);
+    } while (v != incVertices);
 
-    headVertex = incVertices;
+    v = incVertices;
     do
     {
-        headVertex->duplicate = nullptr;
-        headVertex->isOnHull = false;
-        headVertex = headVertex->next;
-    } while (headVertex != incVertices);
+        v->duplicate = nullptr;
+        v->isOnHull = false;
+        v = v->next;
+    } while (v != incVertices);
 }
 
 void incCleanStuff(incVertex *nextVertex)
@@ -527,7 +521,31 @@ void incCleanStuff(incVertex *nextVertex)
     incCleanVertices(nextVertex);
 }
 
-void incConstructHull()
+mesh &incConvertToMesh(render_context &renderContext)
+{
+    auto &m = InitEmptyMesh(renderContext);
+    m.position = glm::vec3(0.0f);
+    m.scale = glm::vec3(globalScale);
+    m.dirty = true;
+
+    incFace *f = incFaces;
+    do
+    {
+        face newFace = {};
+        newFace.vertices[0] = f->vertex[0];
+        newFace.vertices[1] = f->vertex[1];
+        newFace.vertices[2] = f->vertex[2];
+        newFace.faceColor = glm::vec4(0.0f, 1.0f, 1.0f, 0.7f);
+        newFace.faceColor.w = 0.5f;
+        m.faces.push_back(newFace);
+
+        f = f->next;
+    } while (f != incFaces);
+
+    return m;
+}
+
+void incConstructFullHull()
 {
     //Preprocess() here
     incCreateBihedron();
@@ -544,84 +562,21 @@ void incConstructHull()
         }
         v = nextVertex;
     } while (v != incVertices);
-    //all done, output faces for mesh
 }
 
-    /*
-mesh& InitIncHull(render_context &renderContext, vertex* vertices, int numVertices)
-{
-    auto &m = InitEmptyMesh(renderContext);
-    m.position = glm::vec3(0.0f);
-    m.scale = glm::vec3(globalScale);
-    m.numFaces = 0;
-    m.facesSize = 0;
-
-    return m;
-}
-
-face* IncHullFindNextIteration(render_context &renderContext, mesh &m)
-{
-    face* res = nullptr;
-
-    return res;
-}
-
-void IncHullIteration(render_context &renderContext, mesh &m, vertex *vertices, int numVertices)
-{
-    
-}
-
-void IncHull(render_context& renderContext, inc_context& incContext)
-{
-    incContext.currentFace = nullptr;
-    incContext.m = InitIncHull(renderContext, incContext.vertices, incContext.numberOfPoints);
-    incContext.v.clear();
-    incContext.previousIteration = 0;
-}
-
-void InitializeIncContext(inc_context &incContext, vertex *vertices, int numberOfPoints)
+void incInitializeContext(inc_context &incContext, vertex *vertices, int numberOfPoints)
 {
     if (incContext.vertices)
     {
         free(incContext.vertices);
     }
 
-    incContext.v.clear();
-
-    incContext.vertices = CopyVertices(vertices, numberOfPoints);
+    incCopyVertices(incContext, vertices, numberOfPoints);
     incContext.numberOfPoints = numberOfPoints;
+    // incContext.epsilon = 0.0f;
     incContext.iter = IHIteration::initIH;
-    incContext.currentFace = 0;
     incContext.previousIteration = 0;
     incContext.initialized = true;
 }
-
-void IncHullStep(render_context &renderContext, inc_context &context)
-{
-    switch (context.iter)
-    {
-    case IHIteration::initIH:
-    {
-        context.m = InitIncHull(renderContext, context.vertices, context.numberOfPoints);
-        context.iter = IHIteration::findNextIter;
-    }
-    break;
-    case IHIteration::findNextIter:
-    {
-    }
-    break;
-    case IHIteration::doIter:
-    {
-        if (context.currentFace)
-        {
-            Log("Doing iteration\n");
-            IncHullIteration(renderContext, context.m, context.vertices, context.numberOfPoints);
-            context.iter = IHIteration::findNextIter;
-            context.v.clear();
-        }
-    }
-    break;
-    }
-}*/
 
 #endif
