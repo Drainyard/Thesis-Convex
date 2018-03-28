@@ -63,34 +63,34 @@ incEdge *incEdges = nullptr;
 incFace *incFaces = nullptr;
 
 template <typename T>
-void incAddToHead(T head, T pointer)
+void incAddToHead(T *head, T pointer)
 {
-    if (head)
+    if (*head)
     {
-        pointer->next = head;
-        pointer->prev = head->prev;
-        head->prev = pointer;
+        pointer->next = *head;
+        pointer->prev = (*head)->prev;
+        (*head)->prev = pointer;
         pointer->prev->next = pointer;
     }
     else
     {
-        head = pointer;
-        head->next = head->prev = pointer;
+        *head = pointer;
+        (*head)->next = (*head)->prev = pointer;
     }
 };
 
 template <typename T>
-void incRemoveFromHead(T head, T pointer)
+void incRemoveFromHead(T *head, T pointer)
 {
-    if (head)
+    if (*head)
     {
-        if (head == head->next)
+        if (*head == (*head)->next)
         {
-            head = nullptr;
+            *head = nullptr;
         }
-        else if (pointer == head)
+        else if (pointer == *head)
         {
-            head = head->next;
+            *head = (*head)->next;
         }
         pointer->next->prev = pointer->prev;
         pointer->prev->next = pointer->next;
@@ -110,7 +110,7 @@ static void incCopyVertices(inc_context &incContext, vertex *vertices, int numbe
         v->isProcessed = false;
         v->vIndex = i;
         v->vector = vertices[i].position;
-        incAddToHead(incVertices, v);
+        incAddToHead(&incVertices, v);
     }
 }
 
@@ -120,7 +120,7 @@ incEdge *incCreateNullEdge()
     e->adjFace[0] = e->adjFace[1] = e->newFace = nullptr;
     e->endPoints[0] = e->endPoints[1] = nullptr;
     e->shouldBeRemoved = false;
-    incAddToHead(incEdges, e);
+    incAddToHead(&incEdges, e);
 
     return e;
 }
@@ -131,7 +131,7 @@ incFace *incCreateNullFace()
     f->edge[0] = f->edge[1] = f->edge[2] = nullptr;
     f->vertex[0] = f->vertex[1] = f->vertex[2] = nullptr;
     f->isVisible = false;
-    incAddToHead(incFaces, f);
+    incAddToHead(&incFaces, f);
 
     return f;
 }
@@ -212,20 +212,49 @@ right-hand rule points toward the outside.
 
 TODO optimize with fewer multiplications or use normals?
     dot a vector from face to d with normal a.  
+
+From book:
+
+double ax = f->vertex[0]->vector.x - d->vector.x;
+double ay = f->vertex[0]->vector.x - d->vector.y;
+double az = f->vertex[0]->vector.x - d->vector.z;
+double bx = f->vertex[1]->vector.x - d->vector.x;
+double by = f->vertex[1]->vector.x - d->vector.y;
+double bz = f->vertex[1]->vector.x - d->vector.z;
+double cx = f->vertex[2]->vector.x - d->vector.x;
+double cy = f->vertex[2]->vector.x - d->vector.y;
+double cz = f->vertex[2]->vector.x - d->vector.z;
+
+double vol = ax * (by * cz - bz * cy) 
+            + ay * (bz * cx - bx * cz)
+            + az * (bx * cy - by * cx);
 */
 int incVolumeSign(incFace *f, incVertex *d)
 {
-    incVertex *a = f->vertex[0];
-    incVertex *b = f->vertex[1];
-    incVertex *c = f->vertex[2];
+    //incVertex *a = f->vertex[0];
+    //incVertex *b = f->vertex[1];
+    //incVertex *c = f->vertex[2];
 
-    double vol = -1 * (a->vector.z - d->vector.z) * (b->vector.y - d->vector.y) * (c->vector.x - d->vector.x) + (a->vector.y - d->vector.y) * (b->vector.z - d->vector.z) * (c->vector.x - d->vector.x) + (a->vector.z - d->vector.z) * (b->vector.x - d->vector.x) * (c->vector.y - d->vector.y) - (a->vector.x - d->vector.x) * (b->vector.z - d->vector.z) * (c->vector.y - d->vector.y) - (a->vector.y - d->vector.y) * (b->vector.x - d->vector.x) * (c->vector.z - d->vector.z) + (a->vector.x - d->vector.x) * (b->vector.y - d->vector.y) * (c->vector.z - d->vector.z);
+    //double vol = -1 * (a->vector.z - d->vector.z) * (b->vector.y - d->vector.y) * (c->vector.x - d->vector.x) + (a->vector.y - d->vector.y) * (b->vector.z - d->vector.z) * (c->vector.x - d->vector.x) + (a->vector.z - d->vector.z) * (b->vector.x - d->vector.x) * (c->vector.y - d->vector.y) - (a->vector.x - d->vector.x) * (b->vector.z - d->vector.z) * (c->vector.y - d->vector.y) - (a->vector.y - d->vector.y) * (b->vector.x - d->vector.x) * (c->vector.z - d->vector.z) + (a->vector.x - d->vector.x) * (b->vector.y - d->vector.y) * (c->vector.z - d->vector.z);
+
+    double ax = f->vertex[0]->vector.x - d->vector.x;
+    double ay = f->vertex[0]->vector.x - d->vector.y;
+    double az = f->vertex[0]->vector.x - d->vector.z;
+    double bx = f->vertex[1]->vector.x - d->vector.x;
+    double by = f->vertex[1]->vector.x - d->vector.y;
+    double bz = f->vertex[1]->vector.x - d->vector.z;
+    double cx = f->vertex[2]->vector.x - d->vector.x;
+    double cy = f->vertex[2]->vector.x - d->vector.y;
+    double cz = f->vertex[2]->vector.x - d->vector.z;
+
+    double vol = ax * (by * cz - bz * cy) + ay * (bz * cx - bx * cz) + az * (bx * cy - by * cx);
+
     //TODO add real epsilon
-    if (vol > 0.5)
+    if (vol > 0.0000001)
     {
         return 1;
     }
-    if (vol < -0.5)
+    if (vol < 0.0000001)
     {
         return -1;
     }
@@ -294,25 +323,30 @@ void incEnforceCounterClockWise(incFace *newFace, incEdge *e, incVertex *v)
     {
         visibleFace = e->adjFace[1];
     }
-    //TODO woot
-    for (int i = 0; visibleFace->vertex[i] != e->endPoints[0]; ++i)
+    //TODO NILLY HILFE wat it do
+    int i = 0;
+    while (visibleFace->vertex[i] != e->endPoints[0])
     {
-        if (visibleFace->vertex[(i + 1) % 3] != e->endPoints[1])
-        {
-            newFace->vertex[0] = e->endPoints[1];
-            newFace->vertex[1] = e->endPoints[0];
-        }
-        else
-        {
-            newFace->vertex[0] = e->endPoints[0];
-            newFace->vertex[1] = e->endPoints[1];
-
-            temp = newFace->edge[1];
-            newFace->edge[1] = newFace->edge[2];
-            newFace->edge[2] = temp;
-        }
-        newFace->vertex[2] = v;
+        i++;
+    } 
+    if (visibleFace->vertex[(i + 1) % 3] != e->endPoints[1])
+    {
+        newFace->vertex[0] = e->endPoints[1];
+        newFace->vertex[1] = e->endPoints[0];
     }
+    else
+    {
+        newFace->vertex[0] = e->endPoints[0];
+        newFace->vertex[1] = e->endPoints[1];
+
+        temp = newFace->edge[1];
+        newFace->edge[1] = newFace->edge[2];
+        newFace->edge[2] = temp;
+    }
+    /* This swap is tricky. e is edge[0]. edge[1] is based on endpt[0],
+        edge[2] on endpt[1].  So if e is oriented "forwards," we
+        need to move edge[1] to follow [0], because it precedes. */
+    newFace->vertex[2] = v;
 }
 
 incFace *incMakeConeFace(incEdge *e, incVertex *v)
@@ -366,7 +400,7 @@ void incAddToHull(incVertex *v)
     bool visible = false;
     do
     {
-        if (incVolumeSign(f, v))
+        if (incVolumeSign(f, v) < 0)
         {
             f->isVisible = visible = true;
         }
@@ -423,7 +457,7 @@ void incCleanEdges()
     while (incEdges && incEdges->shouldBeRemoved)
     {
         e = incEdges;
-        incRemoveFromHead(incEdges, e);
+        incRemoveFromHead(&incEdges, e);
     }
     e = incEdges->next;
     do
@@ -432,7 +466,7 @@ void incCleanEdges()
         {
             tempEdge = e;
             e = e->next;
-            incRemoveFromHead(incEdges, tempEdge);
+            incRemoveFromHead(&incEdges, tempEdge);
         }
         else
         {
@@ -447,7 +481,7 @@ void incCleanFaces()
     while (incFaces && incFaces->isVisible)
     {
         f = incFaces;
-        incRemoveFromHead(incFaces, f);
+        incRemoveFromHead(&incFaces, f);
     }
     f = incFaces->next;
     do
@@ -456,7 +490,7 @@ void incCleanFaces()
         {
             tempFace = f;
             f = f->next;
-            incRemoveFromHead(incFaces, tempFace);
+            incRemoveFromHead(&incFaces, tempFace);
         }
         else
         {
@@ -465,7 +499,7 @@ void incCleanFaces()
     } while (f != incFaces);
 }
 
-void incCleanVertices(incVertex *nextVertex)
+void incCleanVertices(incVertex **nextVertex)
 {
     incVertex *v, *tempVertex;
     incEdge *e = incEdges;
@@ -479,10 +513,11 @@ void incCleanVertices(incVertex *nextVertex)
     {
         //if we are about to delete nextVertex, go to the one after
         v = incVertices;
-        //he dereferences here *nextVertex???
-        if (v == nextVertex)
-            nextVertex = v->next;
-        incRemoveFromHead(incVertices, v);
+        if (v == *nextVertex)
+        {
+            *nextVertex = v->next;
+        }
+        incRemoveFromHead(&incVertices, v);
     }
     v = incVertices->next;
     do
@@ -491,12 +526,11 @@ void incCleanVertices(incVertex *nextVertex)
         {
             tempVertex = v;
             v = v->next;
-            //he dereferences here *nextVertex???
-            if (tempVertex == nextVertex)
+            if (tempVertex == *nextVertex)
             {
-                nextVertex = tempVertex->next;
+                *nextVertex = tempVertex->next;
             }
-            incAddToHead(incVertices, tempVertex);
+            incRemoveFromHead(&incVertices, v);
         }
         else
         {
@@ -518,7 +552,7 @@ void incCleanStuff(incVertex *nextVertex)
     //cleanEdges called before faces, as we need acces to isVisible
     incCleanEdges();
     incCleanFaces();
-    incCleanVertices(nextVertex);
+    incCleanVertices(&nextVertex);
 }
 
 mesh &incConvertToMesh(render_context &renderContext)
@@ -532,9 +566,13 @@ mesh &incConvertToMesh(render_context &renderContext)
     do
     {
         face newFace = {};
-        newFace.vertices[0] = f->vertex[0];
-        newFace.vertices[1] = f->vertex[1];
-        newFace.vertices[2] = f->vertex[2];
+        for (int i = 0; i < 3; i++)
+        {
+            vertex newVertex = {};
+            newVertex.position = f->vertex[i]->vector;
+            newVertex.vertexIndex = f->vertex[i]->vIndex;
+            newFace.vertices[i] = newVertex;
+        }
         newFace.faceColor = glm::vec4(0.0f, 1.0f, 1.0f, 0.7f);
         newFace.faceColor.w = 0.5f;
         m.faces.push_back(newFace);
