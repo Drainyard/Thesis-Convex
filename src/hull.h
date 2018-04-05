@@ -29,7 +29,7 @@ struct hull
     
     timer qhTimer;
     
-    //inc_context incContext;
+    inc_context incContext;
     //inc_context stepIncContext;
     //inc_context timedStepIncContext;
     
@@ -47,7 +47,7 @@ static void InitializeHull(hull& h, vertex* vertices, int numberOfPoints, HullTy
     h.stepQhContext.initialized = false;
     h.timedStepQhContext.initialized = false;
     
-    //h.incContext.initialized = false;
+    h.incContext.initialized = false;
     //h.stepIncContext.initialized = false;
     //h.timedStepIncContext.initialized = false;
     
@@ -63,7 +63,7 @@ static void ReinitializeHull(hull& h, vertex* vertices, int numberOfPoints)
     h.stepQhContext.initialized = false;
     h.timedStepQhContext.initialized = false;
     
-    //h.incContext.initialized = false;
+    h.incContext.initialized = false;
     //h.stepIncContext.initialized = false;
     //h.timedStepIncContext.initialized = false;
 }
@@ -135,14 +135,15 @@ static mesh& FullHull(render_context& renderContext, hull& h)
         break;
         case Inc:
         {
-            /*auto& incContext = h.incContext;
+            auto& incContext = h.incContext;
             if(!incContext.initialized)
             {
-                InitializeIncContext(incContext, h.vertices, h.numberOfPoints);
+                incInitializeContext(incContext, h.vertices, h.numberOfPoints);
             }
-            auto& res = IncHull(renderContext, incContext.vertices, incContext.numberOfPoints);
-            
-            return res;*/
+            TIME_START;
+            incConstructFullHull();
+            TIME_END("Full hull");
+            return incConvertToMesh(renderContext);
         }
         break;
         case RInc:
