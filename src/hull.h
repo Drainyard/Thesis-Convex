@@ -106,7 +106,6 @@ static void UpdateHull(render_context& renderContext, hull& h, HullType hullType
                     h.incTimer.currentTime -= deltaTime;
                 }
             }*/
-            
         }
         break;
         case RInc:
@@ -128,9 +127,9 @@ static mesh& FullHull(render_context& renderContext, hull& h)
                 qhInitializeContext(qhContext, h.vertices, h.numberOfPoints);
             }
             //auto& res = QuickHull(renderContext, qhContext.vertices, qhContext.numberOfPoints);
-            TIME_START;
+            //auto timerIndex = startTimer();
             qhFullHull(renderContext, qhContext);
-            TIME_END("Full hull");
+            //TIME_END(timerIndex, "Full hull");
             return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
         }
         break;

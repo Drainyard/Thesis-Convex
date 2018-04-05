@@ -12,7 +12,7 @@
 
 #include <cmath>
 #include <algorithm>
-#include "timing.h"
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <glad/glad.h>
@@ -34,7 +34,7 @@
 #pragma warning(pop)
 #endif
 
-
+#include "timing.h"
 #include "util.h"
 #include "keys.h"
 
@@ -100,7 +100,7 @@ int main()
     //int numberOfPoints = 645932; // Man in vest numbers
     //int numberOfPoints = 17536; // Arnold
     //int numberOfPoints = 27948;
-    pointGenerator.numberOfPoints = 50000;
+    pointGenerator.numberOfPoints = 500;
     auto vertices = pointGenerator.generatorFunction(pointGenerator, renderContext, 0.0f, 200.0f);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ");
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
