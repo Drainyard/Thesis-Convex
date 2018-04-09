@@ -99,12 +99,11 @@ void incRemoveFromHead(T *head, T pointer)
     }
 };
 
-static void incCopyVertices(inc_context &incContext, vertex *vertices, int numberOfPoints)
+static void incCopyVertices(vertex *vertices, int numberOfPoints)
 {
-    incContext.vertices = (incVertex *)malloc(sizeof(incVertex) * numberOfPoints);
     for (int i = 0; i < numberOfPoints; i++)
     {
-        incVertex *v = &incContext.vertices[i];
+        incVertex *v = (incVertex *)malloc(sizeof(incVertex));
         v->duplicate = nullptr;
         v->isOnHull = false;
         v->isProcessed = false;
@@ -249,16 +248,19 @@ int incVolumeSign(incFace *f, incVertex *d)
 
     double vol = ax * (by * cz - bz * cy) + ay * (bz * cx - bx * cz) + az * (bx * cy - by * cx);
 
+    return vol;
     //TODO add real epsilon
-    if (vol > 0.0000001)
+    /*
+    if (vol > 0.00001)
     {
         return 1;
     }
-    if (vol < 0.0000001)
+    if (vol < -0.00001)
     {
         return -1;
     }
     return 0;
+    */
 }
 
 //double sided triangle from points NOT collinear
@@ -296,6 +298,7 @@ void incCreateBihedron()
     f1->edge[2]->adjFace[1] = f0;
 
     incVertex *v3 = v2->next;
+    //Coplanar check hmm
     int vol = incVolumeSign(f0, v3);
     while (!vol)
     {
@@ -313,7 +316,7 @@ void incCreateBihedron()
 
 void incEnforceCounterClockWise(incFace *newFace, incEdge *e, incVertex *v)
 {
-    incEdge *temp;
+    //From Computational Geometry in C page 136
     incFace *visibleFace;
     if (e->adjFace[0]->isVisible)
     {
@@ -323,8 +326,7 @@ void incEnforceCounterClockWise(incFace *newFace, incEdge *e, incVertex *v)
     {
         visibleFace = e->adjFace[1];
     }
-    //TODO NILLY HILFE wat it do
-    int i = 0;
+    int i = 0; // Index of e->endPoint[0] in visibleFace
     while (visibleFace->vertex[i] != e->endPoints[0])
     {
         i++;
@@ -339,12 +341,12 @@ void incEnforceCounterClockWise(incFace *newFace, incEdge *e, incVertex *v)
         newFace->vertex[0] = e->endPoints[0];
         newFace->vertex[1] = e->endPoints[1];
 
-        temp = newFace->edge[1];
+        incEdge *temp = newFace->edge[1];
         newFace->edge[1] = newFace->edge[2];
         newFace->edge[2] = temp;
     }
-    /* This swap is tricky. e is edge[0]. edge[1] is based on endpt[0],
-        edge[2] on endpt[1].  So if e is oriented "forwards," we
+    /* This swap is tricky. e is edge[0]. edge[1] is based on endPoint[0],
+        edge[2] on endPoint[1].  So if e is oriented "forwards," we
         need to move edge[1] to follow [0], because it precedes. */
     newFace->vertex[2] = v;
 }
@@ -396,8 +398,13 @@ incFace *incMakeConeFace(incEdge *e, incVertex *v)
 
 void incAddToHull(incVertex *v)
 {
+    //use this page 247 in compgeo book
+    //https://people.csail.mit.edu/indyk/6.838-old/handouts/lec10.pdf
+    //https://cw.fel.cvut.cz/wiki/_media/misc/projects/oppa_oi_english/courses/ae4m39vg/lectures/05-convexhull-3d.pdf
+    //https://members.loria.fr/MPouget/files/enseignement/webimpa/mpri-randomized.pdf
     incFace *f = incFaces;
     bool visible = false;
+    //check sidedness another way???
     do
     {
         if (incVolumeSign(f, v) < 0)
@@ -530,7 +537,7 @@ void incCleanVertices(incVertex **nextVertex)
             {
                 *nextVertex = tempVertex->next;
             }
-            incRemoveFromHead(&incVertices, v);
+            incRemoveFromHead(&incVertices, tempVertex);
         }
         else
         {
@@ -538,6 +545,7 @@ void incCleanVertices(incVertex **nextVertex)
         }
     } while (v != incVertices);
 
+    //reset flags
     v = incVertices;
     do
     {
@@ -549,7 +557,7 @@ void incCleanVertices(incVertex **nextVertex)
 
 void incCleanStuff(incVertex *nextVertex)
 {
-    //cleanEdges called before faces, as we need acces to isVisible
+    //cleanEdges called before faces, as we need access to isVisible
     incCleanEdges();
     incCleanFaces();
     incCleanVertices(&nextVertex);
@@ -585,7 +593,6 @@ mesh &incConvertToMesh(render_context &renderContext)
 
 void incConstructFullHull()
 {
-    //Preprocess() here
     incCreateBihedron();
     incVertex *v = incVertices;
     incVertex *nextVertex;
@@ -609,7 +616,7 @@ void incInitializeContext(inc_context &incContext, vertex *vertices, int numberO
         free(incContext.vertices);
     }
 
-    incCopyVertices(incContext, vertices, numberOfPoints);
+    incCopyVertices(vertices, numberOfPoints);
     incContext.numberOfPoints = numberOfPoints;
     // incContext.epsilon = 0.0f;
     incContext.iter = IHIteration::initIH;
