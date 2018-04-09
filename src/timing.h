@@ -22,4 +22,4 @@ double endTimer(int index)
 }
 
 #define TIME_END(index, msg) \
-Log_A("%s took %f time\n", msg, endTimer(index));
+log_a("%s took %f time\n", msg, endTimer(index));
