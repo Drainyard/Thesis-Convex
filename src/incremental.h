@@ -101,9 +101,20 @@ void incRemoveFromHead(T *head, T pointer)
 
 static void incCopyVertices(vertex *vertices, int numberOfPoints)
 {
-    for (int i = 0; i < numberOfPoints; i++)
+    vertex temp;
+    int i, j;
+    //Fisher Yates shuffle
+     for (i = numberOfPoints - 1; i > 0; i--) { 
+         j = rand() % (i + 1); 
+         temp = vertices[j];
+         vertices[j] = vertices[i];
+         vertices[i] = temp;
+    }
+
+    incVertex *v;
+    for (i = 0; i < numberOfPoints; i++)
     {
-        incVertex *v = (incVertex *)malloc(sizeof(incVertex));
+        v = (incVertex *)malloc(sizeof(incVertex));
         v->duplicate = nullptr;
         v->isOnHull = false;
         v->isProcessed = false;
@@ -228,7 +239,7 @@ double vol = ax * (by * cz - bz * cy)
             + ay * (bz * cx - bx * cz)
             + az * (bx * cy - by * cx);
 */
-int incVolumeSign(incFace *f, incVertex *d)
+double incVolumeSign(incFace *f, incVertex *d)
 {
     //incVertex *a = f->vertex[0];
     //incVertex *b = f->vertex[1];
@@ -299,8 +310,8 @@ void incCreateBihedron()
 
     incVertex *v3 = v2->next;
     //Coplanar check hmm
-    int vol = incVolumeSign(f0, v3);
-    while (!vol)
+    double vol = incVolumeSign(f0, v3);
+    while (vol == 0.0)
     {
         v3 = v3->next;
         if (v3 == v0)
@@ -407,7 +418,7 @@ void incAddToHull(incVertex *v)
     //check sidedness another way???
     do
     {
-        if (incVolumeSign(f, v) < 0)
+        if (incVolumeSign(f, v) < 0.0)
         {
             f->isVisible = visible = true;
         }
@@ -426,12 +437,12 @@ void incAddToHull(incVertex *v)
     do
     {
         tempEdge = e->next;
-        if (e->adjFace[0]->isVisible && e->adjFace[1]->isVisible)
+        if (e->adjFace[0] && e->adjFace[0]->isVisible && e->adjFace[1] && e->adjFace[1]->isVisible)
         {
             //both are visible: inside cone and should be removed
             e->shouldBeRemoved = true;
         }
-        else if (e->adjFace[0]->isVisible || e->adjFace[1]->isVisible)
+        else if ((e->adjFace[0] && e->adjFace[0]->isVisible) || (e->adjFace[1] && e->adjFace[1]->isVisible))
         {
             //only one is visible: border edge, erect face for cone
             e->newFace = incMakeConeFace(e, v);
