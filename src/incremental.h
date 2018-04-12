@@ -437,12 +437,12 @@ void incAddToHull(incVertex *v)
     do
     {
         tempEdge = e->next;
-        if (e->adjFace[0] && e->adjFace[0]->isVisible && e->adjFace[1] && e->adjFace[1]->isVisible)
+        if (e->adjFace[0]->isVisible && e->adjFace[1]->isVisible)
         {
             //both are visible: inside cone and should be removed
             e->shouldBeRemoved = true;
         }
-        else if ((e->adjFace[0] && e->adjFace[0]->isVisible) || (e->adjFace[1] && e->adjFace[1]->isVisible))
+        else if (e->adjFace[0]->isVisible || e->adjFace[1]->isVisible)
         {
             //only one is visible: border edge, erect face for cone
             e->newFace = incMakeConeFace(e, v);
