@@ -39,13 +39,66 @@ struct hull
     point_generator pointGenerator;
 };
 
+const char* GetGeneratorTypeString(GeneratorType type)
+{
+    
+    switch(type)
+    {
+        case GeneratorType::InSphere:
+        {
+            return "In Sphere";
+        }
+        break;
+        case GeneratorType::OnSphere:
+        {
+            return "On Sphere";
+        }
+        break;
+        case GeneratorType::InCube:
+        {
+            return "In Cube";
+        }
+        break;
+        case GeneratorType::NormalizedSphere:
+        {
+            return "On Normalized Sphere";
+        }
+        break;
+        case GeneratorType::ManyInternal:
+        {
+            return "Many internal, some on sphere";
+        }
+        break;
+    }
+}
 
-void writeHullToFile(const char* filename, const char* typeString, int facesAdded, int totalFaceCount, int vertexCount, int pointsProcessed, int distanceQueryCount, int verticesInHull, double timeSpent, GeneratorType generateType)
+void WriteHullToCSV(const char* filename, const char* typeString, int facesAdded, int totalFaceCount, int vertexCount, int pointsProcessed, int distanceQueryCount, int verticesInHull, double timeSpent, GeneratorType generateType)
+{
+    char* fullFilename = concat(filename, ".csv");
+    bool fileExists = access(fullFilename, F_OK) != -1;
+    FILE* f = fopen(fullFilename, "a+");
+    
+    if(f)
+    {
+        if(!fileExists) 
+        {
+            fprintf(f, "type, faces added, faces in hull, input vertices, points processed, distance queries, vertices in hull, time spent\n");
+        }
+        
+        fprintf(f, "%s, %d, %d, %d, %d, %d, %d, %lf, %s\n", typeString, facesAdded, totalFaceCount, vertexCount, pointsProcessed, distanceQueryCount, verticesInHull, timeSpent, GetGeneratorTypeString(generateType));
+        fclose(f);
+    }
+    free(fullFilename);
+}
+
+void WriteHullToFile(const char* filename, const char* typeString, int facesAdded, int totalFaceCount, int vertexCount, int pointsProcessed, int distanceQueryCount, int verticesInHull, double timeSpent, GeneratorType generateType)
 {
     FILE* f = fopen(filename, "a+");
     
     if(f)
     {
+        
+        
         fprintf(f, "Hull result for %s\n", typeString);
         fprintf(f, " Faces added:      %d\n", facesAdded);
         fprintf(f, " Faces in hull:    %d\n", totalFaceCount);
@@ -54,34 +107,8 @@ void writeHullToFile(const char* filename, const char* typeString, int facesAdde
         fprintf(f, " Distance queries: %d\n", distanceQueryCount);
         fprintf(f, " Vertices in hull: %d\n", verticesInHull);
         fprintf(f, " Time spent:       %lf\n", timeSpent);
-        switch(generateType)
-        {
-            case GeneratorType::InSphere:
-            {
-                fprintf(f, " Point generation: In Sphere\n");
-            }
-            break;
-            case GeneratorType::OnSphere:
-            {
-                fprintf(f, " Point generation: On Sphere\n");
-            }
-            break;
-            case GeneratorType::InCube:
-            {
-                fprintf(f, " Point generation: In Cube\n");
-            }
-            break;
-            case GeneratorType::NormalizedSphere:
-            {
-                fprintf(f, " Point generation: On Normalized Sphere\n");
-            }
-            break;
-            case GeneratorType::ManyInternal:
-            {
-                fprintf(f, " Point generation: Many internal, some on sphere\n");
-            }
-            break;
-        }
+        fprintf(f, " Point generation: %s\n", GetGeneratorTypeString(generateType));
+        
         fclose(f);
     }
 }
@@ -145,15 +172,15 @@ static mesh* UpdateHull(render_context& renderContext, hull& h, HullType hullTyp
             /*auto& incContext = h.timedStepIncContext;
             if(h.incTimer.running)
             {
-                if(h.incTimer.currentTime <= 0.0)
-                {
-                    IncHullStep(renderContext, incContext);
-                    h.incTimer.currentTime = h.incTimer.timerInit;
-                }
-                else
-                {
-                    h.incTimer.currentTime -= deltaTime;
-                }
+            if(h.incTimer.currentTime <= 0.0)
+            {
+            IncHullStep(renderContext, incContext);
+            h.incTimer.currentTime = h.incTimer.timerInit;
+            }
+            else
+            {
+            h.incTimer.currentTime -= deltaTime;
+            }
             }*/
         }
         break;
@@ -179,7 +206,7 @@ static mesh& FullHull(render_context& renderContext, hull& h)
             
             qhFullHull(qhContext);
             
-            writeHullToFile("hull_out", "QuickHull", qhContext.qHull.processingState.addedFaces, (int)qhContext.qHull.faces.size(), h.numberOfPoints, qhContext.qHull.processingState.pointsProcessed, qhContext.qHull.processingState.distanceQueryCount, qhContext.qHull.processingState.verticesInHull, qhContext.qHull.processingState.timeSpent, h.pointGenerator.type);
+            WriteHullToCSV("hull_out", "QuickHull", qhContext.qHull.processingState.addedFaces, (int)qhContext.qHull.faces.size(), h.numberOfPoints, qhContext.qHull.processingState.pointsProcessed, qhContext.qHull.processingState.distanceQueryCount, qhContext.qHull.processingState.verticesInHull, qhContext.qHull.processingState.timeSpent, h.pointGenerator.type);
             
             return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
         }
@@ -225,7 +252,7 @@ static mesh& StepHull(render_context& renderContext, hull& h)
             /*auto& incContext = h.stepIncContext;
             if(!incContext.initialized)
             {
-                InitializeIncContext(incContext, h.vertices, h.numberOfPoints);
+            InitializeIncContext(incContext, h.vertices, h.numberOfPoints);
             }
             IncHullStep(renderContext, incContext);
             return incContext.m;*/
@@ -259,7 +286,7 @@ static mesh& TimedStepHull(render_context& renderContext, hull& h)
             /*auto& incContext = h.timedStepIncContext;
             if(!incContext.initialized)
             {
-                InitializeIncContext(incContext, h.vertices, h.numberOfPoints);
+            InitializeIncContext(incContext, h.vertices, h.numberOfPoints);
             }
             
             h.incTimer.running = !h.incTimer.running;

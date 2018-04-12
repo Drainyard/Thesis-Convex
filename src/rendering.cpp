@@ -59,7 +59,7 @@ static vertex* LoadObj(const char* filePath)
             {
                 sscanf(buffer, "v %f %f %f", &vertices[i].position.x, &vertices[i].position.y, &vertices[i].position.z);
                 
-                vertices[i].position = vertices[i].position * 100.0f;
+                vertices[i].position = vertices[i].position;
                 vertices[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
                 i++;
             }

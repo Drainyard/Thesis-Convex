@@ -1,0 +1,16 @@
+type, faces added, faces in hull, input vertices, points processed, distance queries, vertices in hull, time spent
+QuickHull, 29684, 9996, 5000, 5000, 35782, 5000, 2.993591, On Normalized Sphere
+QuickHull, 237, 96, 5000, 51, 7842, 50, 0.021593, Many internal, some on sphere
+QuickHull, 249, 96, 5000, 52, 7317, 50, 0.020956, Many internal, some on sphere
+QuickHull, 243, 96, 5000, 52, 8505, 50, 0.019097, Many internal, some on sphere
+QuickHull, 239, 96, 5000, 53, 9045, 50, 0.021230, Many internal, some on sphere
+QuickHull, 313, 96, 5000, 65, 11407, 50, 0.024041, Many internal, some on sphere
+QuickHull, 239, 96, 5000, 51, 8464, 50, 0.022415, Many internal, some on sphere
+QuickHull, 270, 96, 5000, 61, 9223, 50, 0.023297, Many internal, some on sphere
+QuickHull, 264, 96, 5000, 58, 7951, 50, 0.020314, Many internal, some on sphere
+QuickHull, 6878, 1158, 5000, 1209, 20621, 581, 0.660426, Many internal, some on sphere
+QuickHull, 6877, 1156, 5000, 1209, 20621, 580, 0.629637, Many internal, some on sphere
+QuickHull, 16434, 2696, 17536, 2854, 65254, 1350, 1.637587, Many internal, some on sphere
+QuickHull, 16434, 2696, 17536, 2854, 65254, 1350, 0.043590, Many internal, some on sphere
+QuickHull, 274, 96, 500000, 64, 889131, 50, 0.143242, Many internal, some on sphere
+QuickHull, 255, 96, 500000, 55, 849642, 50, 0.207453, Many internal, some on sphere
