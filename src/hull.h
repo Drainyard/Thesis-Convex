@@ -1,7 +1,6 @@
 #ifndef HULL_H
 #define HULL_H
 
-
 enum HullType
 {
     QH,
@@ -36,7 +35,56 @@ struct hull
     timer incTimer;
     
     HullType currentHullType;
+    
+    point_generator pointGenerator;
 };
+
+
+void writeHullToFile(const char* filename, const char* typeString, int facesAdded, int totalFaceCount, int vertexCount, int pointsProcessed, int distanceQueryCount, int verticesInHull, double timeSpent, GeneratorType generateType)
+{
+    FILE* f = fopen(filename, "a+");
+    
+    if(f)
+    {
+        fprintf(f, "Hull result for %s\n", typeString);
+        fprintf(f, " Faces added:      %d\n", facesAdded);
+        fprintf(f, " Faces in hull:    %d\n", totalFaceCount);
+        fprintf(f, " Input vertices:   %d\n", vertexCount);
+        fprintf(f, " Points processed: %d\n", pointsProcessed);
+        fprintf(f, " Distance queries: %d\n", distanceQueryCount);
+        fprintf(f, " Vertices in hull: %d\n", verticesInHull);
+        fprintf(f, " Time spent:       %lf\n", timeSpent);
+        switch(generateType)
+        {
+            case GeneratorType::InSphere:
+            {
+                fprintf(f, " Point generation: In Sphere\n");
+            }
+            break;
+            case GeneratorType::OnSphere:
+            {
+                fprintf(f, " Point generation: On Sphere\n");
+            }
+            break;
+            case GeneratorType::InCube:
+            {
+                fprintf(f, " Point generation: In Cube\n");
+            }
+            break;
+            case GeneratorType::NormalizedSphere:
+            {
+                fprintf(f, " Point generation: On Normalized Sphere\n");
+            }
+            break;
+            case GeneratorType::ManyInternal:
+            {
+                fprintf(f, " Point generation: Many internal, some on sphere\n");
+            }
+            break;
+        }
+        fclose(f);
+    }
+}
 
 static void InitializeHull(hull& h, vertex* vertices, int numberOfPoints, HullType hullType)
 {
@@ -68,7 +116,7 @@ static void ReinitializeHull(hull& h, vertex* vertices, int numberOfPoints)
     //h.timedStepIncContext.initialized = false;
 }
 
-static void UpdateHull(render_context& renderContext, hull& h, HullType hullType, double deltaTime)
+static mesh* UpdateHull(render_context& renderContext, hull& h, HullType hullType, double deltaTime)
 {
     h.currentHullType = hullType;
     
@@ -81,8 +129,9 @@ static void UpdateHull(render_context& renderContext, hull& h, HullType hullType
             {
                 if(h.qhTimer.currentTime <= 0.0)
                 {
-                    qhStep(renderContext, qhContext);
+                    qhStep(qhContext);
                     h.qhTimer.currentTime = h.qhTimer.timerInit;
+                    return &qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
                 }
                 else
                 {
@@ -106,7 +155,6 @@ static void UpdateHull(render_context& renderContext, hull& h, HullType hullType
                     h.incTimer.currentTime -= deltaTime;
                 }
             }*/
-            
         }
         break;
         case RInc:
@@ -114,6 +162,7 @@ static void UpdateHull(render_context& renderContext, hull& h, HullType hullType
         }
         break;
     }
+    return nullptr;
 }
 
 static mesh& FullHull(render_context& renderContext, hull& h)
@@ -127,10 +176,11 @@ static mesh& FullHull(render_context& renderContext, hull& h)
             {
                 qhInitializeContext(qhContext, h.vertices, h.numberOfPoints);
             }
-            //auto& res = QuickHull(renderContext, qhContext.vertices, qhContext.numberOfPoints);
-            TIME_START;
-            qhFullHull(renderContext, qhContext);
-            TIME_END("Full hull");
+            
+            qhFullHull(qhContext);
+            
+            writeHullToFile("hull_out", "QuickHull", qhContext.qHull.processingState.addedFaces, (int)qhContext.qHull.faces.size(), h.numberOfPoints, qhContext.qHull.processingState.pointsProcessed, qhContext.qHull.processingState.distanceQueryCount, qhContext.qHull.processingState.verticesInHull, qhContext.qHull.processingState.timeSpent, h.pointGenerator.type);
+            
             return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
         }
         break;
@@ -141,9 +191,9 @@ static mesh& FullHull(render_context& renderContext, hull& h)
             {
                 incInitializeContext(incContext, h.vertices, h.numberOfPoints);
             }
-            TIME_START;
+            auto timerIndex = startTimer();
             incConstructFullHull();
-            TIME_END("Full hull");
+            TIME_END(timerIndex, "Full hull");
             return incConvertToMesh(renderContext);
         }
         break;
@@ -166,7 +216,7 @@ static mesh& StepHull(render_context& renderContext, hull& h)
             {
                 qhInitializeContext(qhContext, h.vertices, h.numberOfPoints);
             }
-            qhStep(renderContext, qhContext);
+            qhStep(qhContext);
             return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
         }
         break;
@@ -222,6 +272,12 @@ static mesh& TimedStepHull(render_context& renderContext, hull& h)
         break;
     }
 }
+
+static bool TimerRunning(hull& h)
+{
+    return h.qhTimer.running || h.incTimer.running;
+}
+
 
 #endif
 

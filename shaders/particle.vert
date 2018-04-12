@@ -12,7 +12,7 @@ out vec4 c;
 
 void main()
 {
-	gl_Position = P * V * M * vec4(position + instanced_pos, 1);
+	gl_Position = (P * V * M * vec4(position + instanced_pos, 1));
 	c = instanced_color;
 }
 

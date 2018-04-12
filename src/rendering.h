@@ -130,9 +130,6 @@ struct mesh
     
     GLuint VAO;
     GLuint VBO;
-    int vertexCount;
-    
-    int faceCounter;
 };
 
 struct debug_context

@@ -12,7 +12,7 @@
 
 #include <cmath>
 #include <algorithm>
-#include "timing.h"
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <glad/glad.h>
@@ -34,7 +34,7 @@
 #pragma warning(pop)
 #endif
 
-
+#include "timing.h"
 #include "util.h"
 #include "keys.h"
 
@@ -50,8 +50,9 @@ static input_state inputState;
 #include "quickhull.h"
 #include "incremental.h"
 
-#include "hull.h"
 #include "point_generator.h"
+#include "hull.h"
+
 
 #define Min(A,B) ((A < B) ? (A) : (B))
 #define Max(A,B) ((A > B) ? (A) : (B))
@@ -94,20 +95,19 @@ int main()
     
     HullType hullType = HullType::QH;
     
-    point_generator pointGenerator = {};
-    pointGenerator.generatorFunction = GeneratePoints;
-    
     //int numberOfPoints = 645932; // Man in vest numbers
     //int numberOfPoints = 17536; // Arnold
     //int numberOfPoints = 27948;
-    pointGenerator.numberOfPoints = 500;
-    auto vertices = pointGenerator.generatorFunction(pointGenerator, renderContext, 0.0f, 200.0f);
+    
+    hull h = {};
+    h.pointGenerator.type = GeneratorType::ManyInternal;
+    h.pointGenerator.numberOfPoints = 5000;
+    auto vertices = Generate(h.pointGenerator, renderContext, 0.0f, 200.0f);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ");
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
     //auto vertices = LoadObj("../assets/obj/CarpetBit.obj");
     
-    hull h = {};
-    InitializeHull(h, vertices, pointGenerator.numberOfPoints, hullType);
+    InitializeHull(h, vertices, h.pointGenerator.numberOfPoints, hullType);
     
     mesh* currentMesh = nullptr;
     vertex* currentVertices = vertices;
@@ -132,7 +132,6 @@ int main()
             fps = (1.0 * (1.0 - totalDelta)) + (double)currentFrameCount;
             totalDelta = 0.0;
             currentFrameCount = 0;
-            //Log_A("FPS: %f\n", fps);
         }
         
         totalDelta += deltaTime;
@@ -141,7 +140,11 @@ int main()
         
         ComputeMatrices(renderContext, deltaTime);
         
-        UpdateHull(renderContext, h, hullType, deltaTime);
+        auto updatedMesh = UpdateHull(renderContext, h, hullType, deltaTime);
+        if(updatedMesh)
+        {
+            currentMesh = updatedMesh;
+        }
         
         if(KeyDown(Key_Y))
         {
@@ -150,8 +153,8 @@ int main()
                 free(vertices);
             }
             
-            vertices = pointGenerator.generatorFunction(pointGenerator, renderContext, 0.0f, 200.0f);
-            ReinitializeHull(h, vertices, pointGenerator.numberOfPoints);
+            vertices = Generate(h.pointGenerator, renderContext, 0.0f, 200.0f);
+            ReinitializeHull(h, vertices, h.pointGenerator.numberOfPoints);
             
             currentVertices = vertices;
             currentMesh = nullptr;
@@ -189,7 +192,7 @@ int main()
         
         if(renderContext.renderPoints)
         {
-            RenderPointCloud(renderContext, currentVertices, pointGenerator.numberOfPoints);
+            RenderPointCloud(renderContext, currentVertices, h.pointGenerator.numberOfPoints);
         }
         
         if(KeyDown(Key_Q))
@@ -209,7 +212,7 @@ int main()
         
         if(currentMesh)
         {
-            RenderMesh(renderContext, *currentMesh, currentVertices, deltaTime);
+            RenderMesh(renderContext, *currentMesh);
         }
         
         if(KeyDown(Key_9))

@@ -1,107 +1,60 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#undef assert
+
 #ifdef DEBUG
 #ifdef _WIN32
-#define Assert(Expression) if(!(Expression)) {printf("Assertion failed in: %s on line %d\n",__FILE__,__LINE__); __debugbreak();}
+#define assert(Expression) if(!(Expression)) {printf("Assertion failed in: %s on line %d\n",__FILE__,__LINE__); __debugbreak();}
 #else
-#define Assert(Expression) if(!(Expression)) {printf("Assertion failed in: %s on line %d\n",__FILE__,__LINE__); asm("int $3");}
+#define assert(Expression) if(!(Expression)) {printf("Assertion failed in: %s on line %d\n",__FILE__,__LINE__); asm("int $3");}
 #endif
 #else
-#define Assert(Expression)
+#define assert(Expression)
 #endif
 
 #ifdef DEBUG
-#define Log(Msg, ...) printf(Msg, ## __VA_ARGS__)
+#define log(Msg, ...) printf(Msg, ## __VA_ARGS__)
 #else
-#define Log(Msg, ...)
+#define log(Msg, ...)
 #endif
 
-#define Log_A(Msg, ...) printf(Msg, ## __VA_ARGS__)
+#define log_a(Msg, ...) printf(Msg, ## __VA_ARGS__)
+
+#define UNUSED(var) (void)var
 
 using coord_t = float;
 
-static float RandomFloat(float start, float end)
+static float randomFloat(float start, float end)
 {
     return (rand() / (float)RAND_MAX * end) + start;
 }
 
-static double RandomDouble(double start, double end)
+static double randomDouble(double start, double end)
 {
     return (rand() / (double)RAND_MAX * end) + start;
 }
 
-static coord_t RandomCoord(coord_t start, coord_t end)
+static coord_t randomCoord(coord_t start, coord_t end)
 {
     return (rand() / (coord_t)RAND_MAX * end) + start;
 }
 
-static int RandomInt(int start, int end)
+static int randomInt(int start, int end)
 {
     return (rand() % end) + start;
 }
 
-static glm::vec4 RandomColor()
+static glm::vec4 randomColor()
 {
-    return glm::vec4((coord_t)RandomInt(0, 255) / 255.0, (coord_t)RandomInt(0, 255) / 255.0, (coord_t)RandomInt(0, 255) / 255.0, 1.0);
+    return glm::vec4((coord_t)randomInt(0, 255) / 255.0, (coord_t)randomInt(0, 255) / 255.0, (coord_t)randomInt(0, 255) / 255.0, 1.0);
 }
 
-inline bool StartsWith(const char *a, const char *b)
+inline bool startsWith(const char *a, const char *b)
 {
     if(strncmp(a, b, strlen(b)) == 0) return 1;
     return 0;
 }
-
-
-
-#define list(type)\
-struct type ## _list\
-{\
-    type* data;\
-    int count;\
-    int listSize;\
-    \
-    type& operator[](int index)\
-    {\
-        Assert(index < this->count);\
-        return this->data[index];\
-    }\
-    \
-};\
-\
-void Add(type ## _list* list, type& item)\
-{\
-    if(list->count + 1 >= list->listSize)\
-    {\
-        list->listSize *= 2;\
-        list->data = (type*)realloc(list->data, list->listSize * sizeof(type));\
-    }\
-    list->data[list->count++] = item;\
-}\
-void Remove(type ## _list* list, type* item)\
-{\
-    bool found = false;\
-    for(int i = 0; i < list->count - 1; i++)\
-    {\
-        if(!found && &list->data[i] == item)\
-        {\
-            found = true;\
-        }\
-        else if(found)\
-        {\
-            list->data[i] = list->data[i + 1];\
-        }\
-    }\
-    \
-    list->count--;\
-}\
-void Init##type##List(type## _list* list, int initSize = 16)\
-{\
-    list->count = 0;\
-    list->listSize = initSize;\
-    list->data = (type*)malloc(sizeof(type) * list->listSize);\
-}
-
 
 struct edge
 {
@@ -109,7 +62,6 @@ struct edge
     int end;
 };
 
-list(edge)
 
 
 #endif

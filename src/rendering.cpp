@@ -30,7 +30,6 @@ static void SetFloatUniform(GLuint programID, const char* name, float value)
     glUniform1f(glGetUniformLocation(programID, name), value);
 }
 
-
 static vertex* LoadObj(const char* filePath)
 {
     vertex* vertices = nullptr;
@@ -42,7 +41,7 @@ static vertex* LoadObj(const char* filePath)
         
         while(fgets(buffer, 64, file))
         {
-            if(StartsWith(buffer, "v"))
+            if(startsWith(buffer, "v"))
             {
                 vCount++;
             }
@@ -56,7 +55,7 @@ static vertex* LoadObj(const char* filePath)
         
         while(fgets(buffer, 64, file))
         {
-            if(StartsWith(buffer, "v"))
+            if(startsWith(buffer, "v"))
             {
                 sscanf(buffer, "v %f %f %f", &vertices[i].position.x, &vertices[i].position.y, &vertices[i].position.z);
                 
@@ -82,7 +81,6 @@ static vertex* CopyVertices(vertex* vertices, int numberOfPoints)
     }
     return res;
 }
-
 
 void MessageCallback(GLenum source,
                      GLenum type,
@@ -186,7 +184,7 @@ static char* LoadShaderFromFile(const char* path)
             
             if(fseek(file, 0L, SEEK_SET) != 0)
             {
-                Log_A("Error reading file");
+                log_a("Error reading file");
                 free(source);
                 return nullptr;
             }
@@ -194,7 +192,7 @@ static char* LoadShaderFromFile(const char* path)
             auto newLen = fread(source, sizeof(GLchar), bufSize, file);
             if(ferror(file) != 0)
             {
-                Log_A("Error reading file");
+                log_a("Error reading file");
             }
             else
             {
@@ -313,9 +311,9 @@ static void InitializeOpenGL(render_context& renderContext)
     glfwSetKeyCallback(renderContext.window, KeyCallback);
     glfwSetMouseButtonCallback(renderContext.window, MouseButtonCallback);
     
-    Log("%s\n", glGetString(GL_VERSION));
-    Log("Shading language supported: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
-    Log("Glad Version: %d.%d\n", GLVersion.major, GLVersion.minor);
+    log("%s\n", glGetString(GL_VERSION));
+    log("Shading language supported: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
+    log("Glad Version: %d.%d\n", GLVersion.major, GLVersion.minor);
     
     glEnable(GL_DEPTH_TEST);
     
@@ -454,11 +452,11 @@ static light& CreateLight(render_context& renderContext, glm::vec3 position = gl
     return l;
 }
 
-static GLfloat* BuildVertexBuffer(render_context& renderContext, face* faces, int numFaces, vertex* input)
+static GLfloat* BuildVertexBuffer(face* faces, int numFaces)
 {
     GLfloat* vertices = (GLfloat*)malloc(numFaces * 3 * sizeof(vertex_info));
     
-    Log("Num faces in renderer: %d\n", numFaces);
+    log("Num faces in renderer: %d\n", numFaces);
     
     for(int i = 0; i < numFaces; i++)
     {
@@ -530,7 +528,7 @@ static bool IsPointOnPositiveSide(face& f, glm::vec3 v, coord_t epsilon = 0.0f)
     return d > epsilon;
 }
 
-static glm::vec3 ComputeFaceNormal(face f, vertex* vertices)
+static glm::vec3 ComputeFaceNormal(face f)
 {
     // Newell's Method
     // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
@@ -555,7 +553,6 @@ static mesh& InitEmptyMesh(render_context& renderContext, int meshIndex = -1)
     {
         auto& m = renderContext.meshes[meshIndex];
         //free(m.faces);
-        m.vertexCount = 0;
         m.dirty = true;
         return m;
     }
@@ -576,7 +573,6 @@ static mesh& InitEmptyMesh(render_context& renderContext, int meshIndex = -1)
         mat.diffuse.diffuseColor = glm::vec3(1.0f);
         mat.materialShader = renderContext.colorShader;
         
-        object.vertexCount = 0;
         object.dirty = true;
         
         glBindVertexArray(0);
@@ -633,6 +629,7 @@ static void RenderPointCloud(render_context& renderContext, vertex* inputPoints,
     glVertexAttribDivisor(2, 1);
     
     auto m = glm::scale(glm::mat4(1.0f), glm::vec3(globalScale));
+    
     SetMatrixUniform(renderContext.particleShader.programID, "M", m);
     SetMatrixUniform(renderContext.particleShader.programID, "V", renderContext.viewMatrix);
     SetMatrixUniform(renderContext.particleShader.programID, "P", renderContext.projectionMatrix);
@@ -721,7 +718,7 @@ static void RenderFaceEdges(render_context& renderContext, std::vector<edge>& ed
     
 }
 
-static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices, double deltaTime)
+static void RenderMesh(render_context& renderContext, mesh& m)
 {
     if(m.faces.size() == 0)
     {
@@ -767,11 +764,11 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices,
     {
         free(m.currentVBO);
         m.dirty = false;
-        m.currentVBO = BuildVertexBuffer(renderContext, m.faces.data(), (int)m.faces.size(), vertices);
+        m.currentVBO = BuildVertexBuffer(m.faces.data(), (int)m.faces.size());
     }
     
-    m.vertexCount = (int)m.faces.size() * 3;
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_info) * m.vertexCount, &m.currentVBO[0], GL_STATIC_DRAW);
+    auto vertexCount = (int)m.faces.size() * 3;
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_info) * vertexCount, &m.currentVBO[0], GL_STATIC_DRAW);
     
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_info), (void*)offsetof(vertex, position));
@@ -783,7 +780,7 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex* vertices,
     glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(vertex_info), (void*) offsetof(vertex, color));
     
     
-    glDrawArrays(GL_TRIANGLES, 0, m.vertexCount * 10);
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount * 10);
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
@@ -808,11 +805,11 @@ static void RenderGrid(render_context& renderContext, glm::vec4 color = glm::vec
 }
 
 
-static void Render(render_context& renderContext, vertex* vertices, double deltaTime)
+static void Render(render_context& renderContext)
 {
     for(int meshIndex = 0; meshIndex < renderContext.meshCount; meshIndex++)
     {
-        RenderMesh(renderContext, renderContext.meshes[meshIndex], vertices, deltaTime);
+        RenderMesh(renderContext, renderContext.meshes[meshIndex]);
     }
     //RenderGrid(renderContext, glm::vec4(0.6f, 0.6f, 0.6f, 1.0f), 1.0f);
 }
