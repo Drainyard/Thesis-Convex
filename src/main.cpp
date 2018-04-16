@@ -101,7 +101,7 @@ int main()
     
     hull h = {};
     h.pointGenerator.type = GeneratorType::ManyInternal;
-    h.pointGenerator.numberOfPoints = 5000;
+    h.pointGenerator.numberOfPoints = 50000;
     auto vertices = Generate(h.pointGenerator, renderContext, 0.0f, 200.0f);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ");
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");

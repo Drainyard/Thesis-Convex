@@ -37,6 +37,8 @@ struct incFace
 {
     incEdge *edge[3];
     incVertex *vertex[3];
+    glm::vec3 faceNormal;
+    glm::vec3 centerPoint;
     bool isVisible;
     incFace *next;
     incFace *prev;
@@ -101,14 +103,16 @@ void incRemoveFromHead(T *head, T pointer)
 
 static void incCopyVertices(vertex *vertices, int numberOfPoints)
 {
+    vertex *shuffledVertices = (vertex *)malloc(sizeof(vertex) * numberOfPoints);
+    memcpy(shuffledVertices, vertices, sizeof(vertex) * numberOfPoints);
     vertex temp;
     int i, j;
     //Fisher Yates shuffle
      for (i = numberOfPoints - 1; i > 0; i--) { 
          j = rand() % (i + 1); 
-         temp = vertices[j];
-         vertices[j] = vertices[i];
-         vertices[i] = temp;
+         temp = shuffledVertices[j];
+         shuffledVertices[j] = shuffledVertices[i];
+         shuffledVertices[i] = temp;
     }
 
     incVertex *v;
@@ -119,9 +123,10 @@ static void incCopyVertices(vertex *vertices, int numberOfPoints)
         v->isOnHull = false;
         v->isProcessed = false;
         v->vIndex = i;
-        v->vector = vertices[i].position;
+        v->vector = shuffledVertices[i].position;
         incAddToHead(&incVertices, v);
     }
+        free(shuffledVertices);
 }
 
 incEdge *incCreateNullEdge()
@@ -194,84 +199,42 @@ incFace *incMakeFace(incVertex *v0, incVertex *v1, incVertex *v2, incFace *face)
     f->vertex[0] = v0;
     f->vertex[1] = v1;
     f->vertex[2] = v2;
+    f->centerPoint = (f->vertex[0]->vector + f->vertex[1]->vector + f->vertex[2]->vector) / 3.0f;
 
     e0->adjFace[0] = e1->adjFace[0] = e2->adjFace[0] = f;
 
     return f;
 }
-/*
-wiki: For a tetrahedron a, b, c, d, the volume is 
-(1/6)|det(a-d,b-d,c-d)| 
 
-The volume is signed; it is positive if (a,b,c) form a counterclockwise circuit
-when viewed from the side away from d, so that the face normal determined by the
-right-hand rule points toward the outside.
-
-6V(tetra) = 
-|a0 a1 a2 1
- b0 b1 b2 1
- c0 c1 c2 1
- d0 d1 d2 1|
- =
--(a2-d2)(b1-d1)(c0-d0)
-+(a1-d1)(b2-d2)(c0-d0)
-+(a2-d2)(b0-d0)(c1-d1)
--(a0-d0)(b2-d2)(c1-d1)
--(a1-d1)(b0-d0)(c2-d2)
-+(a0-d0)(b1-d1)(c2-d2)
-
-TODO optimize with fewer multiplications or use normals?
-    dot a vector from face to d with normal a.  
-
-From book:
-
-double ax = f->vertex[0]->vector.x - d->vector.x;
-double ay = f->vertex[0]->vector.x - d->vector.y;
-double az = f->vertex[0]->vector.x - d->vector.z;
-double bx = f->vertex[1]->vector.x - d->vector.x;
-double by = f->vertex[1]->vector.x - d->vector.y;
-double bz = f->vertex[1]->vector.x - d->vector.z;
-double cx = f->vertex[2]->vector.x - d->vector.x;
-double cy = f->vertex[2]->vector.x - d->vector.y;
-double cz = f->vertex[2]->vector.x - d->vector.z;
-
-double vol = ax * (by * cz - bz * cy) 
-            + ay * (bz * cx - bx * cz)
-            + az * (bx * cy - by * cx);
-*/
-double incVolumeSign(incFace *f, incVertex *d)
+glm::vec3 incComputeFaceNormal(incFace *f)
 {
-    //incVertex *a = f->vertex[0];
-    //incVertex *b = f->vertex[1];
-    //incVertex *c = f->vertex[2];
-
-    //double vol = -1 * (a->vector.z - d->vector.z) * (b->vector.y - d->vector.y) * (c->vector.x - d->vector.x) + (a->vector.y - d->vector.y) * (b->vector.z - d->vector.z) * (c->vector.x - d->vector.x) + (a->vector.z - d->vector.z) * (b->vector.x - d->vector.x) * (c->vector.y - d->vector.y) - (a->vector.x - d->vector.x) * (b->vector.z - d->vector.z) * (c->vector.y - d->vector.y) - (a->vector.y - d->vector.y) * (b->vector.x - d->vector.x) * (c->vector.z - d->vector.z) + (a->vector.x - d->vector.x) * (b->vector.y - d->vector.y) * (c->vector.z - d->vector.z);
-
-    double ax = f->vertex[0]->vector.x - d->vector.x;
-    double ay = f->vertex[0]->vector.x - d->vector.y;
-    double az = f->vertex[0]->vector.x - d->vector.z;
-    double bx = f->vertex[1]->vector.x - d->vector.x;
-    double by = f->vertex[1]->vector.x - d->vector.y;
-    double bz = f->vertex[1]->vector.x - d->vector.z;
-    double cx = f->vertex[2]->vector.x - d->vector.x;
-    double cy = f->vertex[2]->vector.x - d->vector.y;
-    double cz = f->vertex[2]->vector.x - d->vector.z;
-
-    double vol = ax * (by * cz - bz * cy) + ay * (bz * cx - bx * cz) + az * (bx * cy - by * cx);
-
-    return vol;
-    //TODO add real epsilon
-    /*
-    if (vol > 0.00001)
+    // Newell's Method
+    // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
+    glm::vec3 normal = glm::vec3(0.0f);
+    
+    for(int i = 0; i < 3; i++)
     {
-        return 1;
+        glm::vec3 current = f->vertex[i]->vector;
+        glm::vec3 next = f->vertex[(i + 1) % 3]->vector;
+        
+        normal.x = normal.x + (current.y - next.y) * (current.z + next.z);
+        normal.y = normal.y + (current.z - next.z) * (current.x + next.x);
+        normal.z = normal.z + (current.x - next.x) * (current.y + next.y);
     }
-    if (vol < -0.00001)
-    {
-        return -1;
-    }
-    return 0;
-    */
+    
+    return glm::normalize(normal);
+}
+
+static bool incIsPointOnPositiveSide(incFace *f, incVertex *v, coord_t epsilon = 0.0f)
+{
+    auto d = glm::dot(f->faceNormal, v->vector - f->centerPoint);
+    return d > epsilon;
+}
+
+static bool incIsPointCoplanar(incFace *f, incVertex *v, coord_t epsilon = 0.0f)
+{
+    auto d = glm::dot(f->faceNormal, v->vector - f->centerPoint);
+    return d >= -epsilon && d <= epsilon;
 }
 
 //double sided triangle from points NOT collinear
@@ -308,10 +271,12 @@ void incCreateBihedron()
     f1->edge[1]->adjFace[1] = f0;
     f1->edge[2]->adjFace[1] = f0;
 
+    f0->faceNormal = incComputeFaceNormal(f0);
+    f1->faceNormal = incComputeFaceNormal(f1);
+
     incVertex *v3 = v2->next;
-    //Coplanar check hmm
-    double vol = incVolumeSign(f0, v3);
-    while (vol == 0.0)
+    bool coplanar = incIsPointCoplanar(f0, v3);
+    while (coplanar)
     {
         v3 = v3->next;
         if (v3 == v0)
@@ -320,7 +285,7 @@ void incCreateBihedron()
             printf("incCreateBihedron - coplanar points");
             exit(0);
         }
-        vol = incVolumeSign(f0, v3);
+        coplanar = incIsPointCoplanar(f0, v3);
     }
     incVertices = v3;
 }
@@ -360,6 +325,7 @@ void incEnforceCounterClockWise(incFace *newFace, incEdge *e, incVertex *v)
         edge[2] on endPoint[1].  So if e is oriented "forwards," we
         need to move edge[1] to follow [0], because it precedes. */
     newFace->vertex[2] = v;
+    newFace->centerPoint = (newFace->vertex[0]->vector + newFace->vertex[1]->vector + newFace->vertex[2]->vector) / 3.0f;
 }
 
 incFace *incMakeConeFace(incEdge *e, incVertex *v)
@@ -387,6 +353,7 @@ incFace *incMakeConeFace(incEdge *e, incVertex *v)
     newFace->edge[1] = newEdge1;
     newFace->edge[2] = newEdge2;
     incEnforceCounterClockWise(newFace, e, v);
+    newFace->faceNormal = incComputeFaceNormal(newFace);
 
     if (!newEdge1->adjFace[0])
     {
@@ -418,7 +385,7 @@ void incAddToHull(incVertex *v)
     //check sidedness another way???
     do
     {
-        if (incVolumeSign(f, v) < 0.0)
+        if (incIsPointOnPositiveSide(f, v))
         {
             f->isVisible = visible = true;
         }

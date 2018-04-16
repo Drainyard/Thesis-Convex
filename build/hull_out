@@ -373,3 +373,12 @@ Hull result for QuickHull
  Distance queries: 9913
  Vertices in hull: 50
  Time spent:       0.018380
+Hull result for QuickHull
+ Faces added:      250
+ Faces in hull:    96
+ Input vertices:   5000
+ Points processed: 52
+ Distance queries: 11625
+ Vertices in hull: 50
+ Time spent:       0.023697
+ Point generation: Many internal, some on sphere
