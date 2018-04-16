@@ -640,8 +640,6 @@ void qhAssignToOutsideSets(qh_hull& q, qh_vertex* vertices, int numVertices, qh_
             }
         }
     }
-    
-    
 }
 
 bool qhEdgeUnique(edge& input, std::vector<edge>& list)
@@ -736,11 +734,6 @@ void qhFindConvexHorizon(qh_vertex& viewPoint, std::vector<int>& faces, qh_hull&
             neighbourFace.visited = true;
         }
     }
-    
-    /*if(!HorizonValid(list))
-    {
-        log("Invalid horizon\n");
-    }*/
 }
 
 mesh& qhConvertToMesh(render_context& renderContext, qh_hull& qHull, vertex* vertices)
@@ -776,7 +769,7 @@ qh_hull qhInit(qh_vertex* vertices, int numVertices, std::vector<int>& faceStack
     qh_hull qHull = {};
     
     qHull.processingState.addedFaces = 0;
-    qHull.processingState.pointsProcessed = 0;
+    qHull.processingState.pointsProcessed = 4;
     qHull.processingState.distanceQueryCount = 0;
     
     *epsilon = qhGenerateInitialSimplex(vertices, numVertices, qHull);
@@ -843,7 +836,6 @@ void qhHorizonStep(qh_hull& qHull, qh_vertex* vertices, qh_face& f, std::vector<
     }
     
     log("V size: %zd\n", v.size());
-    //*prevIterationFaces = m.numFaces;
     *prevIterationFaces = (int)qHull.faces.size();
     
     horizon.clear();
@@ -1038,7 +1030,7 @@ qh_hull qhFullHull(qh_vertex* vertices, int numVertices)
         currentFace = qhFindNextIteration(qHull, faceStack);
         if(currentFace)
         {
-            qhHorizonStep(qHull, vertices, *currentFace, v, &previousIteration, 
+            qhHorizonStep(qHull, vertices, *currentFace, v, &previousIteration,
                           epsilon, horizon);
             qhIteration(qHull, vertices, faceStack, currentFace->indexInHull, v,
                         previousIteration, numVertices, epsilon, horizon);

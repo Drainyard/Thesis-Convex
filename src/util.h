@@ -25,29 +25,29 @@
 
 using coord_t = float;
 
-static float randomFloat(float start, float end)
+static float randomFloat(std::uniform_real_distribution<coord_t>& d, std::mt19937& gen, float start, float end)
 {
-    return (rand() / (float)RAND_MAX * end) + start;
+    return ((float)d(gen) / (float)d.max() * end) + start;
 }
 
-static double randomDouble(double start, double end)
+static double randomDouble(std::uniform_real_distribution<coord_t>& d, std::mt19937& gen, double start, double end)
 {
-    return (rand() / (double)RAND_MAX * end) + start;
+    return ((double)d(gen) / (double)d.max() * end) + start;
 }
 
-static coord_t randomCoord(coord_t start, coord_t end)
+static coord_t randomCoord(std::uniform_real_distribution<coord_t>& d, std::mt19937& gen, coord_t start, coord_t end)
 {
-    return (rand() / (coord_t)RAND_MAX * end) + start;
+    return ((coord_t)d(gen) / (coord_t)d.max() * end) + start;
 }
 
-static int randomInt(int start, int end)
+static int randomInt(std::uniform_real_distribution<coord_t>& d, std::mt19937& gen, int start, int end)
 {
-    return (rand() % end) + start;
+    return ((int)d(gen) / (int)d.max() * end) + start;
 }
 
-static glm::vec4 randomColor()
+static glm::vec4 randomColor(std::uniform_real_distribution<coord_t>& d, std::mt19937& gen)
 {
-    return glm::vec4((coord_t)randomInt(0, 255) / 255.0, (coord_t)randomInt(0, 255) / 255.0, (coord_t)randomInt(0, 255) / 255.0, 1.0);
+    return glm::vec4((coord_t)randomInt(d, gen, 0, 255) / 255.0, (coord_t)randomInt(d, gen, 0, 255) / 255.0, (coord_t)randomInt(d, gen, 0, 255) / 255.0, 1.0);
 }
 
 inline bool startsWith(const char *a, const char *b)
@@ -62,6 +62,15 @@ struct edge
     int end;
 };
 
+// NOTE(Niels): Remember to free
+char* concat(const char* left, const char* right)
+{
+    char* res = (char*)malloc(sizeof(char) * (strlen(left) + strlen(right) + 1));
+    strcpy(res, left);
+    strcat(res, right);
+    res[strlen(left) + strlen(right) + 1] = '\0';
+    return res;
+}
 
 
 #endif

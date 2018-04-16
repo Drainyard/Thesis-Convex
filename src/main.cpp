@@ -5,6 +5,7 @@
 #include <stack>
 #include <cstdio>
 #include <cstdlib>
+#include <unistd.h>
 
 #ifdef _WIN32
 #define _USE_MATH_DEFINES
@@ -38,7 +39,7 @@
 #include "util.h"
 #include "keys.h"
 
-const static float globalScale = 0.2f;
+const static float globalScale = 0.1f;
 
 static input_state inputState;
 
@@ -68,7 +69,7 @@ int main()
     printf("Seed: %zd\n", seed);
     render_context renderContext = {};
     renderContext.FoV = 45.0f;
-    renderContext.position = glm::vec3(0.0f, 170.5f, 230.0f);
+    renderContext.position = glm::vec3(0.0f, 50.5f, 70.0f);
     renderContext.direction = glm::vec3(0.0f, -0.75f, -1.0f);
     renderContext.up = glm::vec3(0.0f, 1.0f, 0.0f);
     renderContext.nearPlane = 0.1f;
@@ -98,10 +99,15 @@ int main()
     //int numberOfPoints = 645932; // Man in vest numbers
     //int numberOfPoints = 17536; // Arnold
     //int numberOfPoints = 27948;
+    int numberOfPoints = 50000;
     
-    hull h = {};
-    h.pointGenerator.type = GeneratorType::ManyInternal;
-    h.pointGenerator.numberOfPoints = 50000;
+    hull h;
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    h.pointGenerator.gen = gen;
+    
+    InitPointGenerator(h.pointGenerator, GeneratorType::ManyInternal, numberOfPoints);
+    
     auto vertices = Generate(h.pointGenerator, renderContext, 0.0f, 200.0f);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ");
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
@@ -116,6 +122,10 @@ int main()
     auto currentFrameCount = 0;
     
     auto totalDelta = 0.0;
+    
+    mesh* fullHull = nullptr;
+    mesh* timedHull = nullptr;
+    mesh* stepHull = nullptr;
     
     // Check if the ESC key was pressed or the window was closed
     while(!KeyDown(Key_Escape) &&
@@ -158,21 +168,28 @@ int main()
             
             currentVertices = vertices;
             currentMesh = nullptr;
+            fullHull = nullptr;
+            timedHull = nullptr;
+            stepHull = nullptr;
         }
         
         if(KeyDown(Key_H))
         {
-            currentMesh = &FullHull(renderContext, h);
+            if(!fullHull)
+                fullHull = &FullHull(renderContext, h);
+            currentMesh = fullHull;
         }
         
         if(KeyDown(Key_J))
         {
-            currentMesh = &StepHull(renderContext, h);
+            stepHull = &StepHull(renderContext, h);
+            currentMesh = stepHull;
         }
         
         if(KeyDown(Key_F))
         {
-            currentMesh = &TimedStepHull(renderContext, h);
+            timedHull = &TimedStepHull(renderContext, h);
+            currentMesh = timedHull;
         }
         
         if(KeyDown(Key_P))
