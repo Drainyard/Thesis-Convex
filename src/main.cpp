@@ -99,7 +99,7 @@ int main()
     //int numberOfPoints = 645932; // Man in vest numbers
     //int numberOfPoints = 17536; // Arnold
     //int numberOfPoints = 27948;
-    int numberOfPoints = 50000;
+    int numberOfPoints = 10000;
     
     hull h;
     std::random_device rd{};

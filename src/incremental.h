@@ -19,6 +19,7 @@ struct incVertex
     incEdge *duplicate;
     bool isOnHull;
     bool isProcessed;
+    incFace *conflicts;
     incVertex *next;
     incVertex *prev;
 };
@@ -37,9 +38,10 @@ struct incFace
 {
     incEdge *edge[3];
     incVertex *vertex[3];
-    glm::vec3 faceNormal;
+    glm::vec3 normal;
     glm::vec3 centerPoint;
     bool isVisible;
+    incVertex *conflicts;
     incFace *next;
     incFace *prev;
 };
@@ -124,6 +126,7 @@ static void incCopyVertices(vertex *vertices, int numberOfPoints)
         v->isProcessed = false;
         v->vIndex = i;
         v->vector = shuffledVertices[i].position;
+        v->conflicts = nullptr;
         incAddToHead(&incVertices, v);
     }
         free(shuffledVertices);
@@ -132,7 +135,8 @@ static void incCopyVertices(vertex *vertices, int numberOfPoints)
 incEdge *incCreateNullEdge()
 {
     incEdge *e = (incEdge *)malloc(sizeof(incEdge));
-    e->adjFace[0] = e->adjFace[1] = e->newFace = nullptr;
+    e->adjFace[0] = e->adjFace[1] = nullptr;
+    e->newFace = nullptr;
     e->endPoints[0] = e->endPoints[1] = nullptr;
     e->shouldBeRemoved = false;
     incAddToHead(&incEdges, e);
@@ -146,6 +150,7 @@ incFace *incCreateNullFace()
     f->edge[0] = f->edge[1] = f->edge[2] = nullptr;
     f->vertex[0] = f->vertex[1] = f->vertex[2] = nullptr;
     f->isVisible = false;
+    f->conflicts = nullptr;
     incAddToHead(&incFaces, f);
 
     return f;
@@ -227,13 +232,13 @@ glm::vec3 incComputeFaceNormal(incFace *f)
 
 static bool incIsPointOnPositiveSide(incFace *f, incVertex *v, coord_t epsilon = 0.0f)
 {
-    auto d = glm::dot(f->faceNormal, v->vector - f->centerPoint);
+    auto d = glm::dot(f->normal, v->vector - f->centerPoint);
     return d > epsilon;
 }
 
 static bool incIsPointCoplanar(incFace *f, incVertex *v, coord_t epsilon = 0.0f)
 {
-    auto d = glm::dot(f->faceNormal, v->vector - f->centerPoint);
+    auto d = glm::dot(f->normal, v->vector - f->centerPoint);
     return d >= -epsilon && d <= epsilon;
 }
 
@@ -271,8 +276,8 @@ void incCreateBihedron()
     f1->edge[1]->adjFace[1] = f0;
     f1->edge[2]->adjFace[1] = f0;
 
-    f0->faceNormal = incComputeFaceNormal(f0);
-    f1->faceNormal = incComputeFaceNormal(f1);
+    f0->normal = incComputeFaceNormal(f0);
+    f1->normal = incComputeFaceNormal(f1);
 
     incVertex *v3 = v2->next;
     bool coplanar = incIsPointCoplanar(f0, v3);
@@ -353,7 +358,7 @@ incFace *incMakeConeFace(incEdge *e, incVertex *v)
     newFace->edge[1] = newEdge1;
     newFace->edge[2] = newEdge2;
     incEnforceCounterClockWise(newFace, e, v);
-    newFace->faceNormal = incComputeFaceNormal(newFace);
+    newFace->normal = incComputeFaceNormal(newFace);
 
     if (!newEdge1->adjFace[0])
     {
@@ -561,6 +566,8 @@ mesh &incConvertToMesh(render_context &renderContext)
         }
         newFace.faceColor = glm::vec4(0.0f, 1.0f, 1.0f, 0.7f);
         newFace.faceColor.w = 0.5f;
+        newFace.faceNormal = f->normal;
+        newFace.centerPoint = f->centerPoint;
         m.faces.push_back(newFace);
 
         f = f->next;
@@ -574,6 +581,7 @@ void incConstructFullHull()
     incCreateBihedron();
     incVertex *v = incVertices;
     incVertex *nextVertex;
+    //incInitConflictGraph();
     do
     {
         nextVertex = v->next;
