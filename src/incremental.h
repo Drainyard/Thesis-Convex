@@ -19,7 +19,7 @@ struct incVertex
     incEdge *duplicate;
     bool isOnHull;
     bool isProcessed;
-    std::vector<incFace *> conflicts;
+    std::unordered_set<incFace *> conflicts;
     incVertex *next;
     incVertex *prev;
 };
@@ -41,7 +41,7 @@ struct incFace
     glm::vec3 normal;
     glm::vec3 centerPoint;
     bool isVisible;
-    std::vector<incVertex *> conflicts;
+    std::unordered_set<incVertex *> conflicts;
     incFace *next;
     incFace *prev;
 };
@@ -172,6 +172,37 @@ bool incCollinear(incVertex *v0, incVertex *v1, incVertex *v2)
     return glm::cross((v0->vector - v1->vector), (v1->vector - v2->vector)) == glm::vec3(0, 0, 0);
 }
 
+glm::vec3 incComputeFaceNormal(incFace *f)
+{
+    // Newell's Method
+    // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
+    glm::vec3 normal = glm::vec3(0.0f);
+
+    for (int i = 0; i < 3; i++)
+    {
+        glm::vec3 current = f->vertex[i]->vector;
+        glm::vec3 next = f->vertex[(i + 1) % 3]->vector;
+
+        normal.x = normal.x + (current.y - next.y) * (current.z + next.z);
+        normal.y = normal.y + (current.z - next.z) * (current.x + next.x);
+        normal.z = normal.z + (current.x - next.x) * (current.y + next.y);
+    }
+
+    return glm::normalize(normal);
+}
+
+static bool incIsPointOnPositiveSide(incFace *f, incVertex *v, coord_t epsilon = 0.0f)
+{
+    auto d = glm::dot(f->normal, v->vector - f->centerPoint);
+    return d > epsilon;
+}
+
+static bool incIsPointCoplanar(incFace *f, incVertex *v, coord_t epsilon = 0.0f)
+{
+    auto d = glm::dot(f->normal, v->vector - f->centerPoint);
+    return d >= -epsilon && d <= epsilon;
+}
+
 incFace *incMakeFace(incVertex *v0, incVertex *v1, incVertex *v2, incFace *face)
 {
     incEdge *e0, *e1, *e2;
@@ -210,47 +241,16 @@ incFace *incMakeFace(incVertex *v0, incVertex *v1, incVertex *v2, incFace *face)
     return f;
 }
 
-glm::vec3 incComputeFaceNormal(incFace *f)
-{
-    // Newell's Method
-    // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
-    glm::vec3 normal = glm::vec3(0.0f);
-
-    for (int i = 0; i < 3; i++)
-    {
-        glm::vec3 current = f->vertex[i]->vector;
-        glm::vec3 next = f->vertex[(i + 1) % 3]->vector;
-
-        normal.x = normal.x + (current.y - next.y) * (current.z + next.z);
-        normal.y = normal.y + (current.z - next.z) * (current.x + next.x);
-        normal.z = normal.z + (current.x - next.x) * (current.y + next.y);
-    }
-
-    return glm::normalize(normal);
-}
-
-static bool incIsPointOnPositiveSide(incFace *f, incVertex *v, coord_t epsilon = 0.0f)
-{
-    auto d = glm::dot(f->normal, v->vector - f->centerPoint);
-    return d > epsilon;
-}
-
-static bool incIsPointCoplanar(incFace *f, incVertex *v, coord_t epsilon = 0.0f)
-{
-    auto d = glm::dot(f->normal, v->vector - f->centerPoint);
-    return d >= -epsilon && d <= epsilon;
-}
-
 void incInitConflictListForFace(incFace *newFace, incFace *oldFace1, incFace *oldFace2)
 {
     //TODO: possible to optimize for union of the two, to avoid duplicates in list. http://www.cplusplus.com/reference/algorithm/set_union/
     //or should I use a set instead?
-    for (incVertex *v : oldFace1->conflicts)
+    for (auto &v : oldFace1->conflicts)
     {
         if (incIsPointOnPositiveSide(newFace, v))
         {
-            v->conflicts.push_back(newFace);
-            newFace->conflicts.push_back(v);
+            v->conflicts.insert(newFace);
+            newFace->conflicts.insert(v);
         }
     }
     //duplicates in list will probably fuck us up, the same face will pop up two times creating two identical faces, that will create more duplicates
@@ -258,8 +258,8 @@ void incInitConflictListForFace(incFace *newFace, incFace *oldFace1, incFace *ol
     {
         if (incIsPointOnPositiveSide(newFace, v))
         {
-            v->conflicts.push_back(newFace);
-            newFace->conflicts.push_back(v);
+            v->conflicts.insert(newFace);
+            newFace->conflicts.insert(v);
         }
     }
 }
@@ -452,10 +452,11 @@ void incAddToHull(incVertex *v)
                 }
             }
         }
+        //ACTUALLY, does it matter? we are done with these faces and this vertex, just let it die? or we should probably send the faces in v->conflicts forward to cleanStuff()
         //since we are looping over v->conflicts, it is probably not a good idea to remove from it right now. Some kind of bulk delete, like in java?
         //We must delete this face from v->conflicts (do in bulk) and this v from face->conflicts.
         //is this how you do it???
-        face->conflicts.erase(std::remove(face->conflicts.begin(), face->conflicts.end(), v), face->conflicts.end());
+        //face->conflicts.erase(std::remove(face->conflicts.begin(), face->conflicts.end(), v), face->conflicts.end());
     }
     //TODO: Bulk remove from v->conflicts here
 }
@@ -622,6 +623,7 @@ mesh &incConvertToMesh(render_context &renderContext)
     return m;
 }
 
+
 void incInitConflictLists()
 {
     //determine which of the points can see which of the two faces - linear time
@@ -633,6 +635,8 @@ void incInitConflictLists()
     do
     {
         nextVertex = v->next;
+
+        //actually we have a bug here, if first point is coplanar, then nextVertex will be incVertices and we will terminate...
         if (incIsPointCoplanar(f1, v))
         {
             //if point is coplanar, it cannot be on hull
@@ -640,13 +644,13 @@ void incInitConflictLists()
         }
         else if (incIsPointOnPositiveSide(f1, v))
         {
-            v->conflicts.push_back(f1);
-            f1->conflicts.push_back(v);
+            v->conflicts.insert(f1);
+            f1->conflicts.insert(v);
         }
         else
         {
-            v->conflicts.push_back(f2);
-            f2->conflicts.push_back(v);
+            v->conflicts.insert(f2);
+            f2->conflicts.insert(v);
         }
         v = nextVertex;
     } while (v != incVertices);
