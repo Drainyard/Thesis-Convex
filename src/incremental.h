@@ -19,7 +19,7 @@ struct incVertex
     incEdge *duplicate;
     bool isOnHull;
     bool isProcessed;
-    incFace *conflicts;
+    std::vector<incFace *> conflicts;
     incVertex *next;
     incVertex *prev;
 };
@@ -41,7 +41,7 @@ struct incFace
     glm::vec3 normal;
     glm::vec3 centerPoint;
     bool isVisible;
-    incVertex *conflicts;
+    std::vector<incVertex *> conflicts;
     incFace *next;
     incFace *prev;
 };
@@ -110,11 +110,12 @@ static void incCopyVertices(vertex *vertices, int numberOfPoints)
     vertex temp;
     int i, j;
     //Fisher Yates shuffle
-     for (i = numberOfPoints - 1; i > 0; i--) { 
-         j = rand() % (i + 1); 
-         temp = shuffledVertices[j];
-         shuffledVertices[j] = shuffledVertices[i];
-         shuffledVertices[i] = temp;
+    for (i = numberOfPoints - 1; i > 0; i--)
+    {
+        j = rand() % (i + 1);
+        temp = shuffledVertices[j];
+        shuffledVertices[j] = shuffledVertices[i];
+        shuffledVertices[i] = temp;
     }
 
     incVertex *v;
@@ -126,10 +127,9 @@ static void incCopyVertices(vertex *vertices, int numberOfPoints)
         v->isProcessed = false;
         v->vIndex = i;
         v->vector = shuffledVertices[i].position;
-        v->conflicts = nullptr;
         incAddToHead(&incVertices, v);
     }
-        free(shuffledVertices);
+    free(shuffledVertices);
 }
 
 incEdge *incCreateNullEdge()
@@ -150,7 +150,6 @@ incFace *incCreateNullFace()
     f->edge[0] = f->edge[1] = f->edge[2] = nullptr;
     f->vertex[0] = f->vertex[1] = f->vertex[2] = nullptr;
     f->isVisible = false;
-    f->conflicts = nullptr;
     incAddToHead(&incFaces, f);
 
     return f;
@@ -216,17 +215,17 @@ glm::vec3 incComputeFaceNormal(incFace *f)
     // Newell's Method
     // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
     glm::vec3 normal = glm::vec3(0.0f);
-    
-    for(int i = 0; i < 3; i++)
+
+    for (int i = 0; i < 3; i++)
     {
         glm::vec3 current = f->vertex[i]->vector;
         glm::vec3 next = f->vertex[(i + 1) % 3]->vector;
-        
+
         normal.x = normal.x + (current.y - next.y) * (current.z + next.z);
         normal.y = normal.y + (current.z - next.z) * (current.x + next.x);
         normal.z = normal.z + (current.x - next.x) * (current.y + next.y);
     }
-    
+
     return glm::normalize(normal);
 }
 
@@ -240,6 +239,29 @@ static bool incIsPointCoplanar(incFace *f, incVertex *v, coord_t epsilon = 0.0f)
 {
     auto d = glm::dot(f->normal, v->vector - f->centerPoint);
     return d >= -epsilon && d <= epsilon;
+}
+
+void incInitConflictListForFace(incFace *newFace, incFace *oldFace1, incFace *oldFace2)
+{
+    //TODO: possible to optimize for union of the two, to avoid duplicates in list. http://www.cplusplus.com/reference/algorithm/set_union/
+    //or should I use a set instead?
+    for (incVertex *v : oldFace1->conflicts)
+    {
+        if (incIsPointOnPositiveSide(newFace, v))
+        {
+            v->conflicts.push_back(newFace);
+            newFace->conflicts.push_back(v);
+        }
+    }
+    //duplicates in list will probably fuck us up, the same face will pop up two times creating two identical faces, that will create more duplicates
+    for (incVertex *v : oldFace2->conflicts)
+    {
+        if (incIsPointOnPositiveSide(newFace, v))
+        {
+            v->conflicts.push_back(newFace);
+            newFace->conflicts.push_back(v);
+        }
+    }
 }
 
 //double sided triangle from points NOT collinear
@@ -295,9 +317,11 @@ void incCreateBihedron()
     incVertices = v3;
 }
 
-void incEnforceCounterClockWise(incFace *newFace, incEdge *e, incVertex *v)
+incFace *incEnforceCounterClockWise(incFace *newFace, incEdge *e, incVertex *v)
 {
     //From Computational Geometry in C page 136
+    //We are applying the orientation of the face we are replacing. As we are on the horizon edge, one face is visible, while one is not.
+    //As we are creating a new face above the old face, they have to points in common, and the orientation will be the same
     incFace *visibleFace;
     if (e->adjFace[0]->isVisible)
     {
@@ -307,34 +331,41 @@ void incEnforceCounterClockWise(incFace *newFace, incEdge *e, incVertex *v)
     {
         visibleFace = e->adjFace[1];
     }
-    int i = 0; // Index of e->endPoint[0] in visibleFace
+    int i = 0;
+    //Find a vertex the edge and old face share
     while (visibleFace->vertex[i] != e->endPoints[0])
     {
         i++;
-    } 
+    }
+    //if the old face and edge disagree on the following vertex, that means endPoint[0] is on the "left corner" of old face triangle and endPoint[1] is the "right"
+    //thus to enforce counter clockwise, flip the two for the base of the newFace
     if (visibleFace->vertex[(i + 1) % 3] != e->endPoints[1])
     {
         newFace->vertex[0] = e->endPoints[1];
         newFace->vertex[1] = e->endPoints[0];
     }
+    //the visible face has right corner as endPoint[0], left corner as endPoint[1], but
     else
     {
         newFace->vertex[0] = e->endPoints[0];
         newFace->vertex[1] = e->endPoints[1];
 
+        //this swap is just for consistency, it is not exactly necessary to enforce counter clockwise orientation for edges.
+        //in incMakeConeFace, we set e as edge[0], edge[1] is based on endPoint[0], and edge[2] on endPoint[1].
+        //if e goes from left to right, then edge[1] should be based on endPoint[1] and edge[2] on endPoint[0] to ensure counter clockwise of edges as well
         incEdge *temp = newFace->edge[1];
         newFace->edge[1] = newFace->edge[2];
         newFace->edge[2] = temp;
     }
-    /* This swap is tricky. e is edge[0]. edge[1] is based on endPoint[0],
-        edge[2] on endPoint[1].  So if e is oriented "forwards," we
-        need to move edge[1] to follow [0], because it precedes. */
     newFace->vertex[2] = v;
-    newFace->centerPoint = (newFace->vertex[0]->vector + newFace->vertex[1]->vector + newFace->vertex[2]->vector) / 3.0f;
+    return newFace;
 }
 
 incFace *incMakeConeFace(incEdge *e, incVertex *v)
 {
+    //duplicate is commented in compgeoC book 135
+    //since we create faces to v in arbitrary order, we let vertices on hull know about the edge of the new face that it is endpoint for
+    //if neighbor face is created we copy edge info from that one. If neighbor face is not created yet, duplicate is null and we create new edges for that
     incEdge *newEdge1 = e->endPoints[0]->duplicate;
     if (!newEdge1)
     {
@@ -357,7 +388,8 @@ incFace *incMakeConeFace(incEdge *e, incVertex *v)
     newFace->edge[0] = e;
     newFace->edge[1] = newEdge1;
     newFace->edge[2] = newEdge2;
-    incEnforceCounterClockWise(newFace, e, v);
+    newFace = incEnforceCounterClockWise(newFace, e, v);
+    newFace->centerPoint = (newFace->vertex[0]->vector + newFace->vertex[1]->vector + newFace->vertex[2]->vector) / 3.0f;
     newFace->normal = incComputeFaceNormal(newFace);
 
     if (!newEdge1->adjFace[0])
@@ -381,52 +413,59 @@ incFace *incMakeConeFace(incEdge *e, incVertex *v)
 
 void incAddToHull(incVertex *v)
 {
-    //use this page 247 in compgeo book
-    //https://people.csail.mit.edu/indyk/6.838-old/handouts/lec10.pdf
-    //https://cw.fel.cvut.cz/wiki/_media/misc/projects/oppa_oi_english/courses/ae4m39vg/lectures/05-convexhull-3d.pdf
-    //https://members.loria.fr/MPouget/files/enseignement/webimpa/mpri-randomized.pdf
-    incFace *f = incFaces;
     bool visible = false;
-    //check sidedness another way???
-    do
-    {
-        if (incIsPointOnPositiveSide(f, v))
-        {
-            f->isVisible = visible = true;
-        }
-        f = f->next;
-    } while (f != incFaces);
 
+    for (incFace *face : v->conflicts)
+    {
+        face->isVisible = visible = true;
+    }
     if (!visible)
     {
-        //No faces are visible and we are inside hull. Do nothing
+        //No faces are are visible and we are inside hull. Do nothing for this v
         v->isOnHull = false;
         return;
     }
-
-    incEdge *e, *tempEdge;
-    e = incEdges;
-    do
+    incEdge *e;
+    incFace *newFace;
+    for (incFace *face : v->conflicts)
     {
-        tempEdge = e->next;
-        if (e->adjFace[0]->isVisible && e->adjFace[1]->isVisible)
+        //since two faces can share an edge, we could go through all edges twice (although it fails fast). Discussion?
+        //can we optimize? should we just walk through all edges again?
+        for (int i = 0; i < 3; i++)
         {
-            //both are visible: inside cone and should be removed
-            e->shouldBeRemoved = true;
+            e = face->edge[i];
+            //if shouldBeRemoved is set, it has already been processed and is not important for new faces
+            //horizon edges will always only be processed once
+            if (!e->shouldBeRemoved)
+            {
+                if (e->adjFace[0]->isVisible && e->adjFace[1]->isVisible)
+                {
+                    //both are visible: inside cone and should be removed
+                    e->shouldBeRemoved = true;
+                }
+                else if (e->adjFace[0]->isVisible || e->adjFace[1]->isVisible)
+                {
+                    //only one is visible: border edge, erect face for cone
+                    newFace = incMakeConeFace(e, v);
+                    e->newFace = newFace;
+                    incInitConflictListForFace(newFace, e->adjFace[0], e->adjFace[1]);
+                }
+            }
         }
-        else if (e->adjFace[0]->isVisible || e->adjFace[1]->isVisible)
-        {
-            //only one is visible: border edge, erect face for cone
-            e->newFace = incMakeConeFace(e, v);
-        }
-        e = tempEdge;
-    } while (e != incEdges);
+        //since we are looping over v->conflicts, it is probably not a good idea to remove from it right now. Some kind of bulk delete, like in java?
+        //We must delete this face from v->conflicts (do in bulk) and this v from face->conflicts.
+        //is this how you do it???
+        face->conflicts.erase(std::remove(face->conflicts.begin(), face->conflicts.end(), v), face->conflicts.end());
+    }
+    //TODO: Bulk remove from v->conflicts here
 }
 
 void incCleanEdges()
 {
+    //2 loops through all edges could be optimized. Maybe give the conflict faces or the point, and run over edges in the faces? duplicate edges would be removed
     incEdge *e, *tempEdge;
     e = incEdges;
+    //replace the pointer to the newly created face. no need to go through all edges
     do
     {
         if (e->newFace)
@@ -444,11 +483,14 @@ void incCleanEdges()
         e = e->next;
     } while (e != incEdges);
 
+    //if the first edge of incEdges should be removed, removeFromHead makes next the new head.
+    //Therefore, we cannot use the regular do-while loop. We have to remove until we find "a good starting point", then we can loop as usual.
     while (incEdges && incEdges->shouldBeRemoved)
     {
         e = incEdges;
         incRemoveFromHead(&incEdges, e);
     }
+    //we know this e should not be deleted (then it would have been in above for loop), so we can go to next
     e = incEdges->next;
     do
     {
@@ -467,12 +509,15 @@ void incCleanEdges()
 
 void incCleanFaces()
 {
+    //this is the same problem as with edges. Have to find a starting point
+    //Should optimize by simply removing conflict faces - they are exactly the ones visible!
     incFace *f, *tempFace;
     while (incFaces && incFaces->isVisible)
     {
         f = incFaces;
         incRemoveFromHead(&incFaces, f);
     }
+    //we know this f should not be deleted (then it would have been in above for loop), so we can go to next
     f = incFaces->next;
     do
     {
@@ -493,15 +538,21 @@ void incCleanVertices(incVertex **nextVertex)
 {
     incVertex *v, *tempVertex;
     incEdge *e = incEdges;
+    //no clear indicator on vertices on which to delete.
+    //Therefore we go through all current edges in the hull, vertices in those must be on the hull.
+    //Optimize to go though the edges of the conflict faces?? adjacent faces have duplicate edges.
+    //TODO: actually, every time we create an edge, we should set the two endPoints to on hull. Then we have no need for this while loop
     do
     {
         e->endPoints[0]->isOnHull = e->endPoints[1]->isOnHull = true;
         e = e->next;
     } while (e != incEdges);
 
+    //does it make sense to aggregate ALL visible vertices from the conflict faces, union them and loop over those instead?
+    //double while loop again to ensure good starting point.
     while (incVertices && incVertices->isProcessed && !incVertices->isOnHull)
     {
-        //if we are about to delete nextVertex, go to the one after
+        //if we are about to delete nextVertex (in the full hull, pointer to the next to add (is it Nilly?)), make it the one after
         v = incVertices;
         if (v == *nextVertex)
         {
@@ -509,6 +560,7 @@ void incCleanVertices(incVertex **nextVertex)
         }
         incRemoveFromHead(&incVertices, v);
     }
+    //we know this v should not be deleted (then it would have been in above for loop), so we can go to next
     v = incVertices->next;
     do
     {
@@ -524,17 +576,11 @@ void incCleanVertices(incVertex **nextVertex)
         }
         else
         {
+            //reset flags
+            v->duplicate = nullptr;
+            v->isOnHull = false;
             v = v->next;
         }
-    } while (v != incVertices);
-
-    //reset flags
-    v = incVertices;
-    do
-    {
-        v->duplicate = nullptr;
-        v->isOnHull = false;
-        v = v->next;
     } while (v != incVertices);
 }
 
@@ -576,12 +622,42 @@ mesh &incConvertToMesh(render_context &renderContext)
     return m;
 }
 
+void incInitConflictLists()
+{
+    //determine which of the points can see which of the two faces - linear time
+    //for each point - positive side of one face, also if coplanar
+    incVertex *v = incVertices;
+    incVertex *nextVertex;
+    incFace *f1 = incFaces;
+    incFace *f2 = incFaces->next;
+    do
+    {
+        nextVertex = v->next;
+        if (incIsPointCoplanar(f1, v))
+        {
+            //if point is coplanar, it cannot be on hull
+            incRemoveFromHead(&incVertices, v);
+        }
+        else if (incIsPointOnPositiveSide(f1, v))
+        {
+            v->conflicts.push_back(f1);
+            f1->conflicts.push_back(v);
+        }
+        else
+        {
+            v->conflicts.push_back(f2);
+            f2->conflicts.push_back(v);
+        }
+        v = nextVertex;
+    } while (v != incVertices);
+}
+
 void incConstructFullHull()
 {
     incCreateBihedron();
     incVertex *v = incVertices;
     incVertex *nextVertex;
-    //incInitConflictGraph();
+    incInitConflictLists();
     do
     {
         nextVertex = v->next;
