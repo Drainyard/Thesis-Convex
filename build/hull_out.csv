@@ -15,3 +15,5 @@ QuickHull, 16434, 2696, 17536, 2854, 65254, 1350, 0.043590, Many internal, some 
 QuickHull, 274, 96, 500000, 64, 889131, 50, 0.143242, Many internal, some on sphere
 QuickHull, 255, 96, 500000, 55, 849642, 50, 0.207453, Many internal, some on sphere
 QuickHull, 253, 96, 10000, 57, 20737, 50, 0.025648, Many internal, some on sphere
+QuickHull, 235, 96, 300, 50, 566, 50, 0.018385, Many internal, some on sphere
+QuickHull, 243, 96, 300, 50, 522, 50, 0.019482, Many internal, some on sphere

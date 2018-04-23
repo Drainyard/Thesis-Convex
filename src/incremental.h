@@ -19,7 +19,6 @@ struct incVertex
     incEdge *duplicate;
     bool isOnHull;
     bool isProcessed;
-    std::unordered_set<incFace *> conflicts;
     incVertex *next;
     incVertex *prev;
 };
@@ -41,7 +40,6 @@ struct incFace
     glm::vec3 normal;
     glm::vec3 centerPoint;
     bool isVisible;
-    std::unordered_set<incVertex *> conflicts;
     incFace *next;
     incFace *prev;
 };
@@ -65,6 +63,10 @@ struct inc_context
 incVertex *incVertices = nullptr;
 incEdge *incEdges = nullptr;
 incFace *incFaces = nullptr;
+
+//Conflict graph
+std::unordered_map<incVertex *, std::unordered_set<incFace *>> vertexConflicts;
+std::unordered_map<incFace *, std::unordered_set<incVertex *>> faceConflicts;
 
 template <typename T>
 void incAddToHead(T *head, T pointer)
@@ -191,7 +193,7 @@ glm::vec3 incComputeFaceNormal(incFace *f)
     return glm::normalize(normal);
 }
 
-static bool incIsPointOnPositiveSide(incFace *f, incVertex *v, coord_t epsilon = 0.0f)
+static bool incIsPointOnPositiveSide(incFace *f, incVertex *v, coord_t epsilon = 0.0000001f)
 {
     auto d = glm::dot(f->normal, v->vector - f->centerPoint);
     return d > epsilon;
@@ -243,24 +245,41 @@ incFace *incMakeFace(incVertex *v0, incVertex *v1, incVertex *v2, incFace *face)
 
 void incInitConflictListForFace(incFace *newFace, incFace *oldFace1, incFace *oldFace2)
 {
-    //TODO: possible to optimize for union of the two, to avoid duplicates in list. http://www.cplusplus.com/reference/algorithm/set_union/
-    //or should I use a set instead?
-    for (auto &v : oldFace1->conflicts)
+    assert(faceConflicts.emplace(newFace, std::unordered_set<incVertex *>{}).second);
+    auto &newConf = faceConflicts.find(newFace)->second;
+    auto &oldConf1 = faceConflicts.find(oldFace1)->second;
+    auto &oldConf2 = faceConflicts.find(oldFace2)->second;
+
+    for (incVertex *v : oldConf1)
     {
         if (incIsPointOnPositiveSide(newFace, v))
         {
-            v->conflicts.insert(newFace);
-            newFace->conflicts.insert(v);
+            vertexConflicts.find(v)->second.insert(newFace);
+            newConf.insert(v);
         }
     }
-    //duplicates in list will probably fuck us up, the same face will pop up two times creating two identical faces, that will create more duplicates
-    for (incVertex *v : oldFace2->conflicts)
+    for (incVertex *v : oldConf2)
     {
         if (incIsPointOnPositiveSide(newFace, v))
         {
-            v->conflicts.insert(newFace);
-            newFace->conflicts.insert(v);
+            vertexConflicts.find(v)->second.insert(newFace);
+            newConf.insert(v);
         }
+    }
+}
+
+void incCleanConflictGraph(std::vector<incFace *> &facesToRemove)
+{
+    for (incFace *face : facesToRemove)
+    {
+        //for face, look up vertices, and remove this face from their list
+        auto &vertices = faceConflicts.find(face)->second;
+        for (incVertex *vertex : vertices)
+        {
+            vertexConflicts.find(vertex)->second.erase(face);
+        }
+        //benchmark with and without
+        faceConflicts.erase(face);
     }
 }
 
@@ -411,11 +430,13 @@ incFace *incMakeConeFace(incEdge *e, incVertex *v)
     return newFace;
 }
 
-void incAddToHull(incVertex *v)
+std::vector<incFace *> incAddToHull(incVertex *v)
 {
+    std::vector<incFace *> facesToRemove;
     bool visible = false;
+    auto &vConf = vertexConflicts.find(v)->second;
 
-    for (incFace *face : v->conflicts)
+    for (incFace *face : vConf)
     {
         face->isVisible = visible = true;
     }
@@ -423,11 +444,11 @@ void incAddToHull(incVertex *v)
     {
         //No faces are are visible and we are inside hull. Do nothing for this v
         v->isOnHull = false;
-        return;
+        return facesToRemove;
     }
     incEdge *e;
     incFace *newFace;
-    for (incFace *face : v->conflicts)
+    for (incFace *face : vConf)
     {
         //since two faces can share an edge, we could go through all edges twice (although it fails fast). Discussion?
         //can we optimize? should we just walk through all edges again?
@@ -452,13 +473,10 @@ void incAddToHull(incVertex *v)
                 }
             }
         }
-        //ACTUALLY, does it matter? we are done with these faces and this vertex, just let it die? or we should probably send the faces in v->conflicts forward to cleanStuff()
-        //since we are looping over v->conflicts, it is probably not a good idea to remove from it right now. Some kind of bulk delete, like in java?
-        //We must delete this face from v->conflicts (do in bulk) and this v from face->conflicts.
-        //is this how you do it???
-        //face->conflicts.erase(std::remove(face->conflicts.begin(), face->conflicts.end(), v), face->conflicts.end());
+        facesToRemove.push_back(face);
     }
-    //TODO: Bulk remove from v->conflicts here
+    incCleanConflictGraph(facesToRemove);
+    return facesToRemove;
 }
 
 void incCleanEdges()
@@ -508,31 +526,12 @@ void incCleanEdges()
     } while (e != incEdges);
 }
 
-void incCleanFaces()
+void incCleanFaces(std::vector<incFace *> facesToRemove)
 {
-    //this is the same problem as with edges. Have to find a starting point
-    //Should optimize by simply removing conflict faces - they are exactly the ones visible!
-    incFace *f, *tempFace;
-    while (incFaces && incFaces->isVisible)
+    for (incFace *face : facesToRemove)
     {
-        f = incFaces;
-        incRemoveFromHead(&incFaces, f);
+        incRemoveFromHead(&incFaces, face);
     }
-    //we know this f should not be deleted (then it would have been in above for loop), so we can go to next
-    f = incFaces->next;
-    do
-    {
-        if (f->isVisible)
-        {
-            tempFace = f;
-            f = f->next;
-            incRemoveFromHead(&incFaces, tempFace);
-        }
-        else
-        {
-            f = f->next;
-        }
-    } while (f != incFaces);
 }
 
 void incCleanVertices(incVertex **nextVertex)
@@ -585,11 +584,11 @@ void incCleanVertices(incVertex **nextVertex)
     } while (v != incVertices);
 }
 
-void incCleanStuff(incVertex *nextVertex)
+void incCleanStuff(incVertex *nextVertex, std::vector<incFace *> &facesToRemove)
 {
     //cleanEdges called before faces, as we need access to isVisible
     incCleanEdges();
-    incCleanFaces();
+    incCleanFaces(facesToRemove);
     incCleanVertices(&nextVertex);
 }
 
@@ -623,7 +622,6 @@ mesh &incConvertToMesh(render_context &renderContext)
     return m;
 }
 
-
 void incInitConflictLists()
 {
     //determine which of the points can see which of the two faces - linear time
@@ -632,25 +630,30 @@ void incInitConflictLists()
     incVertex *nextVertex;
     incFace *f1 = incFaces;
     incFace *f2 = incFaces->next;
+    assert(faceConflicts.emplace(f1, std::unordered_set<incVertex *>{}).second);
+    assert(faceConflicts.emplace(f2, std::unordered_set<incVertex *>{}).second);
+    while (incVertices && incIsPointCoplanar(f1, incVertices))
+    {
+        incRemoveFromHead(&incVertices, incVertices);
+    }
     do
     {
         nextVertex = v->next;
 
-        //actually we have a bug here, if first point is coplanar, then nextVertex will be incVertices and we will terminate...
         if (incIsPointCoplanar(f1, v))
         {
             //if point is coplanar, it cannot be on hull
             incRemoveFromHead(&incVertices, v);
         }
-        else if (incIsPointOnPositiveSide(f1, v))
-        {
-            v->conflicts.insert(f1);
-            f1->conflicts.insert(v);
-        }
         else
         {
-            v->conflicts.insert(f2);
-            f2->conflicts.insert(v);
+            incFace *conflictFace = incIsPointOnPositiveSide(f1, v) ? f1 : f2;
+            assert(vertexConflicts.emplace(v, std::unordered_set<incFace *>{}).second);
+            auto vConf = vertexConflicts.find(v);
+            vConf->second.insert(conflictFace);
+
+            auto fConf = faceConflicts.find(conflictFace);
+            fConf->second.insert(v);
         }
         v = nextVertex;
     } while (v != incVertices);
@@ -667,9 +670,9 @@ void incConstructFullHull()
         nextVertex = v->next;
         if (!v->isProcessed)
         {
-            incAddToHull(v);
+            std::vector<incFace *> facesToRemove = incAddToHull(v);
             v->isProcessed = true;
-            incCleanStuff(nextVertex);
+            incCleanStuff(nextVertex, facesToRemove);
         }
         v = nextVertex;
     } while (v != incVertices);

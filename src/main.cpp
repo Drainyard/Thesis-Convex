@@ -3,6 +3,7 @@
 #include <vector>
 #include <map>
 #include <stack>
+#include <unordered_map>
 #include <unordered_set>
 #include <cstdio>
 #include <cstdlib>
@@ -100,7 +101,7 @@ int main()
     //int numberOfPoints = 645932; // Man in vest numbers
     //int numberOfPoints = 17536; // Arnold
     //int numberOfPoints = 27948;
-    int numberOfPoints = 10000;
+    int numberOfPoints = 300;
     
     hull h;
     std::random_device rd{};
