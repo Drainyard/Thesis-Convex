@@ -75,7 +75,11 @@ const char* GetGeneratorTypeString(GeneratorType type)
 void WriteHullToCSV(const char* filename, const char* typeString, int facesAdded, int totalFaceCount, int vertexCount, int pointsProcessed, int distanceQueryCount, int verticesInHull, double timeSpent, GeneratorType generateType)
 {
     char* fullFilename = concat(filename, ".csv");
+#if defined(__linux)
     bool fileExists = access(fullFilename, F_OK) != -1;
+#else
+    auto fileExists = PathFileExists(fullFilename);
+#endif
     FILE* f = fopen(fullFilename, "a+");
     
     if(f)
@@ -118,11 +122,15 @@ static void InitializeHull(hull& h, vertex* vertices, int numberOfPoints, HullTy
     h.vertices = vertices;
     h.numberOfPoints = numberOfPoints;
     
+    h.qhContext = {};
     h.qhContext.initialized = false;
     h.stepQhContext.initialized = false;
+    h.stepQhContext = {};
     h.timedStepQhContext.initialized = false;
+    h.timedStepQhContext = {};
     
     h.incContext.initialized = false;
+    h.incContext = {};
     //h.stepIncContext.initialized = false;
     //h.timedStepIncContext.initialized = false;
     

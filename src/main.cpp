@@ -7,7 +7,11 @@
 #include <unordered_set>
 #include <cstdio>
 #include <cstdlib>
+#if defined(__linux)
 #include <unistd.h>
+#else
+#include "Shlwapi.h"
+#endif
 
 #ifdef _WIN32
 #define _USE_MATH_DEFINES

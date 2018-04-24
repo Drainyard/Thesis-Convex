@@ -11,7 +11,7 @@ IF %ERRORLEVEL% NEQ 0 call %VCVARSALL% x64
 
 echo %cd%
 set CommonCompilerFlags=/MD -nologo -Od -Oi -Wall -Gm- -EHsc -FC -Z7 %PRP% %WIGNORED% %DEBUG%  /I..\libs /I..\libs\glad\include 
-set CommonLinkerFlags= Comdlg32.lib Ole32.lib kernel32.lib user32.lib gdi32.lib winmm.lib opengl32.lib shell32.lib ..\libs\glfw\lib-vc2015\glfw3.lib ..\libs\glad\glad.obj 
+set CommonLinkerFlags= Comdlg32.lib Ole32.lib kernel32.lib user32.lib gdi32.lib winmm.lib Shlwapi.lib opengl32.lib shell32.lib ..\libs\glfw\lib-vc2015\glfw3.lib ..\libs\glad\glad.obj 
 set ExtraLinkerFlags=/NODEFAULTLIB:"LIBCMT" -incremental:no -opt:ref /ignore:4099
 
 
