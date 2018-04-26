@@ -61,11 +61,6 @@ static input_state inputState;
 #include "hull.h"
 
 
-#define Min(A,B) ((A < B) ? (A) : (B))
-#define Max(A,B) ((A > B) ? (A) : (B))
-#define Abs(x) ((x) < 0 ? -(x) : (x))
-
-
 int main()
 {
     // Degenerate: 1520515408
@@ -105,7 +100,7 @@ int main()
     //int numberOfPoints = 645932; // Man in vest numbers
     //int numberOfPoints = 17536; // Arnold
     //int numberOfPoints = 27948;
-    int numberOfPoints = 300;
+    int numberOfPoints = 3;
     
     hull h;
     std::random_device rd{};

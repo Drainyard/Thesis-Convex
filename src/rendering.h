@@ -28,7 +28,6 @@ struct gl_buffer
     GLfloat* data;
     size_t size;
     int count;
-    
     union
     {
         struct

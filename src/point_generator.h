@@ -107,7 +107,7 @@ GENERATOR_FUNCTION(GeneratePointsManyInternal)
     
     glm::vec3 total = glm::vec3(0.0f);
     
-    for(int i = 0; i < pointGenerator.numberOfPoints - pointsOnOutside; i++)
+    for(int i = 0; i < pointGenerator.numberOfPoints- (Min(pointsOnOutside - 1, pointGenerator.numberOfPoints) - 1); i++)
     {
         coord_t x = randomCoord(pointGenerator.d, pointGenerator.gen, max / 5.0f - min, max / 5.0f);
         coord_t y = randomCoord(pointGenerator.d, pointGenerator.gen, max / 5.0f - min, max / 5.0f);
@@ -121,7 +121,7 @@ GENERATOR_FUNCTION(GeneratePointsManyInternal)
     total = glm::vec3(total.x / (pointGenerator.numberOfPoints - pointsOnOutside), total.y / (pointGenerator.numberOfPoints - pointsOnOutside), total.z / (pointGenerator.numberOfPoints - pointsOnOutside));
     
     auto radius = max / 2.0f;
-    for(int i = pointGenerator.numberOfPoints - pointsOnOutside; i < pointGenerator.numberOfPoints; i++)
+    for(int i = pointGenerator.numberOfPoints- (Min(pointsOnOutside - 1, pointGenerator.numberOfPoints) - 1); i < pointGenerator.numberOfPoints; i++)
     {
         coord_t theta = 2 * (coord_t)M_PI * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0, 1.0);
         coord_t phi = (coord_t)acos(1 - 2 * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0, 1.0));
