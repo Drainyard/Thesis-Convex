@@ -46,8 +46,18 @@ struct incFace
 
 struct inc_hull
 {
-    //Could move head pointers up here...
+    //Conflict graph
+    std::unordered_map<incVertex *, std::unordered_set<incFace *>> vertexConflicts;
+    std::unordered_map<incFace *, std::unordered_set<incVertex *>> faceConflicts;
 };
+
+    //Head pointers to each of the three lists
+    incVertex *incVertices = nullptr;
+    incEdge *incEdges = nullptr;
+    incFace *incFaces = nullptr;
+
+    //Pointer to current vertex in step context
+    incVertex *currentStepVertex = nullptr;
 
 struct inc_context
 {
@@ -57,19 +67,8 @@ struct inc_context
     IHIteration iter;
     mesh m;
     int previousIteration;
+    inc_hull incHull;
 };
-
-//Head pointers to each of the three lists
-incVertex *incVertices = nullptr;
-incEdge *incEdges = nullptr;
-incFace *incFaces = nullptr;
-
-//Pointer to current vertex in step context
-incVertex *currentStepVertex = nullptr;
-
-//Conflict graph
-std::unordered_map<incVertex *, std::unordered_set<incFace *>> vertexConflicts;
-std::unordered_map<incFace *, std::unordered_set<incVertex *>> faceConflicts;
 
 template <typename T>
 void incAddToHead(T *head, T pointer)
@@ -246,18 +245,18 @@ incFace *incMakeFace(incVertex *v0, incVertex *v1, incVertex *v2, incFace *face)
     return f;
 }
 
-void incInitConflictListForFace(incFace *newFace, incFace *oldFace1, incFace *oldFace2)
+void incInitConflictListForFace(incFace *newFace, incFace *oldFace1, incFace *oldFace2, inc_hull &incHull)
 {
-    assert(faceConflicts.emplace(newFace, std::unordered_set<incVertex *>{}).second);
-    auto &newConf = faceConflicts.find(newFace)->second;
-    auto &oldConf1 = faceConflicts.find(oldFace1)->second;
-    auto &oldConf2 = faceConflicts.find(oldFace2)->second;
+    assert(incHull.faceConflicts.emplace(newFace, std::unordered_set<incVertex *>{}).second);
+    auto &newConf = incHull.faceConflicts.find(newFace)->second;
+    auto &oldConf1 = incHull.faceConflicts.find(oldFace1)->second;
+    auto &oldConf2 = incHull.faceConflicts.find(oldFace2)->second;
 
     for (incVertex *v : oldConf1)
     {
         if (incIsPointOnPositiveSide(newFace, v))
         {
-            vertexConflicts.find(v)->second.insert(newFace);
+            incHull.vertexConflicts.find(v)->second.insert(newFace);
             newConf.insert(v);
         }
     }
@@ -265,24 +264,24 @@ void incInitConflictListForFace(incFace *newFace, incFace *oldFace1, incFace *ol
     {
         if (incIsPointOnPositiveSide(newFace, v))
         {
-            vertexConflicts.find(v)->second.insert(newFace);
+            incHull.vertexConflicts.find(v)->second.insert(newFace);
             newConf.insert(v);
         }
     }
 }
 
-void incCleanConflictGraph(std::vector<incFace *> &facesToRemove)
+void incCleanConflictGraph(std::vector<incFace *> &facesToRemove, inc_hull &incHull)
 {
     for (incFace *face : facesToRemove)
     {
         //for face, look up vertices, and remove this face from their list
-        auto &vertices = faceConflicts.find(face)->second;
+        auto &vertices = incHull.faceConflicts.find(face)->second;
         for (incVertex *vertex : vertices)
         {
-            vertexConflicts.find(vertex)->second.erase(face);
+            incHull.vertexConflicts.find(vertex)->second.erase(face);
         }
         //benchmark with and without
-        faceConflicts.erase(face);
+        incHull.faceConflicts.erase(face);
     }
 }
 
@@ -343,7 +342,7 @@ incFace *incEnforceCounterClockWise(incFace *newFace, incEdge *e, incVertex *v)
 {
     //From Computational Geometry in C page 136
     //We are applying the orientation of the face we are replacing. As we are on the horizon edge, one face is visible, while one is not.
-    //As we are creating a new face above the old face, they have to points in common, and the orientation will be the same
+    //As we are creating a new face above the old face, they have two points in common, and the orientation will be the same
     incFace *visibleFace;
     if (e->adjFace[0]->isVisible)
     {
@@ -433,11 +432,11 @@ incFace *incMakeConeFace(incEdge *e, incVertex *v)
     return newFace;
 }
 
-std::vector<incFace *> incAddToHull(incVertex *v)
+std::vector<incFace *> incAddToHull(incVertex *v, inc_hull &incHull)
 {
     std::vector<incFace *> facesToRemove;
     bool visible = false;
-    auto &vConf = vertexConflicts.find(v)->second;
+    auto &vConf = incHull.vertexConflicts.find(v)->second;
 
     for (incFace *face : vConf)
     {
@@ -472,13 +471,13 @@ std::vector<incFace *> incAddToHull(incVertex *v)
                     //only one is visible: border edge, erect face for cone
                     newFace = incMakeConeFace(e, v);
                     e->newFace = newFace;
-                    incInitConflictListForFace(newFace, e->adjFace[0], e->adjFace[1]);
+                    incInitConflictListForFace(newFace, e->adjFace[0], e->adjFace[1], incHull);
                 }
             }
         }
         facesToRemove.push_back(face);
     }
-    incCleanConflictGraph(facesToRemove);
+    incCleanConflictGraph(facesToRemove, incHull);
     return facesToRemove;
 }
 
@@ -555,7 +554,7 @@ void incCleanVertices(incVertex **nextVertex)
     //double while loop again to ensure good starting point.
     while (incVertices && incVertices->isProcessed && !incVertices->isOnHull)
     {
-        //if we are about to delete nextVertex (in the full hull, pointer to the next to add (is it Nilly?)), make it the one after
+        //if we are about to delete nextVertex, make it the one after
         v = incVertices;
         if (v == *nextVertex)
         {
@@ -625,7 +624,7 @@ mesh &incConvertToMesh(render_context &renderContext)
     return m;
 }
 
-void incInitConflictLists()
+void incInitConflictLists(inc_hull &incHull)
 {
     //determine which of the points can see which of the two faces - linear time
     //for each point - positive side of one face, also if coplanar
@@ -633,39 +632,28 @@ void incInitConflictLists()
     incVertex *nextVertex;
     incFace *f1 = incFaces;
     incFace *f2 = incFaces->next;
-    assert(faceConflicts.emplace(f1, std::unordered_set<incVertex *>{}).second);
-    assert(faceConflicts.emplace(f2, std::unordered_set<incVertex *>{}).second);
-    while (incVertices && incIsPointCoplanar(f1, incVertices))
-    {
-        incRemoveFromHead(&incVertices, incVertices);
-    }
+    assert(incHull.faceConflicts.emplace(f1, std::unordered_set<incVertex *>{}).second);
+    assert(incHull.faceConflicts.emplace(f2, std::unordered_set<incVertex *>{}).second);
     do
     {
         nextVertex = v->next;
 
-        if (incIsPointCoplanar(f1, v))
-        {
-            //if point is coplanar, it cannot be on hull
-            incRemoveFromHead(&incVertices, v);
-        }
-        else
-        {
-            incFace *conflictFace = incIsPointOnPositiveSide(f1, v) ? f1 : f2;
-            assert(vertexConflicts.emplace(v, std::unordered_set<incFace *>{}).second);
-            auto vConf = vertexConflicts.find(v);
-            vConf->second.insert(conflictFace);
+        incFace *conflictFace = incIsPointOnPositiveSide(f1, v) ? f1 : f2;
+        assert(incHull.vertexConflicts.emplace(v, std::unordered_set<incFace *>{}).second);
+        auto vConf = incHull.vertexConflicts.find(v);
+        vConf->second.insert(conflictFace);
 
-            auto fConf = faceConflicts.find(conflictFace);
-            fConf->second.insert(v);
-        }
+        auto fConf = incHull.faceConflicts.find(conflictFace);
+        fConf->second.insert(v);
+
         v = nextVertex;
     } while (v != incVertices);
 }
 
-void incConstructFullHull()
+void incConstructFullHull(inc_hull &incHull)
 {
     incCreateBihedron();
-    incInitConflictLists();
+    incInitConflictLists(incHull);
     incVertex *v = incVertices;
     incVertex *nextVertex;
     do
@@ -673,7 +661,7 @@ void incConstructFullHull()
         nextVertex = v->next;
         if (!v->isProcessed)
         {
-            std::vector<incFace *> facesToRemove = incAddToHull(v);
+            std::vector<incFace *> facesToRemove = incAddToHull(v, incHull);
             v->isProcessed = true;
             incCleanStuff(nextVertex, facesToRemove);
         }
@@ -681,20 +669,20 @@ void incConstructFullHull()
     } while (v != incVertices);
 }
 
-void incInitStepHull()
+void incInitStepHull(inc_hull &incHull)
 {
     incCreateBihedron();
-    incInitConflictLists();
+    incInitConflictLists(incHull);
     currentStepVertex = incVertices;
 }
 
-void incHullStep()
+void incHullStep(inc_hull &incHull)
 {
     incVertex *nextVertex;
     nextVertex = currentStepVertex->next;
     if (!currentStepVertex->isProcessed)
     {
-        std::vector<incFace *> facesToRemove = incAddToHull(currentStepVertex);
+        std::vector<incFace *> facesToRemove = incAddToHull(currentStepVertex, incHull);
         currentStepVertex->isProcessed = true;
         incCleanStuff(nextVertex, facesToRemove);
     }
