@@ -23,6 +23,12 @@
 
 #define UNUSED(var) (void)var
 
+
+#define Min(A,B) ((A < B) ? (A) : (B))
+#define Max(A,B) ((A > B) ? (A) : (B))
+#define Abs(x) ((x) < 0 ? -(x) : (x))
+
+
 using coord_t = float;
 
 static float randomFloat(std::uniform_real_distribution<coord_t>& d, std::mt19937& gen, float start, float end)
