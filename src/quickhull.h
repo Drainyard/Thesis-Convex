@@ -1061,7 +1061,7 @@ void qhInitializeContext(qh_context& qhContext, vertex* vertices, int numberOfPo
     qhContext.initialized = true;
 }
 
-void qhStep(qh_context& context)
+void        qhStep(qh_context& context)
 {
     switch(context.iter)
     {

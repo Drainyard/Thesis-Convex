@@ -29,7 +29,7 @@ struct hull
     timer qhTimer;
     
     inc_context incContext;
-    //inc_context stepIncContext;
+    inc_context stepIncContext;
     //inc_context timedStepIncContext;
     
     timer incTimer;
@@ -249,13 +249,18 @@ static mesh& StepHull(render_context& renderContext, hull& h)
         break;
         case Inc:
         {
-            /*auto& incContext = h.stepIncContext;
-            if(!incContext.initialized)
+            static bool init = true;
+            auto &incContext = h.stepIncContext;
+            if (!incContext.initialized)
             {
-            InitializeIncContext(incContext, h.vertices, h.numberOfPoints);
+                incInitializeContext(incContext, h.vertices, h.numberOfPoints);
             }
-            IncHullStep(renderContext, incContext);
-            return incContext.m;*/
+            if (init) {
+                incInitStepHull();
+                init = false;
+            }
+            incHullStep();
+            return incConvertToMesh(renderContext);
         }
         break;
         case RInc:

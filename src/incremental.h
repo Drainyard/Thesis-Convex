@@ -64,6 +64,9 @@ incVertex *incVertices = nullptr;
 incEdge *incEdges = nullptr;
 incFace *incFaces = nullptr;
 
+//Pointer to current vertex in step context
+incVertex *currentStepVertex = nullptr;
+
 //Conflict graph
 std::unordered_map<incVertex *, std::unordered_set<incFace *>> vertexConflicts;
 std::unordered_map<incFace *, std::unordered_set<incVertex *>> faceConflicts;
@@ -193,7 +196,7 @@ glm::vec3 incComputeFaceNormal(incFace *f)
     return glm::normalize(normal);
 }
 
-static bool incIsPointOnPositiveSide(incFace *f, incVertex *v, coord_t epsilon = 0.0000001f)
+static bool incIsPointOnPositiveSide(incFace *f, incVertex *v, coord_t epsilon = 0.0f)
 {
     auto d = glm::dot(f->normal, v->vector - f->centerPoint);
     return d > epsilon;
@@ -662,9 +665,9 @@ void incInitConflictLists()
 void incConstructFullHull()
 {
     incCreateBihedron();
+    incInitConflictLists();
     incVertex *v = incVertices;
     incVertex *nextVertex;
-    incInitConflictLists();
     do
     {
         nextVertex = v->next;
@@ -676,6 +679,26 @@ void incConstructFullHull()
         }
         v = nextVertex;
     } while (v != incVertices);
+}
+
+void incInitStepHull()
+{
+    incCreateBihedron();
+    incInitConflictLists();
+    currentStepVertex = incVertices;
+}
+
+void incHullStep()
+{
+    incVertex *nextVertex;
+    nextVertex = currentStepVertex->next;
+    if (!currentStepVertex->isProcessed)
+    {
+        std::vector<incFace *> facesToRemove = incAddToHull(currentStepVertex);
+        currentStepVertex->isProcessed = true;
+        incCleanStuff(nextVertex, facesToRemove);
+    }
+    currentStepVertex = nextVertex;
 }
 
 void incInitializeContext(inc_context &incContext, vertex *vertices, int numberOfPoints)
