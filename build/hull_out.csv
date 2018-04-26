@@ -18,9 +18,6 @@ QuickHull, 253, 96, 10000, 57, 20737, 50, 0.025648, Many internal, some on spher
 QuickHull, 235, 96, 300, 50, 566, 50, 0.018385, Many internal, some on sphere
 QuickHull, 243, 96, 300, 50, 522, 50, 0.019482, Many internal, some on sphere
 QuickHull, 238, 96, 300, 51, 633, 50, 0.200412, Many internal, some on sphere
-<<<<<<< HEAD
-QuickHull, 266, 96, 300, 56, 740, 50, 0.020581, Many internal, some on sphere
-=======
 QuickHull, 2, 2, 3, 4, 0, 3, 0.000307, Many internal, some on sphere
 QuickHull, 2, 2, 3, 4, 0, 3, 0.000209, Many internal, some on sphere
 QuickHull, 2, 2, 3, 4, 0, 3, 0.000182, Many internal, some on sphere
@@ -31,4 +28,3 @@ QuickHull, 2, 2, 3, 4, 0, 3, 0.000244, Many internal, some on sphere
 QuickHull, 2, 2, 3, 4, 0, 3, 0.000210, Many internal, some on sphere
 QuickHull, 2, 2, 3, 4, 0, 3, 0.000184, Many internal, some on sphere
 QuickHull, 2, 2, 3, 4, 0, 3, 0.000263, Many internal, some on sphere
->>>>>>> 8077860eebb984b0b06b0b565b6934988216575f
