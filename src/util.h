@@ -28,6 +28,11 @@
 #define Max(A,B) ((A > B) ? (A) : (B))
 #define Abs(x) ((x) < 0 ? -(x) : (x))
 
+inline bool startsWith(const char *a, const char *b)
+{
+    if(strncmp(a, b, strlen(b)) == 0) return 1;
+    return 0;
+}
 
 using coord_t = float;
 
@@ -56,12 +61,6 @@ static glm::vec4 randomColor(std::uniform_real_distribution<coord_t>& d, std::mt
     return glm::vec4((coord_t)randomInt(d, gen, 0, 255) / 255.0, (coord_t)randomInt(d, gen, 0, 255) / 255.0, (coord_t)randomInt(d, gen, 0, 255) / 255.0, 1.0);
 }
 
-inline bool startsWith(const char *a, const char *b)
-{
-    if(strncmp(a, b, strlen(b)) == 0) return 1;
-    return 0;
-}
-
 struct edge
 {
     int origin;
@@ -77,6 +76,5 @@ char* concat(const char* left, const char* right)
     res[strlen(left) + strlen(right) + 1] = '\0';
     return res;
 }
-
 
 #endif

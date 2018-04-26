@@ -25,6 +25,43 @@ struct point_generator
     std::uniform_real_distribution<coord_t> d;
 };
 
+
+struct config_data
+{
+    int numberOfPoints;
+    GeneratorType genType;
+};
+
+
+
+void loadConfig(const char* filePath, config_data &configData)
+{
+    FILE* f = fopen(filePath, "r");
+    if(f)
+    {
+        char buffer[64];
+        while(fgets(buffer, 64, f))
+        {
+            if(startsWith(buffer, "points"))
+            {
+                sscanf(buffer, "points %d", &configData.numberOfPoints);
+            }
+            else if(startsWith(buffer, "type"))
+            {
+                int genType;
+                sscanf(buffer, "type %d", &genType);
+                if(genType > GeneratorType::ManyInternal)
+                {
+                    genType = GeneratorType::InSphere;
+                }
+                configData.genType = (GeneratorType)genType;
+            }
+        }
+        fclose(f);
+    }
+}
+
+
 static void InitPointGenerator(point_generator& pointGenerator, GeneratorType type, int numberOfPoints)
 {
     pointGenerator.type = type;
@@ -93,7 +130,7 @@ GENERATOR_FUNCTION(GeneratePointsOnNormalizedSphere)
         coord_t y = randomCoord(pointGenerator.d, pointGenerator.gen, min, max);
         coord_t z = randomCoord(pointGenerator.d, pointGenerator.gen, min, max);
         
-        res[i].position = glm::normalize(glm::vec3(x, y, z) - renderContext.originOffset);
+        res[i].position = glm::normalize(glm::vec3(x, y, z) - renderContext.originOffset) * 100.0f;
         res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
     }
     return res;
