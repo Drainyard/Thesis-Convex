@@ -97,17 +97,20 @@ int main()
     
     HullType hullType = HullType::QH;
     
+    config_data configData = {};
+    loadConfig("../.config", configData);
+    
     //int numberOfPoints = 645932; // Man in vest numbers
     //int numberOfPoints = 17536; // Arnold
     //int numberOfPoints = 27948;
-    int numberOfPoints = 5000;
+    int numberOfPoints = configData.numberOfPoints;
     
     hull h;
     std::random_device rd{};
     std::mt19937 gen{rd()};
     h.pointGenerator.gen = gen;
     
-    InitPointGenerator(h.pointGenerator, GeneratorType::ManyInternal, numberOfPoints);
+    InitPointGenerator(h.pointGenerator, configData.genType, numberOfPoints);
     
     auto vertices = Generate(h.pointGenerator, renderContext, 0.0f, 200.0f);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ");
@@ -164,6 +167,9 @@ int main()
                 free(vertices);
             }
             
+            loadConfig("../.config", configData);
+            
+            InitPointGenerator(h.pointGenerator, configData.genType, configData.numberOfPoints);
             vertices = Generate(h.pointGenerator, renderContext, 0.0f, 200.0f);
             ReinitializeHull(h, vertices, h.pointGenerator.numberOfPoints);
             

@@ -28,3 +28,27 @@ QuickHull, 2, 2, 3, 4, 0, 3, 0.000244, Many internal, some on sphere
 QuickHull, 2, 2, 3, 4, 0, 3, 0.000210, Many internal, some on sphere
 QuickHull, 2, 2, 3, 4, 0, 3, 0.000184, Many internal, some on sphere
 QuickHull, 2, 2, 3, 4, 0, 3, 0.000263, Many internal, some on sphere
+QuickHull, 222, 92, 100, 48, 260, 48, 0.022738, Many internal, some on sphere
+QuickHull, 233, 92, 10000, 50, 21453, 48, 0.037275, Many internal, some on sphere
+QuickHull, 29679, 9996, 5000, 5000, 35271, 5000, 4.199053, On Normalized Sphere
+QuickHull, 29615, 9996, 5000, 5000, 36728, 5000, 4.225025, On Normalized Sphere
+QuickHull, 29606, 9996, 5000, 5000, 35168, 5000, 0.184364, On Normalized Sphere
+QuickHull, 29674, 9996, 5000, 5000, 36775, 5000, 0.185166, On Normalized Sphere
+QuickHull, 29594, 9996, 5000, 5000, 36750, 5000, 0.184345, On Normalized Sphere
+QuickHull, 29497, 9996, 5000, 5000, 37343, 5000, 0.185216, On Normalized Sphere
+QuickHull, 29578, 9996, 5000, 5000, 36200, 5000, 0.182068, On Normalized Sphere
+QuickHull, 29760, 9996, 5000, 5000, 36085, 5000, 0.184319, On Normalized Sphere
+QuickHull, 1887, 358, 5000, 372, 13766, 181, 0.007531, In Sphere
+QuickHull, 1888, 334, 5000, 380, 12175, 169, 0.006459, In Sphere
+QuickHull, 1905, 336, 5000, 384, 13444, 170, 0.006295, In Sphere
+QuickHull, 29312, 9996, 5000, 5000, 35264, 5000, 0.183232, On Sphere
+QuickHull, 29608, 9996, 5000, 5000, 35717, 5000, 0.183368, On Sphere
+QuickHull, 29428, 9996, 5000, 5002, 36599, 4998, 0.182582, On Normalized Sphere
+QuickHull, 29670, 9996, 5000, 5000, 36025, 5000, 0.184179, On Normalized Sphere
+QuickHull, 29844, 9996, 5000, 5000, 36356, 5000, 0.184140, On Normalized Sphere
+QuickHull, 29605, 9996, 5000, 5000, 37699, 5000, 0.186638, On Normalized Sphere
+QuickHull, 29921, 9996, 5000, 5000, 36248, 5000, 0.184318, On Normalized Sphere
+QuickHull, 29754, 10000, 5000, 5002, 34274, 5000, 0.184019, On Normalized Sphere
+QuickHull, 29417, 9998, 5000, 5001, 36087, 5000, 0.182409, On Normalized Sphere
+QuickHull, 29595, 9996, 5000, 5000, 35376, 5000, 0.184463, On Normalized Sphere
+QuickHull, 29602, 9996, 5000, 5000, 36371, 5000, 0.183353, On Normalized Sphere
