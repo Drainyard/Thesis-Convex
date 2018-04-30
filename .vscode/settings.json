@@ -5,6 +5,7 @@
         "array": "cpp",
         "*.tcc": "cpp",
         "system_error": "cpp",
-        "initializer_list": "cpp"
+        "initializer_list": "cpp",
+        "slist": "cpp"
     }
 }

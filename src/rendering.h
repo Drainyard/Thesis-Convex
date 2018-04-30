@@ -104,7 +104,6 @@ struct vertex
 
 struct face
 {
-    //int vertices[3];
     vertex vertices[3];
     glm::vec3 faceNormal;
     glm::vec4 faceColor;

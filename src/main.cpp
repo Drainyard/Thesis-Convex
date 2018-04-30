@@ -66,6 +66,7 @@ int main()
     // Degenerate: 1520515408
     //auto seed = 1521294278;
     auto seed = time(NULL);
+    seed = 1524827039;
     srand((unsigned int)seed);
     printf("Seed: %zd\n", seed);
     render_context renderContext = {};
@@ -108,6 +109,7 @@ int main()
     hull h;
     std::random_device rd{};
     std::mt19937 gen{rd()};
+    gen.seed(1524827039);
     h.pointGenerator.gen = gen;
     
     InitPointGenerator(h.pointGenerator, configData.genType, numberOfPoints);
@@ -227,11 +229,6 @@ int main()
         if(KeyDown(Key_I))
         {
             hullType = HullType::Inc;
-        }
-        
-        if(KeyDown(Key_R))
-        {
-            hullType = HullType::RInc;
         }
         
         if(currentMesh)

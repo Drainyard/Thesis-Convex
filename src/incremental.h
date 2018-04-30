@@ -240,6 +240,7 @@ incFace *incMakeFace(incVertex *v0, incVertex *v1, incVertex *v2, incFace *face)
     f->vertex[2] = v2;
     f->centerPoint = (f->vertex[0]->vector + f->vertex[1]->vector + f->vertex[2]->vector) / 3.0f;
 
+    assert(f);
     e0->adjFace[0] = e1->adjFace[0] = e2->adjFace[0] = f;
 
     return f;
@@ -412,6 +413,7 @@ incFace *incMakeConeFace(incEdge *e, incVertex *v)
     newFace->centerPoint = (newFace->vertex[0]->vector + newFace->vertex[1]->vector + newFace->vertex[2]->vector) / 3.0f;
     newFace->normal = incComputeFaceNormal(newFace);
 
+    assert(newFace);
     if (!newEdge1->adjFace[0])
     {
         newEdge1->adjFace[0] = newFace;
@@ -475,6 +477,8 @@ std::unordered_set<incFace *> incAddToHull(incVertex *v, inc_hull &incHull)
         }
         facesToRemove.insert(face);
     }
+    assert(incEdges->prev->adjFace[1]);
+
     incCleanConflictGraph(facesToRemove, incHull);
     return facesToRemove;
 }
@@ -694,6 +698,8 @@ void incInitializeContext(inc_context &incContext, vertex *vertices, int numberO
     {
         free(incContext.vertices);
     }
+    incContext.incHull.faceConflicts.clear();
+    incContext.incHull.vertexConflicts.clear();
 
     incCopyVertices(vertices, numberOfPoints);
     incContext.numberOfPoints = numberOfPoints;

@@ -785,6 +785,19 @@ static void RenderMesh(render_context& renderContext, mesh& m)
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
     glBindVertexArray(0);
+    
+    if(renderContext.renderNormals)
+    {
+        for(size_t i = 0; i < m.faces.size(); i++)
+        {
+            auto& f = m.faces[i];
+            
+            auto normalLength = 20.0f;
+            auto normalColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+            
+            RenderLine(renderContext, f.centerPoint, f.centerPoint + normalLength * f.faceNormal, normalColor, 2.0f);
+        }
+    }
 }
 
 static void RenderGrid(render_context& renderContext, glm::vec4 color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f), float lineWidth = 2.0f)

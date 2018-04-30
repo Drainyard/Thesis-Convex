@@ -4,8 +4,7 @@
 enum HullType
 {
     QH,
-    Inc,
-    RInc
+    Inc
 };
 
 struct vertex;
@@ -146,7 +145,7 @@ static void ReinitializeHull(hull &h, vertex *vertices, int numberOfPoints)
     h.timedStepQhContext.initialized = false;
 
     h.incContext.initialized = false;
-    //h.stepIncContext.initialized = false;
+    h.stepIncContext.initialized = false;
     //h.timedStepIncContext.initialized = false;
 }
 
@@ -191,10 +190,6 @@ static mesh *UpdateHull(render_context &renderContext, hull &h, HullType hullTyp
             }*/
     }
     break;
-    case RInc:
-    {
-    }
-    break;
     }
     return nullptr;
 }
@@ -229,10 +224,6 @@ static mesh &FullHull(render_context &renderContext, hull &h)
         incConstructFullHull(incContext.incHull);
         TIME_END(timerIndex, "Full hull");
         return incConvertToMesh(renderContext);
-    }
-    break;
-    case RInc:
-    {
     }
     break;
     }
@@ -273,10 +264,6 @@ static mesh &StepHull(render_context &renderContext, hull &h)
         return incConvertToMesh(renderContext);
     }
     break;
-    case RInc:
-    {
-    }
-    break;
     }
 }
 
@@ -306,10 +293,6 @@ static mesh &TimedStepHull(render_context &renderContext, hull &h)
             
             h.incTimer.running = !h.incTimer.running;
             return incContext.m;*/
-    }
-    break;
-    case RInc:
-    {
     }
     break;
     }

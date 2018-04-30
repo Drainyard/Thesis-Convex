@@ -130,7 +130,7 @@ GENERATOR_FUNCTION(GeneratePointsOnNormalizedSphere)
         coord_t y = randomCoord(pointGenerator.d, pointGenerator.gen, min, max);
         coord_t z = randomCoord(pointGenerator.d, pointGenerator.gen, min, max);
         
-        res[i].position = glm::normalize(glm::vec3(x, y, z) - renderContext.originOffset) * 100.0f;
+        res[i].position = glm::normalize(glm::vec3(x, y, z) - renderContext.originOffset) * max;
         res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
     }
     return res;
