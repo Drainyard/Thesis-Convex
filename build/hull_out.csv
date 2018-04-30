@@ -110,3 +110,11 @@ QuickHull, 1876, 344, 5000, 376, 12222, 174, 0.169125, In Sphere
 QuickHull, 2187, 362, 5000, 429, 13561, 183, 0.201164, In Sphere
 QuickHull, 7, 6, 5, 5, 3, 5, 0.000879, In Sphere
 QuickHull, 4, 4, 5, 4, 2, 4, 0.000540, In Sphere
+QuickHull, 2872, 506, 10000, 553, 24772, 255, 0.244864, In Sphere
+QuickHull, 2872, 506, 10000, 553, 24772, 255, 0.247656, In Sphere
+QuickHull, 11587, 1566, 100000, 2244, 237474, 785, 1.375921, In Sphere
+QuickHull, 11587, 1566, 100000, 2244, 237474, 785, 1.670038, In Sphere
+QuickHull, 3579, 372, 100000, 744, 263710, 188, 0.590485, In Cube
+QuickHull, 60139, 20000, 10000, 10002, 79697, 10000, 7.313159, On Normalized Sphere
+QuickHull, 60139, 20000, 10000, 10002, 79697, 10000, 0.480527, On Normalized Sphere
+QuickHull, 245, 92, 100000, 53, 142695, 48, 0.150866, Many internal, some on sphere

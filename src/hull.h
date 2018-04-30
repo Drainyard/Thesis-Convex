@@ -206,7 +206,9 @@ static mesh &FullHull(render_context &renderContext, hull &h)
             qhInitializeContext(qhContext, h.vertices, h.numberOfPoints);
         }
 
+        auto timerIndex = startTimer();
         qhFullHull(qhContext);
+        TIME_END(timerIndex, "Full quick hull");
 
         WriteHullToCSV("hull_out", "QuickHull", qhContext.qHull.processingState.addedFaces, (int)qhContext.qHull.faces.size(), h.numberOfPoints, qhContext.qHull.processingState.pointsProcessed, qhContext.qHull.processingState.distanceQueryCount, qhContext.qHull.processingState.verticesInHull, qhContext.qHull.processingState.timeSpent, h.pointGenerator.type);
 
@@ -222,7 +224,7 @@ static mesh &FullHull(render_context &renderContext, hull &h)
         }
         auto timerIndex = startTimer();
         incConstructFullHull(incContext.incHull);
-        TIME_END(timerIndex, "Full hull");
+        TIME_END(timerIndex, "Full inc hull");
         return incConvertToMesh(renderContext);
     }
     break;

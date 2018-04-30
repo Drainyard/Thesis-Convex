@@ -16,9 +16,12 @@ struct incVertex
 {
     glm::vec3 vector;
     int vIndex;
+    size_t conflictIndex;
     incEdge *duplicate;
     bool isOnHull;
     bool isProcessed;
+    bool isRemoved;
+    bool isAlreadyInConflicts;
     incVertex *next;
     incVertex *prev;
 };
@@ -29,6 +32,7 @@ struct incEdge
     incVertex *endPoints[2];
     incFace *newFace; //pointer to face about to be added (to remember old structure)
     bool shouldBeRemoved;
+    bool isRemoved;
     incEdge *next;
     incEdge *prev;
 };
@@ -37,9 +41,11 @@ struct incFace
 {
     incEdge *edge[3];
     incVertex *vertex[3];
+    size_t conflictIndex;
     glm::vec3 normal;
     glm::vec3 centerPoint;
     bool isVisible;
+    bool isRemoved;
     incFace *next;
     incFace *prev;
 };
@@ -47,17 +53,17 @@ struct incFace
 struct inc_hull
 {
     //Conflict graph
-    std::unordered_map<incVertex *, std::unordered_set<incFace *>> vertexConflicts;
-    std::unordered_map<incFace *, std::unordered_set<incVertex *>> faceConflicts;
+    std::unordered_map<incVertex *, std::vector<incFace *>> vertexConflicts;
+    std::unordered_map<incFace *, std::vector<incVertex *>> faceConflicts;
 };
 
-    //Head pointers to each of the three lists
-    incVertex *incVertices = nullptr;
-    incEdge *incEdges = nullptr;
-    incFace *incFaces = nullptr;
+//Head pointers to each of the three lists
+incVertex *incVertices = nullptr;
+incEdge *incEdges = nullptr;
+incFace *incFaces = nullptr;
 
-    //Pointer to current vertex in step context
-    incVertex *currentStepVertex = nullptr;
+//Pointer to current vertex in step context
+incVertex *currentStepVertex = nullptr;
 
 struct inc_context
 {
@@ -88,7 +94,7 @@ void incAddToHead(T *head, T pointer)
 };
 
 template <typename T>
-void incRemoveFromHead(T *head, T pointer)
+void incRemoveFromHead(T *head, T *pointer)
 {
     if (*head)
     {
@@ -96,14 +102,14 @@ void incRemoveFromHead(T *head, T pointer)
         {
             *head = nullptr;
         }
-        else if (pointer == *head)
+        else if (*pointer == *head)
         {
             *head = (*head)->next;
         }
-        pointer->next->prev = pointer->prev;
-        pointer->prev->next = pointer->next;
-        free(pointer);
-        pointer = nullptr;
+        (*pointer)->next->prev = (*pointer)->prev;
+        (*pointer)->prev->next = (*pointer)->next;
+        free(*pointer);
+        *pointer = nullptr;
     }
 };
 
@@ -129,6 +135,8 @@ static void incCopyVertices(vertex *vertices, int numberOfPoints)
         v->duplicate = nullptr;
         v->isOnHull = false;
         v->isProcessed = false;
+        v->isRemoved = false;
+        v->isAlreadyInConflicts = false;
         v->vIndex = i;
         v->vector = shuffledVertices[i].position;
         incAddToHead(&incVertices, v);
@@ -143,6 +151,7 @@ incEdge *incCreateNullEdge()
     e->newFace = nullptr;
     e->endPoints[0] = e->endPoints[1] = nullptr;
     e->shouldBeRemoved = false;
+    e->isRemoved = false;
     incAddToHead(&incEdges, e);
 
     return e;
@@ -154,6 +163,7 @@ incFace *incCreateNullFace()
     f->edge[0] = f->edge[1] = f->edge[2] = nullptr;
     f->vertex[0] = f->vertex[1] = f->vertex[2] = nullptr;
     f->isVisible = false;
+    f->isRemoved = false;
     incAddToHead(&incFaces, f);
 
     return f;
@@ -248,29 +258,47 @@ incFace *incMakeFace(incVertex *v0, incVertex *v1, incVertex *v2, incFace *face)
 
 void incInitConflictListForFace(incFace *newFace, incFace *oldFace1, incFace *oldFace2, inc_hull &incHull)
 {
-    assert(incHull.faceConflicts.emplace(newFace, std::unordered_set<incVertex *>{}).second);
+    incHull.faceConflicts.emplace(newFace, std::vector<incVertex *>{});
     auto &oldConf1 = incHull.faceConflicts.find(oldFace1)->second;
     auto &oldConf2 = incHull.faceConflicts.find(oldFace2)->second;
+    auto &newFaceConflicts = incHull.faceConflicts.find(newFace)->second;
 
     for (incVertex *v : oldConf1)
     {
         if (incIsPointOnPositiveSide(newFace, v))
         {
-            incHull.vertexConflicts.find(v)->second.insert(newFace);
-            incHull.faceConflicts.find(newFace)->second.insert(v);
+            auto timerFind = startTimer();
+            auto &vConf = incHull.vertexConflicts.find(v)->second;
+            TIME_END(timerFind, "timerFind");
+            auto timerInsert = startTimer();
+            vConf.push_back(newFace);
+            newFace->conflictIndex = vConf.size() - 1;
+
+            TIME_END(timerInsert, "timerInsert");
+            newFaceConflicts.push_back(v);
+            v->conflictIndex = newFaceConflicts.size() - 1;
+            v->isAlreadyInConflicts = true;
         }
     }
     for (incVertex *v : oldConf2)
     {
-        if (incIsPointOnPositiveSide(newFace, v))
+        if (!v->isAlreadyInConflicts)
         {
-            incHull.vertexConflicts.find(v)->second.insert(newFace);
-            incHull.faceConflicts.find(newFace)->second.insert(v);
+            if (incIsPointOnPositiveSide(newFace, v))
+            {
+                incHull.vertexConflicts.find(v)->second.push_back(newFace);
+                newFaceConflicts.push_back(v);
+                v->conflictIndex = newFaceConflicts.size() - 1;
+            }
         }
+    }
+    for (incVertex *v : newFaceConflicts)
+    {
+        v->isAlreadyInConflicts = false;
     }
 }
 
-void incCleanConflictGraph(std::unordered_set<incFace *> &facesToRemove, inc_hull &incHull)
+void incCleanConflictGraph(std::vector<incFace *> &facesToRemove, inc_hull &incHull)
 {
     for (incFace *face : facesToRemove)
     {
@@ -278,11 +306,24 @@ void incCleanConflictGraph(std::unordered_set<incFace *> &facesToRemove, inc_hul
         auto &vertices = incHull.faceConflicts.find(face)->second;
         for (incVertex *vertex : vertices)
         {
-            incHull.vertexConflicts.find(vertex)->second.erase(face);
+            auto &conflictsVector = incHull.vertexConflicts.find(vertex)->second;
+            conflictsVector[face->conflictIndex] = conflictsVector[conflictsVector.size() - 1];
+            conflictsVector[face->conflictIndex]->conflictIndex = face->conflictIndex;
+            conflictsVector.erase(conflictsVector.begin() + conflictsVector.size() - 1);
         }
         //benchmark with and without
         incHull.faceConflicts.erase(face);
     }
+
+    /*
+    auto &faces = incHull.vertexConflicts.find(pointToRemove)->second;
+    for (incFace *face : faces)
+    {
+        incHull.faceConflicts.find(face)->second.erase(pointToRemove);
+    }
+    //benchmark with and without
+    incHull.vertexConflicts.erase(pointToRemove);
+    */
 }
 
 //double sided triangle from points NOT collinear
@@ -338,7 +379,7 @@ void incCreateBihedron()
     incVertices = v3;
 }
 
-incFace *incEnforceCounterClockWise(incFace *newFace, incEdge *e, incVertex *v)
+void incEnforceCounterClockWise(incFace *newFace, incEdge *e, incVertex *v)
 {
     //From Computational Geometry in C page 136
     //We are applying the orientation of the face we are replacing. As we are on the horizon edge, one face is visible, while one is not.
@@ -365,7 +406,7 @@ incFace *incEnforceCounterClockWise(incFace *newFace, incEdge *e, incVertex *v)
         newFace->vertex[0] = e->endPoints[1];
         newFace->vertex[1] = e->endPoints[0];
     }
-    //the visible face has right corner as endPoint[0], left corner as endPoint[1], but
+    //the visible face has right corner as endPoint[0], left corner as endPoint[1]
     else
     {
         newFace->vertex[0] = e->endPoints[0];
@@ -379,7 +420,6 @@ incFace *incEnforceCounterClockWise(incFace *newFace, incEdge *e, incVertex *v)
         newFace->edge[2] = temp;
     }
     newFace->vertex[2] = v;
-    return newFace;
 }
 
 incFace *incMakeConeFace(incEdge *e, incVertex *v)
@@ -409,7 +449,7 @@ incFace *incMakeConeFace(incEdge *e, incVertex *v)
     newFace->edge[0] = e;
     newFace->edge[1] = newEdge1;
     newFace->edge[2] = newEdge2;
-    newFace = incEnforceCounterClockWise(newFace, e, v);
+    incEnforceCounterClockWise(newFace, e, v);
     newFace->centerPoint = (newFace->vertex[0]->vector + newFace->vertex[1]->vector + newFace->vertex[2]->vector) / 3.0f;
     newFace->normal = incComputeFaceNormal(newFace);
 
@@ -433,9 +473,10 @@ incFace *incMakeConeFace(incEdge *e, incVertex *v)
     return newFace;
 }
 
-std::unordered_set<incFace *> incAddToHull(incVertex *v, inc_hull &incHull)
+std::pair<std::vector<incFace *>, std::vector<incEdge *>> incAddToHull(incVertex *v, inc_hull &incHull)
 {
-    std::unordered_set<incFace *> facesToRemove;
+    std::vector<incFace *> facesToRemove;
+    std::vector<incEdge *> horizonEdges;
     bool visible = false;
     std::vector<incFace *> vConflicts;
     std::copy(incHull.vertexConflicts.find(v)->second.begin(), incHull.vertexConflicts.find(v)->second.end(), std::back_inserter(vConflicts));
@@ -446,15 +487,17 @@ std::unordered_set<incFace *> incAddToHull(incVertex *v, inc_hull &incHull)
     }
     if (!visible)
     {
-        //No faces are are visible and we are inside hull. Do nothing for this v
+        //No faces are visible and we are inside hull. Do nothing for this v
         v->isOnHull = false;
-        return facesToRemove;
+        v->isRemoved = true;
+        incRemoveFromHead(&incVertices, &v);
+        std::pair<std::vector<incFace *>, std::vector<incEdge *>> cleaningBundle(facesToRemove, horizonEdges);
+        return cleaningBundle;
     }
     incEdge *e;
     for (incFace *face : vConflicts)
     {
         //since two faces can share an edge, we could go through all edges twice (although it fails fast). Discussion?
-        //can we optimize? should we just walk through all edges again?
         for (int i = 0; i < 3; i++)
         {
             e = face->edge[i];
@@ -471,74 +514,74 @@ std::unordered_set<incFace *> incAddToHull(incVertex *v, inc_hull &incHull)
                 {
                     //only one is visible: border edge, erect face for cone
                     e->newFace = incMakeConeFace(e, v);
+
+                    //OPTIMIZE THIS!!!
                     incInitConflictListForFace(e->newFace, e->adjFace[0], e->adjFace[1], incHull);
+
+                    horizonEdges.push_back(e);
                 }
             }
         }
-        facesToRemove.insert(face);
+        facesToRemove.push_back(face);
     }
-    assert(incEdges->prev->adjFace[1]);
 
     incCleanConflictGraph(facesToRemove, incHull);
-    return facesToRemove;
+
+    std::pair<std::vector<incFace *>, std::vector<incEdge *>> cleaningBundle(facesToRemove, horizonEdges);
+    return cleaningBundle;
 }
 
-void incCleanEdges()
+void incCleanEdgesAndFaces(std::vector<incFace *> &facesToRemove, std::vector<incEdge *> &horizonEdges)
 {
-    incEdge *e, *tempEdge;
-    e = incEdges;
     //replace the pointer to the newly created face. no need to go through all edges
     //send horizon edges to this one. Loop over them.
-    do
+    for (incEdge *horizonEdge : horizonEdges)
     {
-        if (e->newFace)
+        if (horizonEdge->newFace)
         {
-            if (e->adjFace[0]->isVisible)
+            if (horizonEdge->adjFace[0]->isVisible)
             {
-                e->adjFace[0] = e->newFace;
+                horizonEdge->adjFace[0] = horizonEdge->newFace;
             }
             else
             {
-                e->adjFace[1] = e->newFace;
+                horizonEdge->adjFace[1] = horizonEdge->newFace;
             }
-            e->newFace = nullptr;
+            horizonEdge->newFace = nullptr;
         }
-        e = e->next;
-    } while (e != incEdges);
-
-    //if the first edge of incEdges should be removed, removeFromHead makes next the new head.
-    //Therefore, we cannot use the regular do-while loop. We have to remove until we find "a good starting point", then we can loop as usual.
-    //facesToRemove foreach face, if (edge && edge->shouldBeRemoved) then remove from head.
-    while (incEdges && incEdges->shouldBeRemoved)
-    {
-        e = incEdges;
-        incRemoveFromHead(&incEdges, e);
+        horizonEdge->endPoints[0]->isOnHull = horizonEdge->endPoints[1]->isOnHull = true;
     }
-    //we know this e should not be deleted (then it would have been in above for loop), so we can go to next
-    e = incEdges->next;
-    do
-    {
-        if (e->shouldBeRemoved)
-        {
-            tempEdge = e;
-            e = e->next;
-            incRemoveFromHead(&incEdges, tempEdge);
-        }
-        else
-        {
-            e = e->next;
-        }
-    } while (e != incEdges);
-}
-
-void incCleanFaces(std::unordered_set<incFace *> facesToRemove)
-{
+    int i;
     for (incFace *face : facesToRemove)
     {
-        incRemoveFromHead(&incFaces, face);
+        for (i = 0; i < 3; i++)
+        {
+            incEdge *e = face->edge[i];
+            if (e && !e->isRemoved && e->shouldBeRemoved)
+            {
+                //no idea why this works
+                e->isRemoved = true;
+                incRemoveFromHead(&incEdges, &e);
+            }
+
+            incVertex *v = face->vertex[i];
+            if (v && !v->isRemoved && !v->isOnHull)
+            {
+                v->isRemoved = true;
+                incRemoveFromHead(&incVertices, &v);
+            }
+        }
+        incRemoveFromHead(&incFaces, &face);
+    }
+    //reset vertex flags
+    for (incEdge *horizonEdge : horizonEdges)
+    {
+        horizonEdge->endPoints[0]->isOnHull = horizonEdge->endPoints[1]->isOnHull = false;
+        horizonEdge->endPoints[0]->duplicate = horizonEdge->endPoints[1]->duplicate = nullptr;
     }
 }
 
+/*
 void incCleanVertices(incVertex **nextVertex)
 {
     incVertex *v, *tempVertex;
@@ -547,6 +590,7 @@ void incCleanVertices(incVertex **nextVertex)
     //Therefore we go through all current edges in the hull, vertices in those must be on the hull.
     //Optimize to go though the edges of the conflict faces?? adjacent faces have duplicate edges.
     //TODO: actually, every time we create an edge, we should set the two endPoints to on hull. Then we have no need for this while loop
+
     do
     {
         e->endPoints[0]->isOnHull = e->endPoints[1]->isOnHull = true;
@@ -563,9 +607,11 @@ void incCleanVertices(incVertex **nextVertex)
         {
             *nextVertex = v->next;
         }
-        incRemoveFromHead(&incVertices, v);
+        incRemoveFromHead(&incVertices, &v);
     }
-    //we know this v should not be deleted (then it would have been in above for loop), so we can go to next
+    incVertices->duplicate = nullptr;
+    incVertices->isOnHull = false;
+    //we know this v (incVertices) should not be deleted (then it would have been in above for loop), so we can reset flags and go to next
     v = incVertices->next;
     do
     {
@@ -577,24 +623,25 @@ void incCleanVertices(incVertex **nextVertex)
             {
                 *nextVertex = tempVertex->next;
             }
-            incRemoveFromHead(&incVertices, tempVertex);
+            incRemoveFromHead(&incVertices, &tempVertex);
         }
         else
         {
-            //reset flags
             v->duplicate = nullptr;
             v->isOnHull = false;
             v = v->next;
         }
     } while (v != incVertices);
 }
+*/
 
-void incCleanStuff(incVertex *nextVertex, std::unordered_set<incFace *> &facesToRemove)
+void incCleanStuff(incVertex *nextVertex, std::pair<std::vector<incFace *>, std::vector<incEdge *>> &cleaningBundle)
 {
     //cleanEdges called before faces, as we need access to isVisible
-    incCleanEdges();
-    incCleanFaces(facesToRemove);
-    incCleanVertices(&nextVertex);
+    auto timerCleanEdgesAndFaces = startTimer();
+    incCleanEdgesAndFaces(cleaningBundle.first, cleaningBundle.second);
+    TIME_END(timerCleanEdgesAndFaces, "incCleanEdgesAndFaces");
+    //incCleanVertices(&nextVertex);
 }
 
 mesh &incConvertToMesh(render_context &renderContext)
@@ -635,19 +682,21 @@ void incInitConflictLists(inc_hull &incHull)
     incVertex *nextVertex;
     incFace *f1 = incFaces;
     incFace *f2 = incFaces->next;
-    assert(incHull.faceConflicts.emplace(f1, std::unordered_set<incVertex *>{}).second);
-    assert(incHull.faceConflicts.emplace(f2, std::unordered_set<incVertex *>{}).second);
+    assert(incHull.faceConflicts.emplace(f1, std::vector<incVertex *>{}).second);
+    assert(incHull.faceConflicts.emplace(f2, std::vector<incVertex *>{}).second);
     do
     {
         nextVertex = v->next;
 
         incFace *conflictFace = incIsPointOnPositiveSide(f1, v) ? f1 : f2;
-        assert(incHull.vertexConflicts.emplace(v, std::unordered_set<incFace *>{}).second);
+        assert(incHull.vertexConflicts.emplace(v, std::vector<incFace *>{}).second);
         auto vConflicts = incHull.vertexConflicts.find(v);
-        vConflicts->second.insert(conflictFace);
+        vConflicts->second.push_back(conflictFace);
+        conflictFace->conflictIndex = vConflicts->second.size() - 1;
 
         auto fConflicts = incHull.faceConflicts.find(conflictFace);
-        fConflicts->second.insert(v);
+        fConflicts->second.push_back(v);
+        v->conflictIndex = fConflicts->second.size() - 1;
 
         v = nextVertex;
     } while (v != incVertices);
@@ -655,8 +704,12 @@ void incInitConflictLists(inc_hull &incHull)
 
 void incConstructFullHull(inc_hull &incHull)
 {
+    auto timerCreateBihedron = startTimer();
     incCreateBihedron();
+    TIME_END(timerCreateBihedron, "incCreateBihedron");
+    auto timerInitConflictLists = startTimer();
     incInitConflictLists(incHull);
+    TIME_END(timerInitConflictLists, "incInitConflictLists");
     incVertex *v = incVertices;
     incVertex *nextVertex;
     do
@@ -664,9 +717,9 @@ void incConstructFullHull(inc_hull &incHull)
         nextVertex = v->next;
         if (!v->isProcessed)
         {
-            std::unordered_set<incFace *> facesToRemove = incAddToHull(v, incHull);
+            std::pair<std::vector<incFace *>, std::vector<incEdge *>> cleaningBundle = incAddToHull(v, incHull);
             v->isProcessed = true;
-            incCleanStuff(nextVertex, facesToRemove);
+            incCleanStuff(nextVertex, cleaningBundle);
         }
         v = nextVertex;
     } while (v != incVertices);
@@ -685,9 +738,9 @@ void incHullStep(inc_hull &incHull)
     nextVertex = currentStepVertex->next;
     if (!currentStepVertex->isProcessed)
     {
-        std::unordered_set<incFace *> facesToRemove = incAddToHull(currentStepVertex, incHull);
+        std::pair<std::vector<incFace *>, std::vector<incEdge *>> cleaningBundle = incAddToHull(currentStepVertex, incHull);
         currentStepVertex->isProcessed = true;
-        incCleanStuff(nextVertex, facesToRemove);
+        incCleanStuff(nextVertex, cleaningBundle);
     }
     currentStepVertex = nextVertex;
 }

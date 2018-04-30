@@ -1,4 +1,4 @@
-#define MAX_TIMERS 64
+#define MAX_TIMERS 4096
 
 static double TIMERS_before[MAX_TIMERS] = {};
 static int counter = 0;
