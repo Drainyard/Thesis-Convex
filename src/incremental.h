@@ -301,7 +301,6 @@ void incCleanConflictGraph(std::vector<incFace *> &facesToRemove, inc_hull &incH
 {
     for (incFace *face : facesToRemove)
     {
-        printf("%p\n", face);
         //for face, look up vertices, and remove this face from their list
         auto &vertices = incHull.faceConflicts.find(face)->second;
         for (incVertex *vertex : vertices)
@@ -580,67 +579,12 @@ void incCleanEdgesAndFaces(std::vector<incFace *> &facesToRemove, std::vector<in
     }
 }
 
-/*
-void incCleanVertices(incVertex **nextVertex)
-{
-    incVertex *v, *tempVertex;
-    incEdge *e = incEdges;
-    //no clear indicator on vertices on which to delete.
-    //Therefore we go through all current edges in the hull, vertices in those must be on the hull.
-    //Optimize to go though the edges of the conflict faces?? adjacent faces have duplicate edges.
-    //TODO: actually, every time we create an edge, we should set the two endPoints to on hull. Then we have no need for this while loop
-
-    do
-    {
-        e->endPoints[0]->isOnHull = e->endPoints[1]->isOnHull = true;
-        e = e->next;
-    } while (e != incEdges);
-
-    //does it make sense to aggregate ALL visible vertices from the conflict faces, union them and loop over those instead?
-    //double while loop again to ensure good starting point.
-    while (incVertices && incVertices->isProcessed && !incVertices->isOnHull)
-    {
-        //if we are about to delete nextVertex, make it the one after
-        v = incVertices;
-        if (v == *nextVertex)
-        {
-            *nextVertex = v->next;
-        }
-        incRemoveFromHead(&incVertices, &v);
-    }
-    incVertices->duplicate = nullptr;
-    incVertices->isOnHull = false;
-    //we know this v (incVertices) should not be deleted (then it would have been in above for loop), so we can reset flags and go to next
-    v = incVertices->next;
-    do
-    {
-        if (v->isProcessed && !v->isOnHull)
-        {
-            tempVertex = v;
-            v = v->next;
-            if (tempVertex == *nextVertex)
-            {
-                *nextVertex = tempVertex->next;
-            }
-            incRemoveFromHead(&incVertices, &tempVertex);
-        }
-        else
-        {
-            v->duplicate = nullptr;
-            v->isOnHull = false;
-            v = v->next;
-        }
-    } while (v != incVertices);
-}
-*/
-
-void incCleanStuff(incVertex *nextVertex, std::pair<std::vector<incFace *>, std::vector<incEdge *>> &cleaningBundle)
+void incCleanStuff(std::pair<std::vector<incFace *>, std::vector<incEdge *>> &cleaningBundle)
 {
     //cleanEdges called before faces, as we need access to isVisible
-    auto timerCleanEdgesAndFaces = startTimer();
+//    auto timerCleanEdgesAndFaces = startTimer();
     incCleanEdgesAndFaces(cleaningBundle.first, cleaningBundle.second);
-    TIME_END(timerCleanEdgesAndFaces, "incCleanEdgesAndFaces");
-    //incCleanVertices(&nextVertex);
+//    TIME_END(timerCleanEdgesAndFaces, "incCleanEdgesAndFaces");
 }
 
 mesh &incConvertToMesh(render_context &renderContext)
@@ -703,12 +647,12 @@ void incInitConflictLists(inc_hull &incHull)
 
 void incConstructFullHull(inc_hull &incHull)
 {
-    auto timerCreateBihedron = startTimer();
+//    auto timerCreateBihedron = startTimer();
     incCreateBihedron();
-    TIME_END(timerCreateBihedron, "incCreateBihedron");
-    auto timerInitConflictLists = startTimer();
+//    TIME_END(timerCreateBihedron, "incCreateBihedron");
+//    auto timerInitConflictLists = startTimer();
     incInitConflictLists(incHull);
-    TIME_END(timerInitConflictLists, "incInitConflictLists");
+//    TIME_END(timerInitConflictLists, "incInitConflictLists");
     incVertex *v = incVertices;
     incVertex *nextVertex;
     do
@@ -718,7 +662,7 @@ void incConstructFullHull(inc_hull &incHull)
         {
             std::pair<std::vector<incFace *>, std::vector<incEdge *>> cleaningBundle = incAddToHull(v, incHull);
             v->isProcessed = true;
-            incCleanStuff(nextVertex, cleaningBundle);
+            incCleanStuff(cleaningBundle);
         }
         v = nextVertex;
     } while (v != incVertices);
@@ -739,7 +683,7 @@ void incHullStep(inc_hull &incHull)
     {
         std::pair<std::vector<incFace *>, std::vector<incEdge *>> cleaningBundle = incAddToHull(currentStepVertex, incHull);
         currentStepVertex->isProcessed = true;
-        incCleanStuff(nextVertex, cleaningBundle);
+        incCleanStuff(cleaningBundle);
     }
     currentStepVertex = nextVertex;
 }
