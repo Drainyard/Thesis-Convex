@@ -8,20 +8,40 @@ enum class IHIteration
     doIter
 };
 
-//edges have faces and faces have edges, so forward declare here
+/*
+
+Når vi skal fjerne en arc:
+
+vi husker index på hvor dup arc ligger i anden liste. Den swappes med det sidste i listen. 
+Den arc swapper med skal opdatere sit index, så den igen ved hvor arcen ligger, de to er igen synkroniseret. repeat for første
+
+Så
+remove arcs for face:
+    for each arc in face.arcs
+        dupArc = arc->vertexEndpoint.arcs[arc.index]
+        swapped = dupArc.swapWithLast (swapped is now in dupArcs index)
+        swapped->faceEndpoint.arcs[swapped.index].index = dupArc.index
+        erase dupArc (that is now on last index)
+        do the same for the arc.
+        
+*/
+
+//forward declare structs
+struct incVertex;
 struct incEdge;
 struct incFace;
+struct incArc;
 
 struct incVertex
 {
     glm::vec3 vector;
     int vIndex;
-    size_t conflictIndex;
     incEdge *duplicate;
     bool isOnHull;
     bool isProcessed;
     bool isRemoved;
     bool isAlreadyInConflicts;
+    std::vector<incArc> arcs;
     incVertex *next;
     incVertex *prev;
 };
@@ -41,20 +61,22 @@ struct incFace
 {
     incEdge *edge[3];
     incVertex *vertex[3];
-    size_t conflictIndex;
     glm::vec3 normal;
     glm::vec3 centerPoint;
     bool isVisible;
     bool isRemoved;
+    std::vector<incArc> arcs;
     incFace *next;
     incFace *prev;
 };
 
-struct inc_hull
+struct incArc
 {
-    //Conflict graph
-    std::unordered_map<incVertex *, std::vector<incFace *>> vertexConflicts;
-    std::unordered_map<incFace *, std::vector<incVertex *>> faceConflicts;
+    union {
+        incVertex *vertexEndpoint;
+        incFace *faceEndpoint;
+    };
+    size_t indexInEndpoint;
 };
 
 //Head pointers to each of the three lists
@@ -73,7 +95,6 @@ struct inc_context
     IHIteration iter;
     mesh m;
     int previousIteration;
-    inc_hull incHull;
 };
 
 template <typename T>
@@ -255,74 +276,69 @@ incFace *incMakeFace(incVertex *v0, incVertex *v1, incVertex *v2, incFace *face)
     return f;
 }
 
-void incInitConflictListForFace(incFace *newFace, incFace *oldFace1, incFace *oldFace2, inc_hull &incHull)
+void incInitConflictListForFace(incFace *newFace, incFace *oldFace1, incFace *oldFace2)
 {
-    incHull.faceConflicts.emplace(newFace, std::vector<incVertex *>{});
-    auto &oldConf1 = incHull.faceConflicts.find(oldFace1)->second;
-    auto &oldConf2 = incHull.faceConflicts.find(oldFace2)->second;
-    auto &newFaceConflicts = incHull.faceConflicts.find(newFace)->second;
-
-    for (incVertex *v : oldConf1)
+    for (incArc arc : oldFace1->arcs)
     {
+        incVertex *v = arc.vertexEndpoint;
         if (incIsPointOnPositiveSide(newFace, v))
         {
-            // auto timerFind = startTimer();
-            auto &vConf = incHull.vertexConflicts.find(v)->second;
-            // TIME_END(timerFind, "timerFind");
-            // auto timerInsert = startTimer();
-            vConf.push_back(newFace);
-            newFace->conflictIndex = vConf.size() - 1;
+            incArc arcToFace = {};
+            arcToFace.faceEndpoint = newFace;
+            arcToFace.indexInEndpoint = newFace->arcs.size();
+            v->arcs.push_back(arcToFace);
 
-            // TIME_END(timerInsert, "timerInsert");
-            newFaceConflicts.push_back(v);
-            v->conflictIndex = newFaceConflicts.size() - 1;
+            incArc arcToVertex = {};
+            arcToVertex.vertexEndpoint = v;
+            arcToVertex.indexInEndpoint = v->arcs.size();
+            newFace->arcs.push_back(arcToVertex);
+
             v->isAlreadyInConflicts = true;
         }
     }
-    for (incVertex *v : oldConf2)
+    for (incArc arc : oldFace2->arcs)
     {
+        incVertex *v = arc.vertexEndpoint;
         if (!v->isAlreadyInConflicts)
         {
             if (incIsPointOnPositiveSide(newFace, v))
             {
-                incHull.vertexConflicts.find(v)->second.push_back(newFace);
-                newFaceConflicts.push_back(v);
-                v->conflictIndex = newFaceConflicts.size() - 1;
+                incArc arcToFace = {};
+                arcToFace.faceEndpoint = newFace;
+                arcToFace.indexInEndpoint = newFace->arcs.size();
+                v->arcs.push_back(arcToFace);
+
+                incArc arcToVertex = {};
+                arcToVertex.vertexEndpoint = v;
+                arcToVertex.indexInEndpoint = v->arcs.size();
+                newFace->arcs.push_back(arcToVertex);
             }
         }
     }
-    for (incVertex *v : newFaceConflicts)
+    for (incArc arc : newFace->arcs)
     {
-        v->isAlreadyInConflicts = false;
+        arc.vertexEndpoint->isAlreadyInConflicts = false;
     }
 }
 
-void incCleanConflictGraph(std::vector<incFace *> &facesToRemove, inc_hull &incHull)
+void incCleanConflictGraph(std::vector<incFace *> &facesToRemove)
 {
     for (incFace *face : facesToRemove)
     {
-        //for face, look up vertices, and remove this face from their list
-        auto &vertices = incHull.faceConflicts.find(face)->second;
-        for (incVertex *vertex : vertices)
+        for (incArc arc : face->arcs)
         {
-            auto &conflictsVector = incHull.vertexConflicts.find(vertex)->second;
-            ptrdiff_t index = std::find(conflictsVector.begin(), conflictsVector.end(), face) - conflictsVector.begin();
-            conflictsVector[index] = conflictsVector[conflictsVector.size() - 1];
-            conflictsVector.erase(conflictsVector.begin() + conflictsVector.size() - 1);
+            //We have to remove the arc from f->v and the arc v->f.
+            //This is done by swapping with the last element in the arcs list
+            //But since every arc knows the index of its duplicate arc, we also have to update the endPoint arcs we swap with
+            incVertex *v = arc.vertexEndpoint;
+            incArc dupArc = v->arcs[arc.indexInEndpoint];
+            incArc lastArcInV = v->arcs[v->arcs.size() - 1];
+            lastArcInV.faceEndpoint->arcs[lastArcInV.indexInEndpoint].indexInEndpoint = dupArc.indexInEndpoint;
+            v->arcs[arc.indexInEndpoint] = v->arcs[v->arcs.size() - 1];
+            v->arcs.erase(v->arcs.begin() + v->arcs.size() - 1);
         }
-        //benchmark with and without
-        incHull.faceConflicts.erase(face);
+        //should we clear the arcs in f?
     }
-
-    /*
-    auto &faces = incHull.vertexConflicts.find(pointToRemove)->second;
-    for (incFace *face : faces)
-    {
-        incHull.faceConflicts.find(face)->second.erase(pointToRemove);
-    }
-    //benchmark with and without
-    incHull.vertexConflicts.erase(pointToRemove);
-    */
 }
 
 //double sided triangle from points NOT collinear
@@ -471,21 +487,21 @@ incFace *incMakeConeFace(incEdge *e, incVertex *v)
     return newFace;
 }
 
-std::pair<std::vector<incFace *>, std::vector<incEdge *>> incAddToHull(incVertex *v, inc_hull &incHull)
+std::pair<std::vector<incFace *>, std::vector<incEdge *>> incAddToHull(incVertex *v)
 {
     std::vector<incFace *> facesToRemove;
     std::vector<incEdge *> horizonEdges;
     bool visible = false;
-    std::vector<incFace *> vConflicts;
-    std::copy(incHull.vertexConflicts.find(v)->second.begin(), incHull.vertexConflicts.find(v)->second.end(), std::back_inserter(vConflicts));
+    std::vector<incArc> vConflicts;
+    std::copy(v->arcs.begin(), v->arcs.end(), std::back_inserter(vConflicts));
 
-    for (incFace *face : vConflicts)
+    for (incArc arc : vConflicts)
     {
-        face->isVisible = visible = true;
+        arc.faceEndpoint->isVisible = visible = true;
     }
     if (!visible)
     {
-        //No faces are visible and we are inside hull. Do nothing for this v
+        //No faces are visible and we are inside hull. No arcs to update
         v->isOnHull = false;
         v->isRemoved = true;
         incRemoveFromHead(&incVertices, &v);
@@ -493,8 +509,9 @@ std::pair<std::vector<incFace *>, std::vector<incEdge *>> incAddToHull(incVertex
         return cleaningBundle;
     }
     incEdge *e;
-    for (incFace *face : vConflicts)
+    for (incArc arc : vConflicts)
     {
+        incFace *face = arc.faceEndpoint;
         //since two faces can share an edge, we could go through all edges twice (although it fails fast). Discussion?
         for (int i = 0; i < 3; i++)
         {
@@ -514,7 +531,7 @@ std::pair<std::vector<incFace *>, std::vector<incEdge *>> incAddToHull(incVertex
                     e->newFace = incMakeConeFace(e, v);
 
                     //OPTIMIZE THIS!!!
-                    incInitConflictListForFace(e->newFace, e->adjFace[0], e->adjFace[1], incHull);
+                    incInitConflictListForFace(e->newFace, e->adjFace[0], e->adjFace[1]);
 
                     horizonEdges.push_back(e);
                 }
@@ -523,7 +540,7 @@ std::pair<std::vector<incFace *>, std::vector<incEdge *>> incAddToHull(incVertex
         facesToRemove.push_back(face);
     }
 
-    incCleanConflictGraph(facesToRemove, incHull);
+    incCleanConflictGraph(facesToRemove);
 
     std::pair<std::vector<incFace *>, std::vector<incEdge *>> cleaningBundle(facesToRemove, horizonEdges);
     return cleaningBundle;
@@ -582,9 +599,9 @@ void incCleanEdgesAndFaces(std::vector<incFace *> &facesToRemove, std::vector<in
 void incCleanStuff(std::pair<std::vector<incFace *>, std::vector<incEdge *>> &cleaningBundle)
 {
     //cleanEdges called before faces, as we need access to isVisible
-//    auto timerCleanEdgesAndFaces = startTimer();
+    //    auto timerCleanEdgesAndFaces = startTimer();
     incCleanEdgesAndFaces(cleaningBundle.first, cleaningBundle.second);
-//    TIME_END(timerCleanEdgesAndFaces, "incCleanEdgesAndFaces");
+    //    TIME_END(timerCleanEdgesAndFaces, "incCleanEdgesAndFaces");
 }
 
 mesh &incConvertToMesh(render_context &renderContext)
@@ -617,7 +634,7 @@ mesh &incConvertToMesh(render_context &renderContext)
     return m;
 }
 
-void incInitConflictLists(inc_hull &incHull)
+void incInitConflictLists()
 {
     //determine which of the points can see which of the two faces - linear time
     //for each point - positive side of one face, also if coplanar
@@ -625,34 +642,33 @@ void incInitConflictLists(inc_hull &incHull)
     incVertex *nextVertex;
     incFace *f1 = incFaces;
     incFace *f2 = incFaces->next;
-    incHull.faceConflicts.emplace(f1, std::vector<incVertex *>{});
-    incHull.faceConflicts.emplace(f2, std::vector<incVertex *>{});
     do
     {
         nextVertex = v->next;
 
         incFace *conflictFace = incIsPointOnPositiveSide(f1, v) ? f1 : f2;
-        incHull.vertexConflicts.emplace(v, std::vector<incFace *>{});
-        auto &vConflicts = incHull.vertexConflicts.find(v)->second;
-        vConflicts.push_back(conflictFace);
-        conflictFace->conflictIndex = vConflicts.size() - 1;
+        incArc arcToFace = {};
+        arcToFace.faceEndpoint = conflictFace;
+        arcToFace.indexInEndpoint = conflictFace->arcs.size();
+        v->arcs.push_back(arcToFace);
 
-        std::vector<incVertex *> &fConflicts = incHull.faceConflicts.find(conflictFace)->second;
-        fConflicts.push_back(v);
-        v->conflictIndex = fConflicts.size() - 1;
+        incArc arcToVertex = {};
+        arcToVertex.vertexEndpoint = v;
+        arcToVertex.indexInEndpoint = 0;
+        conflictFace->arcs.push_back(arcToVertex);
 
         v = nextVertex;
     } while (v != incVertices);
 }
 
-void incConstructFullHull(inc_hull &incHull)
+void incConstructFullHull()
 {
-//    auto timerCreateBihedron = startTimer();
+    //    auto timerCreateBihedron = startTimer();
     incCreateBihedron();
-//    TIME_END(timerCreateBihedron, "incCreateBihedron");
-//    auto timerInitConflictLists = startTimer();
-    incInitConflictLists(incHull);
-//    TIME_END(timerInitConflictLists, "incInitConflictLists");
+    //    TIME_END(timerCreateBihedron, "incCreateBihedron");
+    //    auto timerInitConflictLists = startTimer();
+    incInitConflictLists();
+    //    TIME_END(timerInitConflictLists, "incInitConflictLists");
     incVertex *v = incVertices;
     incVertex *nextVertex;
     do
@@ -660,7 +676,7 @@ void incConstructFullHull(inc_hull &incHull)
         nextVertex = v->next;
         if (!v->isProcessed)
         {
-            std::pair<std::vector<incFace *>, std::vector<incEdge *>> cleaningBundle = incAddToHull(v, incHull);
+            std::pair<std::vector<incFace *>, std::vector<incEdge *>> cleaningBundle = incAddToHull(v);
             v->isProcessed = true;
             incCleanStuff(cleaningBundle);
         }
@@ -668,20 +684,20 @@ void incConstructFullHull(inc_hull &incHull)
     } while (v != incVertices);
 }
 
-void incInitStepHull(inc_hull &incHull)
+void incInitStepHull()
 {
     incCreateBihedron();
-    incInitConflictLists(incHull);
+    incInitConflictLists();
     currentStepVertex = incVertices;
 }
 
-void incHullStep(inc_hull &incHull)
+void incHullStep()
 {
     incVertex *nextVertex;
     nextVertex = currentStepVertex->next;
     if (!currentStepVertex->isProcessed)
     {
-        std::pair<std::vector<incFace *>, std::vector<incEdge *>> cleaningBundle = incAddToHull(currentStepVertex, incHull);
+        std::pair<std::vector<incFace *>, std::vector<incEdge *>> cleaningBundle = incAddToHull(currentStepVertex);
         currentStepVertex->isProcessed = true;
         incCleanStuff(cleaningBundle);
     }
@@ -694,8 +710,6 @@ void incInitializeContext(inc_context &incContext, vertex *vertices, int numberO
     {
         free(incContext.vertices);
     }
-    incContext.incHull.faceConflicts.clear();
-    incContext.incHull.vertexConflicts.clear();
 
     incCopyVertices(vertices, numberOfPoints);
     incContext.numberOfPoints = numberOfPoints;

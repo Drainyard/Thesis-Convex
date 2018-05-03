@@ -223,7 +223,7 @@ static mesh &FullHull(render_context &renderContext, hull &h)
             incInitializeContext(incContext, h.vertices, h.numberOfPoints);
         }
         auto timerIndex = startTimer();
-        incConstructFullHull(incContext.incHull);
+        incConstructFullHull();
         TIME_END(timerIndex, "Full inc hull");
         return incConvertToMesh(renderContext);
     }
@@ -256,12 +256,12 @@ static mesh &StepHull(render_context &renderContext, hull &h)
         }
         if (init)
         {
-            incInitStepHull(incContext.incHull);
+            incInitStepHull();
             init = false;
         }
         else
         {
-            incHullStep(incContext.incHull);
+            incHullStep();
         }
         return incConvertToMesh(renderContext);
     }
