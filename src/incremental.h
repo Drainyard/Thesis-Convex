@@ -32,6 +32,44 @@ struct incEdge;
 struct incFace;
 struct incArc;
 
+struct incArc
+{
+    union 
+    {
+        incVertex *vertexEndpoint;
+        incFace *faceEndpoint;
+    };
+    size_t indexInEndpoint;
+};
+
+struct incArcList
+{
+    size_t size = 0;
+    size_t capacity = 0;
+    incArc* list = nullptr;
+
+    incArc& operator[](size_t index)
+    {
+        return this->list[index];
+    }
+};
+
+void incAddToArcList(incArcList &arcList, incArc arc)
+{
+    if(arcList.capacity == 0)
+    {
+        arcList.capacity = 2;
+        arcList.list = (incArc*)malloc(sizeof(incArc) * arcList.capacity);
+    }
+    if(arcList.size + 1 > arcList.capacity)
+    {
+        arcList.capacity *= 2;
+        arcList.list = (incArc*)realloc(arcList.list, sizeof(incArc) * arcList.capacity);
+    }
+
+    arcList.list[arcList.size++] = arc;
+}
+
 struct incVertex
 {
     glm::vec3 vector;
@@ -41,9 +79,10 @@ struct incVertex
     bool isProcessed;
     bool isRemoved;
     bool isAlreadyInConflicts;
-    std::vector<incArc> arcs;
     incVertex *next;
     incVertex *prev;
+    incArcList arcs;
+    // std::vector<incArc> arcs;
 };
 
 struct incEdge
@@ -65,19 +104,12 @@ struct incFace
     glm::vec3 centerPoint;
     bool isVisible;
     bool isRemoved;
-    std::vector<incArc> arcs;
     incFace *next;
     incFace *prev;
+    // std::vector<incArc> arcs;
+    incArcList arcs;
 };
 
-struct incArc
-{
-    union {
-        incVertex *vertexEndpoint;
-        incFace *faceEndpoint;
-    };
-    size_t indexInEndpoint;
-};
 
 //Head pointers to each of the three lists
 incVertex *incVertices = nullptr;
@@ -136,21 +168,21 @@ void incRemoveFromHead(T *head, T *pointer)
 
 static void incCopyVertices(vertex *vertices, int numberOfPoints)
 {
-    vertex *shuffledVertices = (vertex *)malloc(sizeof(vertex) * numberOfPoints);
-    memcpy(shuffledVertices, vertices, sizeof(vertex) * numberOfPoints);
-    vertex temp;
-    int i, j;
-    //Fisher Yates shuffle
-    for (i = numberOfPoints - 1; i > 0; i--)
-    {
-        j = rand() % (i + 1);
-        temp = shuffledVertices[j];
-        shuffledVertices[j] = shuffledVertices[i];
-        shuffledVertices[i] = temp;
-    }
+    // vertex *shuffledVertices = (vertex *)malloc(sizeof(vertex) * numberOfPoints);
+    // memcpy(shuffledVertices, vertices, sizeof(vertex) * numberOfPoints);
+    // vertex temp;
+    // int i, j;
+    // //Fisher Yates shuffle
+    // for (i = numberOfPoints - 1; i > 0; i--)
+    // {
+    //     j = rand() % (i + 1);
+    //     temp = shuffledVertices[j];
+    //     shuffledVertices[j] = shuffledVertices[i];
+    //     shuffledVertices[i] = temp;
+    // }
 
     incVertex *v;
-    for (i = 0; i < numberOfPoints; i++)
+    for (int i = 0; i < numberOfPoints; i++)
     {
         v = (incVertex *)malloc(sizeof(incVertex));
         v->duplicate = nullptr;
@@ -159,10 +191,11 @@ static void incCopyVertices(vertex *vertices, int numberOfPoints)
         v->isRemoved = false;
         v->isAlreadyInConflicts = false;
         v->vIndex = i;
-        v->vector = shuffledVertices[i].position;
+        v->vector = vertices[i].position; //shuffledVertices[i].position;
+        v->arcs = {};
         incAddToHead(&incVertices, v);
     }
-    free(shuffledVertices);
+    // free(shuffledVertices);
 }
 
 incEdge *incCreateNullEdge()
@@ -185,6 +218,7 @@ incFace *incCreateNullFace()
     f->vertex[0] = f->vertex[1] = f->vertex[2] = nullptr;
     f->isVisible = false;
     f->isRemoved = false;
+    f->arcs = {};
     incAddToHead(&incFaces, f);
 
     return f;
@@ -278,26 +312,35 @@ incFace *incMakeFace(incVertex *v0, incVertex *v1, incVertex *v2, incFace *face)
 
 void incInitConflictListForFace(incFace *newFace, incFace *oldFace1, incFace *oldFace2)
 {
-    for (incArc arc : oldFace1->arcs)
+    // for (incArc arc : oldFace1->arcs)
+    for(int i = 0; i < oldFace1->arcs.size; i++)
     {
+        auto &arc = oldFace1->arcs[i];
         incVertex *v = arc.vertexEndpoint;
         if (incIsPointOnPositiveSide(newFace, v))
         {
             incArc arcToFace = {};
             arcToFace.faceEndpoint = newFace;
-            arcToFace.indexInEndpoint = newFace->arcs.size();
-            v->arcs.push_back(arcToFace);
+            // arcToFace.indexInEndpoint = newFace->arcs.size();
+            arcToFace.indexInEndpoint = newFace->arcs.size;
+            incAddToArcList(v->arcs, arcToFace);
+            // v->arcs.push_back(arcToFace);
 
             incArc arcToVertex = {};
             arcToVertex.vertexEndpoint = v;
-            arcToVertex.indexInEndpoint = v->arcs.size();
-            newFace->arcs.push_back(arcToVertex);
+            // arcToVertex.indexInEndpoint = v->arcs.size();
+            arcToVertex.indexInEndpoint = v->arcs.size;            
+            // newFace->arcs.push_back(arcToVertex);
+            incAddToArcList(newFace->arcs, arcToVertex);
 
             v->isAlreadyInConflicts = true;
         }
     }
-    for (incArc arc : oldFace2->arcs)
+
+    // for (incArc arc : oldFace2->arcs)
+    for(int i = 0; i < oldFace2->arcs.size; i++)
     {
+        auto &arc = oldFace2->arcs[i];
         incVertex *v = arc.vertexEndpoint;
         if (!v->isAlreadyInConflicts)
         {
@@ -305,18 +348,24 @@ void incInitConflictListForFace(incFace *newFace, incFace *oldFace1, incFace *ol
             {
                 incArc arcToFace = {};
                 arcToFace.faceEndpoint = newFace;
-                arcToFace.indexInEndpoint = newFace->arcs.size();
-                v->arcs.push_back(arcToFace);
+                // arcToFace.indexInEndpoint = newFace->arcs.size();
+                // v->arcs.push_back(arcToFace);
+                arcToFace.indexInEndpoint = newFace->arcs.size;
+                incAddToArcList(v->arcs, arcToFace);
 
                 incArc arcToVertex = {};
                 arcToVertex.vertexEndpoint = v;
-                arcToVertex.indexInEndpoint = v->arcs.size();
-                newFace->arcs.push_back(arcToVertex);
+                // arcToVertex.indexInEndpoint = v->arcs.size();
+                arcToVertex.indexInEndpoint = v->arcs.size - 1;
+                // newFace->arcs.push_back(arcToVertex);
+                incAddToArcList(newFace->arcs, arcToVertex);
             }
         }
     }
-    for (incArc arc : newFace->arcs)
+    // for (incArc arc : newFace->arcs)
+    for(int i = 0; i < newFace->arcs.size; i++)
     {
+        auto &arc = newFace->arcs[i];
         arc.vertexEndpoint->isAlreadyInConflicts = false;
     }
 }
@@ -325,17 +374,22 @@ void incCleanConflictGraph(std::vector<incFace *> &facesToRemove)
 {
     for (incFace *face : facesToRemove)
     {
-        for (incArc arc : face->arcs)
+        // for (incArc arc : face->arcs)
+        for(size_t i = 0; i < face->arcs.size; i++)
         {
+            auto &arc = face->arcs[i];
             //We have to remove the arc from f->v and the arc v->f.
             //This is done by swapping with the last element in the arcs list
             //But since every arc knows the index of its duplicate arc, we also have to update the endPoint arcs we swap with
             incVertex *v = arc.vertexEndpoint;
             incArc dupArc = v->arcs[arc.indexInEndpoint];
-            incArc lastArcInV = v->arcs[v->arcs.size() - 1];
+            // incArc lastArcInV = v->arcs[v->arcs.size() - 1];
+            incArc lastArcInV = v->arcs[v->arcs.size - 1];
             lastArcInV.faceEndpoint->arcs[lastArcInV.indexInEndpoint].indexInEndpoint = dupArc.indexInEndpoint;
-            v->arcs[arc.indexInEndpoint] = v->arcs[v->arcs.size() - 1];
-            v->arcs.erase(v->arcs.begin() + v->arcs.size() - 1);
+            // v->arcs[arc.indexInEndpoint] = v->arcs[v->arcs.size() - 1];
+            v->arcs[arc.indexInEndpoint] = v->arcs[v->arcs.size - 1];
+            v->arcs.size--;
+            // v->arcs.erase(v->arcs.begin() + v->arcs.size() - 1);
         }
         //should we clear the arcs in f?
     }
@@ -493,7 +547,11 @@ std::pair<std::vector<incFace *>, std::vector<incEdge *>> incAddToHull(incVertex
     std::vector<incEdge *> horizonEdges;
     bool visible = false;
     std::vector<incArc> vConflicts;
-    std::copy(v->arcs.begin(), v->arcs.end(), std::back_inserter(vConflicts));
+    // std::copy(v->arcs.begin(), v->arcs.end(), std::back_inserter(vConflicts));
+    for(size_t i = 0; i < v->arcs.size; i++)
+    {
+        vConflicts.push_back(v->arcs[i]);
+    }
 
     for (incArc arc : vConflicts)
     {
@@ -642,20 +700,26 @@ void incInitConflictLists()
     incVertex *nextVertex;
     incFace *f1 = incFaces;
     incFace *f2 = incFaces->next;
+    int i = 0;
     do
     {
+        i++;
         nextVertex = v->next;
 
         incFace *conflictFace = incIsPointOnPositiveSide(f1, v) ? f1 : f2;
         incArc arcToFace = {};
         arcToFace.faceEndpoint = conflictFace;
-        arcToFace.indexInEndpoint = conflictFace->arcs.size();
-        v->arcs.push_back(arcToFace);
+        // arcToFace.indexInEndpoint = conflictFace->arcs.size();
+        arcToFace.indexInEndpoint = conflictFace->arcs.size;
+        incAddToArcList(v->arcs, arcToFace);
+        // v->arcs.push_back(arcToFace);
 
         incArc arcToVertex = {};
         arcToVertex.vertexEndpoint = v;
-        arcToVertex.indexInEndpoint = 0;
-        conflictFace->arcs.push_back(arcToVertex);
+        // arcToVertex.indexInEndpoint = v->arcs.size() - 1;
+        arcToVertex.indexInEndpoint = v->arcs.size - 1;
+        // conflictFace->arcs.push_back(arcToVertex);
+        incAddToArcList(conflictFace->arcs, arcToVertex);
 
         v = nextVertex;
     } while (v != incVertices);
