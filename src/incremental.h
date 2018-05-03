@@ -250,7 +250,6 @@ incFace *incMakeFace(incVertex *v0, incVertex *v1, incVertex *v2, incFace *face)
     f->vertex[2] = v2;
     f->centerPoint = (f->vertex[0]->vector + f->vertex[1]->vector + f->vertex[2]->vector) / 3.0f;
 
-    assert(f);
     e0->adjFace[0] = e1->adjFace[0] = e2->adjFace[0] = f;
 
     return f;
@@ -453,7 +452,6 @@ incFace *incMakeConeFace(incEdge *e, incVertex *v)
     newFace->centerPoint = (newFace->vertex[0]->vector + newFace->vertex[1]->vector + newFace->vertex[2]->vector) / 3.0f;
     newFace->normal = incComputeFaceNormal(newFace);
 
-    assert(newFace);
     if (!newEdge1->adjFace[0])
     {
         newEdge1->adjFace[0] = newFace;
@@ -682,21 +680,21 @@ void incInitConflictLists(inc_hull &incHull)
     incVertex *nextVertex;
     incFace *f1 = incFaces;
     incFace *f2 = incFaces->next;
-    assert(incHull.faceConflicts.emplace(f1, std::vector<incVertex *>{}).second);
-    assert(incHull.faceConflicts.emplace(f2, std::vector<incVertex *>{}).second);
+    incHull.faceConflicts.emplace(f1, std::vector<incVertex *>{});
+    incHull.faceConflicts.emplace(f2, std::vector<incVertex *>{});
     do
     {
         nextVertex = v->next;
 
         incFace *conflictFace = incIsPointOnPositiveSide(f1, v) ? f1 : f2;
-        assert(incHull.vertexConflicts.emplace(v, std::vector<incFace *>{}).second);
-        auto vConflicts = incHull.vertexConflicts.find(v);
-        vConflicts->second.push_back(conflictFace);
-        conflictFace->conflictIndex = vConflicts->second.size() - 1;
+        incHull.vertexConflicts.emplace(v, std::vector<incFace *>{});
+        auto &vConflicts = incHull.vertexConflicts.find(v)->second;
+        vConflicts.push_back(conflictFace);
+        conflictFace->conflictIndex = vConflicts.size() - 1;
 
-        auto fConflicts = incHull.faceConflicts.find(conflictFace);
-        fConflicts->second.push_back(v);
-        v->conflictIndex = fConflicts->second.size() - 1;
+        std::vector<incVertex *> &fConflicts = incHull.faceConflicts.find(conflictFace)->second;
+        fConflicts.push_back(v);
+        v->conflictIndex = fConflicts.size() - 1;
 
         v = nextVertex;
     } while (v != incVertices);
