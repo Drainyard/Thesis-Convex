@@ -266,14 +266,14 @@ void incInitConflictListForFace(incFace *newFace, incFace *oldFace1, incFace *ol
     {
         if (incIsPointOnPositiveSide(newFace, v))
         {
-            auto timerFind = startTimer();
+            // auto timerFind = startTimer();
             auto &vConf = incHull.vertexConflicts.find(v)->second;
-            TIME_END(timerFind, "timerFind");
-            auto timerInsert = startTimer();
+            // TIME_END(timerFind, "timerFind");
+            // auto timerInsert = startTimer();
             vConf.push_back(newFace);
             newFace->conflictIndex = vConf.size() - 1;
 
-            TIME_END(timerInsert, "timerInsert");
+            // TIME_END(timerInsert, "timerInsert");
             newFaceConflicts.push_back(v);
             v->conflictIndex = newFaceConflicts.size() - 1;
             v->isAlreadyInConflicts = true;
@@ -301,13 +301,14 @@ void incCleanConflictGraph(std::vector<incFace *> &facesToRemove, inc_hull &incH
 {
     for (incFace *face : facesToRemove)
     {
+        printf("%p\n", face);
         //for face, look up vertices, and remove this face from their list
         auto &vertices = incHull.faceConflicts.find(face)->second;
         for (incVertex *vertex : vertices)
         {
             auto &conflictsVector = incHull.vertexConflicts.find(vertex)->second;
-            conflictsVector[face->conflictIndex] = conflictsVector[conflictsVector.size() - 1];
-            conflictsVector[face->conflictIndex]->conflictIndex = face->conflictIndex;
+            ptrdiff_t index = std::find(conflictsVector.begin(), conflictsVector.end(), face) - conflictsVector.begin();
+            conflictsVector[index] = conflictsVector[conflictsVector.size() - 1];
             conflictsVector.erase(conflictsVector.begin() + conflictsVector.size() - 1);
         }
         //benchmark with and without
