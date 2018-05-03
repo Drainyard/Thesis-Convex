@@ -168,18 +168,18 @@ void incRemoveFromHead(T *head, T *pointer)
 
 static void incCopyVertices(vertex *vertices, int numberOfPoints)
 {
-    // vertex *shuffledVertices = (vertex *)malloc(sizeof(vertex) * numberOfPoints);
-    // memcpy(shuffledVertices, vertices, sizeof(vertex) * numberOfPoints);
-    // vertex temp;
-    // int i, j;
-    // //Fisher Yates shuffle
-    // for (i = numberOfPoints - 1; i > 0; i--)
-    // {
-    //     j = rand() % (i + 1);
-    //     temp = shuffledVertices[j];
-    //     shuffledVertices[j] = shuffledVertices[i];
-    //     shuffledVertices[i] = temp;
-    // }
+    vertex *shuffledVertices = (vertex *)malloc(sizeof(vertex) * numberOfPoints);
+    memcpy(shuffledVertices, vertices, sizeof(vertex) * numberOfPoints);
+    vertex temp;
+    int i, j;
+    //Fisher Yates shuffle
+    for (i = numberOfPoints - 1; i > 0; i--)
+    {
+        j = rand() % (i + 1);
+        temp = shuffledVertices[j];
+        shuffledVertices[j] = shuffledVertices[i];
+        shuffledVertices[i] = temp;
+    }
 
     incVertex *v;
     for (int i = 0; i < numberOfPoints; i++)
@@ -191,11 +191,11 @@ static void incCopyVertices(vertex *vertices, int numberOfPoints)
         v->isRemoved = false;
         v->isAlreadyInConflicts = false;
         v->vIndex = i;
-        v->vector = vertices[i].position; //shuffledVertices[i].position;
+        v->vector = shuffledVertices[i].position;
         v->arcs = {};
         incAddToHead(&incVertices, v);
     }
-    // free(shuffledVertices);
+     free(shuffledVertices);
 }
 
 incEdge *incCreateNullEdge()
@@ -329,7 +329,7 @@ void incInitConflictListForFace(incFace *newFace, incFace *oldFace1, incFace *ol
             incArc arcToVertex = {};
             arcToVertex.vertexEndpoint = v;
             // arcToVertex.indexInEndpoint = v->arcs.size();
-            arcToVertex.indexInEndpoint = v->arcs.size;            
+            arcToVertex.indexInEndpoint = v->arcs.size - 1;            
             // newFace->arcs.push_back(arcToVertex);
             incAddToArcList(newFace->arcs, arcToVertex);
 
@@ -656,7 +656,6 @@ void incCleanEdgesAndFaces(std::vector<incFace *> &facesToRemove, std::vector<in
 
 void incCleanStuff(std::pair<std::vector<incFace *>, std::vector<incEdge *>> &cleaningBundle)
 {
-    //cleanEdges called before faces, as we need access to isVisible
     //    auto timerCleanEdgesAndFaces = startTimer();
     incCleanEdgesAndFaces(cleaningBundle.first, cleaningBundle.second);
     //    TIME_END(timerCleanEdgesAndFaces, "incCleanEdgesAndFaces");
