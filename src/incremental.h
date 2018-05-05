@@ -193,7 +193,7 @@ static void incCopyVertices(vertex *vertices, int numberOfPoints)
         v->isRemoved = false;
         v->isAlreadyInConflicts = false;
         v->vIndex = i;
-        v->vector = vertices[i].position; //shuffledVertices[i].position;
+        v->vector = shuffledVertices[i].position;
         v->arcs = {};
         incAddToHead(&incVertices, v);
     }
@@ -326,7 +326,7 @@ void incInitConflictListForFace(incFace *newFace, incFace *oldFace1, incFace *ol
             
             incArc arcToVertex = {};
             arcToVertex.vertexEndpoint = v;
-            arcToVertex.indexInEndpoint = v->arcs.size;            
+            arcToVertex.indexInEndpoint = v->arcs.size - 1;            
             incAddToArcList(newFace->arcs, arcToVertex);
             v->isAlreadyInConflicts = true;
         }
@@ -657,7 +657,6 @@ void incCleanEdgesAndFaces(std::vector<incFace *> &facesToRemove, std::vector<in
 
 void incCleanStuff(std::pair<std::vector<incFace *>, std::vector<incEdge *>> &cleaningBundle)
 {
-    //cleanEdges called before faces, as we need access to isVisible
     //    auto timerCleanEdgesAndFaces = startTimer();
     incCleanEdgesAndFaces(cleaningBundle.first, cleaningBundle.second);
     //    TIME_END(timerCleanEdgesAndFaces, "incCleanEdgesAndFaces");
