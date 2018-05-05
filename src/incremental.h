@@ -46,12 +46,15 @@ struct incArcList
 {
     size_t size = 0;
     size_t capacity = 0;
-    incArc* list = nullptr;
-
+    incArc *list = nullptr;
+    
     incArc& operator[](size_t index)
     {
         return this->list[index];
     }
+    
+    incArc *begin() {return this->list;}
+    incArc *end() {return this->list + this->size;}
 };
 
 void incAddToArcList(incArcList &arcList, incArc arc)
@@ -66,7 +69,7 @@ void incAddToArcList(incArcList &arcList, incArc arc)
         arcList.capacity *= 2;
         arcList.list = (incArc*)realloc(arcList.list, sizeof(incArc) * arcList.capacity);
     }
-
+    
     arcList.list[arcList.size++] = arc;
 }
 
@@ -109,7 +112,6 @@ struct incFace
     // std::vector<incArc> arcs;
     incArcList arcs;
 };
-
 
 //Head pointers to each of the three lists
 incVertex *incVertices = nullptr;
@@ -180,7 +182,7 @@ static void incCopyVertices(vertex *vertices, int numberOfPoints)
     //     shuffledVertices[j] = shuffledVertices[i];
     //     shuffledVertices[i] = temp;
     // }
-
+    
     incVertex *v;
     for (int i = 0; i < numberOfPoints; i++)
     {
@@ -195,7 +197,7 @@ static void incCopyVertices(vertex *vertices, int numberOfPoints)
         v->arcs = {};
         incAddToHead(&incVertices, v);
     }
-    // free(shuffledVertices);
+    //free(shuffledVertices);
 }
 
 incEdge *incCreateNullEdge()
@@ -207,7 +209,7 @@ incEdge *incCreateNullEdge()
     e->shouldBeRemoved = false;
     e->isRemoved = false;
     incAddToHead(&incEdges, e);
-
+    
     return e;
 }
 
@@ -220,23 +222,23 @@ incFace *incCreateNullFace()
     f->isRemoved = false;
     f->arcs = {};
     incAddToHead(&incFaces, f);
-
+    
     return f;
 }
 
 /*
 (a-b) and (b-c) are direction vectors in the plane
 If they are on the same line, the angle between them is 0.
-So collinear if (a-b)x(b-c)=0
+So colinear if (a-b)x(b-c)=0
 
 This is short hand of
 return
     ((v1->vector.y - v0->vector.y)(v2->vector.z - v0->vector.z)-(v2->vector.y - v0->vector.y)(v1->vector.z - v0->vector.z) == 0) &&
     ((v2->vector.x - v0->vector.x)(v1->vector.z - v0->vector.z)-(v1->vector.x - v0->vector.x)(v2->vector.z - v0->vector.z) == 0) &&
     ((v1->vector.x - v0->vector.x)(v2->vector.y - v0->vector.y)-(v2->vector.x - v0->vector.x)(v1->vector.y - v0->vector.y) == 0)
-
+    
 */
-bool incCollinear(incVertex *v0, incVertex *v1, incVertex *v2)
+bool incColinear(incVertex *v0, incVertex *v1, incVertex *v2)
 {
     return glm::cross((v0->vector - v1->vector), (v1->vector - v2->vector)) == glm::vec3(0, 0, 0);
 }
@@ -246,17 +248,17 @@ glm::vec3 incComputeFaceNormal(incFace *f)
     // Newell's Method
     // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
     glm::vec3 normal = glm::vec3(0.0f);
-
+    
     for (int i = 0; i < 3; i++)
     {
         glm::vec3 current = f->vertex[i]->vector;
         glm::vec3 next = f->vertex[(i + 1) % 3]->vector;
-
+        
         normal.x = normal.x + (current.y - next.y) * (current.z + next.z);
         normal.y = normal.y + (current.z - next.z) * (current.x + next.x);
         normal.z = normal.z + (current.x - next.x) * (current.y + next.y);
     }
-
+    
     return glm::normalize(normal);
 }
 
@@ -295,7 +297,7 @@ incFace *incMakeFace(incVertex *v0, incVertex *v1, incVertex *v2, incFace *face)
     e1->endPoints[1] = v2;
     e2->endPoints[0] = v2;
     e2->endPoints[1] = v0;
-
+    
     incFace *f = incCreateNullFace();
     f->edge[0] = e0;
     f->edge[1] = e1;
@@ -304,43 +306,34 @@ incFace *incMakeFace(incVertex *v0, incVertex *v1, incVertex *v2, incFace *face)
     f->vertex[1] = v1;
     f->vertex[2] = v2;
     f->centerPoint = (f->vertex[0]->vector + f->vertex[1]->vector + f->vertex[2]->vector) / 3.0f;
-
+    
     e0->adjFace[0] = e1->adjFace[0] = e2->adjFace[0] = f;
-
+    
     return f;
 }
 
 void incInitConflictListForFace(incFace *newFace, incFace *oldFace1, incFace *oldFace2)
 {
-    // for (incArc arc : oldFace1->arcs)
-    for(int i = 0; i < oldFace1->arcs.size; i++)
+    for (incArc &arc : oldFace1->arcs)
     {
-        auto &arc = oldFace1->arcs[i];
         incVertex *v = arc.vertexEndpoint;
         if (incIsPointOnPositiveSide(newFace, v))
         {
             incArc arcToFace = {};
             arcToFace.faceEndpoint = newFace;
-            // arcToFace.indexInEndpoint = newFace->arcs.size();
             arcToFace.indexInEndpoint = newFace->arcs.size;
             incAddToArcList(v->arcs, arcToFace);
-            // v->arcs.push_back(arcToFace);
-
+            
             incArc arcToVertex = {};
             arcToVertex.vertexEndpoint = v;
-            // arcToVertex.indexInEndpoint = v->arcs.size();
             arcToVertex.indexInEndpoint = v->arcs.size;            
-            // newFace->arcs.push_back(arcToVertex);
             incAddToArcList(newFace->arcs, arcToVertex);
-
             v->isAlreadyInConflicts = true;
         }
     }
-
-    // for (incArc arc : oldFace2->arcs)
-    for(int i = 0; i < oldFace2->arcs.size; i++)
+    
+    for (incArc &arc : oldFace2->arcs)
     {
-        auto &arc = oldFace2->arcs[i];
         incVertex *v = arc.vertexEndpoint;
         if (!v->isAlreadyInConflicts)
         {
@@ -348,24 +341,19 @@ void incInitConflictListForFace(incFace *newFace, incFace *oldFace1, incFace *ol
             {
                 incArc arcToFace = {};
                 arcToFace.faceEndpoint = newFace;
-                // arcToFace.indexInEndpoint = newFace->arcs.size();
-                // v->arcs.push_back(arcToFace);
                 arcToFace.indexInEndpoint = newFace->arcs.size;
                 incAddToArcList(v->arcs, arcToFace);
-
+                
                 incArc arcToVertex = {};
                 arcToVertex.vertexEndpoint = v;
-                // arcToVertex.indexInEndpoint = v->arcs.size();
                 arcToVertex.indexInEndpoint = v->arcs.size - 1;
-                // newFace->arcs.push_back(arcToVertex);
                 incAddToArcList(newFace->arcs, arcToVertex);
             }
         }
     }
-    // for (incArc arc : newFace->arcs)
-    for(int i = 0; i < newFace->arcs.size; i++)
+    
+    for (incArc &arc : newFace->arcs)
     {
-        auto &arc = newFace->arcs[i];
         arc.vertexEndpoint->isAlreadyInConflicts = false;
     }
 }
@@ -374,64 +362,68 @@ void incCleanConflictGraph(std::vector<incFace *> &facesToRemove)
 {
     for (incFace *face : facesToRemove)
     {
-        // for (incArc arc : face->arcs)
-        for(size_t i = 0; i < face->arcs.size; i++)
+        for(incArc &arc : face->arcs)
         {
-            auto &arc = face->arcs[i];
             //We have to remove the arc from f->v and the arc v->f.
             //This is done by swapping with the last element in the arcs list
             //But since every arc knows the index of its duplicate arc, we also have to update the endPoint arcs we swap with
             incVertex *v = arc.vertexEndpoint;
+            
             incArc dupArc = v->arcs[arc.indexInEndpoint];
-            // incArc lastArcInV = v->arcs[v->arcs.size() - 1];
             incArc lastArcInV = v->arcs[v->arcs.size - 1];
-            lastArcInV.faceEndpoint->arcs[lastArcInV.indexInEndpoint].indexInEndpoint = dupArc.indexInEndpoint;
-            // v->arcs[arc.indexInEndpoint] = v->arcs[v->arcs.size() - 1];
+            lastArcInV.faceEndpoint->arcs[lastArcInV.indexInEndpoint].indexInEndpoint = arc.indexInEndpoint;
             v->arcs[arc.indexInEndpoint] = v->arcs[v->arcs.size - 1];
-            v->arcs.size--;
-            // v->arcs.erase(v->arcs.begin() + v->arcs.size() - 1);
+            v->arcs.size = v->arcs.size - 1;
+            v->arcs[v->arcs.size] = {};
+            // v->arcs.size--;
+            
+            // This was wrong because the vertices are not there anymore?
+            /*incArc lastArcInF = face->arcs[face->arcs.size - 1];
+            lastArcInF.vertexEndpoint->arcs[lastArcInF.indexInEndpoint].indexInEndpoint = dupArcEndPoint;
+            face->arcs[dupArcEndPoint] = face->arcs[face->arcs.size - 1];
+            face->arcs.size--;*/
         }
-        //should we clear the arcs in f?
+        face->arcs.size = 0;
     }
 }
 
-//double sided triangle from points NOT collinear
+//double sided triangle from points NOT colinear
 void incCreateBihedron()
 {
     incVertex *v0 = incVertices;
-    while (incCollinear(v0, v0->next, v0->next->next))
+    while (incColinear(v0, v0->next, v0->next->next))
     {
         v0 = v0->next;
         if (v0 == incVertices)
         {
-            //ERROR ONLY COLLINEAR POINTS
-            printf("incCreateBihedron - collinear points");
+            //ERROR ONLY COLINEAR POINTS
+            printf("incCreateBihedron - colinear points");
             exit(0);
         }
     }
     incVertex *v1 = v0->next;
     incVertex *v2 = v1->next;
-
+    
     incFace *f0, *f1;
     f0 = f1 = nullptr;
-
+    
     f0 = incMakeFace(v0, v1, v2, f1);
     f1 = incMakeFace(v2, v1, v0, f0);
-
+    
     f0->edge[0]->adjFace[1] = f1;
     f0->edge[1]->adjFace[1] = f1;
     f0->edge[2]->adjFace[1] = f1;
     f1->edge[0]->adjFace[1] = f0;
     f1->edge[1]->adjFace[1] = f0;
     f1->edge[2]->adjFace[1] = f0;
-
+    
     f0->normal = incComputeFaceNormal(f0);
     f1->normal = incComputeFaceNormal(f1);
-
+    
     v0->isProcessed = true;
     v1->isProcessed = true;
     v2->isProcessed = true;
-
+    
     incVertex *v3 = v2->next;
     bool coplanar = incIsPointCoplanar(f0, v3);
     while (coplanar)
@@ -480,7 +472,7 @@ void incEnforceCounterClockWise(incFace *newFace, incEdge *e, incVertex *v)
     {
         newFace->vertex[0] = e->endPoints[0];
         newFace->vertex[1] = e->endPoints[1];
-
+        
         //this swap is just for consistency, it is not exactly necessary to enforce counter clockwise orientation for edges.
         //in incMakeConeFace, we set e as edge[0], edge[1] is based on endPoint[0], and edge[2] on endPoint[1].
         //if e goes from left to right, then edge[1] should be based on endPoint[1] and edge[2] on endPoint[0] to ensure counter clockwise of edges as well
@@ -504,7 +496,7 @@ incFace *incMakeConeFace(incEdge *e, incVertex *v)
         newEdge1->endPoints[1] = v;
         e->endPoints[0]->duplicate = newEdge1;
     }
-
+    
     incEdge *newEdge2 = e->endPoints[1]->duplicate;
     if (!newEdge2)
     {
@@ -513,7 +505,7 @@ incFace *incMakeConeFace(incEdge *e, incVertex *v)
         newEdge2->endPoints[1] = v;
         e->endPoints[1]->duplicate = newEdge2;
     }
-
+    
     incFace *newFace = incCreateNullFace();
     newFace->edge[0] = e;
     newFace->edge[1] = newEdge1;
@@ -521,7 +513,7 @@ incFace *incMakeConeFace(incEdge *e, incVertex *v)
     incEnforceCounterClockWise(newFace, e, v);
     newFace->centerPoint = (newFace->vertex[0]->vector + newFace->vertex[1]->vector + newFace->vertex[2]->vector) / 3.0f;
     newFace->normal = incComputeFaceNormal(newFace);
-
+    
     if (!newEdge1->adjFace[0])
     {
         newEdge1->adjFace[0] = newFace;
@@ -547,13 +539,16 @@ std::pair<std::vector<incFace *>, std::vector<incEdge *>> incAddToHull(incVertex
     std::vector<incEdge *> horizonEdges;
     bool visible = false;
     std::vector<incArc> vConflicts;
-    // std::copy(v->arcs.begin(), v->arcs.end(), std::back_inserter(vConflicts));
-    for(size_t i = 0; i < v->arcs.size; i++)
+    std::copy(v->arcs.begin(), v->arcs.end(), std::back_inserter(vConflicts));
+    
+    printf("Arc\n");
+    for(incArc arc : v->arcs)
     {
-        vConflicts.push_back(v->arcs[i]);
+        printf("%zd\n", arc.indexInEndpoint);
+        printf("%p\n", (void*)arc.faceEndpoint);
     }
 
-    for (incArc arc : vConflicts)
+    for (incArc &arc : vConflicts)
     {
         arc.faceEndpoint->isVisible = visible = true;
     }
@@ -562,6 +557,8 @@ std::pair<std::vector<incFace *>, std::vector<incEdge *>> incAddToHull(incVertex
         //No faces are visible and we are inside hull. No arcs to update
         v->isOnHull = false;
         v->isRemoved = true;
+        free(v->arcs.list);
+        v->arcs.list = nullptr;
         incRemoveFromHead(&incVertices, &v);
         std::pair<std::vector<incFace *>, std::vector<incEdge *>> cleaningBundle(facesToRemove, horizonEdges);
         return cleaningBundle;
@@ -587,19 +584,19 @@ std::pair<std::vector<incFace *>, std::vector<incEdge *>> incAddToHull(incVertex
                 {
                     //only one is visible: border edge, erect face for cone
                     e->newFace = incMakeConeFace(e, v);
-
+                    
                     //OPTIMIZE THIS!!!
                     incInitConflictListForFace(e->newFace, e->adjFace[0], e->adjFace[1]);
-
+                    
                     horizonEdges.push_back(e);
                 }
             }
         }
         facesToRemove.push_back(face);
     }
-
+    
     incCleanConflictGraph(facesToRemove);
-
+    
     std::pair<std::vector<incFace *>, std::vector<incEdge *>> cleaningBundle(facesToRemove, horizonEdges);
     return cleaningBundle;
 }
@@ -636,14 +633,18 @@ void incCleanEdgesAndFaces(std::vector<incFace *> &facesToRemove, std::vector<in
                 e->isRemoved = true;
                 incRemoveFromHead(&incEdges, &e);
             }
-
+            
             incVertex *v = face->vertex[i];
             if (v && !v->isRemoved && !v->isOnHull)
             {
                 v->isRemoved = true;
+                free(v->arcs.list);
+                v->arcs.list = nullptr;
                 incRemoveFromHead(&incVertices, &v);
             }
         }
+        free(face->arcs.list);
+        face->arcs.list = nullptr;
         incRemoveFromHead(&incFaces, &face);
     }
     //reset vertex flags
@@ -668,7 +669,7 @@ mesh &incConvertToMesh(render_context &renderContext)
     m.position = glm::vec3(0.0f);
     m.scale = glm::vec3(globalScale);
     m.dirty = true;
-
+    
     incFace *f = incFaces;
     do
     {
@@ -685,10 +686,10 @@ mesh &incConvertToMesh(render_context &renderContext)
         newFace.faceNormal = f->normal;
         newFace.centerPoint = f->centerPoint;
         m.faces.push_back(newFace);
-
+        
         f = f->next;
     } while (f != incFaces);
-
+    
     return m;
 }
 
@@ -705,22 +706,18 @@ void incInitConflictLists()
     {
         i++;
         nextVertex = v->next;
-
+        
         incFace *conflictFace = incIsPointOnPositiveSide(f1, v) ? f1 : f2;
         incArc arcToFace = {};
         arcToFace.faceEndpoint = conflictFace;
-        // arcToFace.indexInEndpoint = conflictFace->arcs.size();
         arcToFace.indexInEndpoint = conflictFace->arcs.size;
         incAddToArcList(v->arcs, arcToFace);
-        // v->arcs.push_back(arcToFace);
-
+        
         incArc arcToVertex = {};
         arcToVertex.vertexEndpoint = v;
-        // arcToVertex.indexInEndpoint = v->arcs.size() - 1;
         arcToVertex.indexInEndpoint = v->arcs.size - 1;
-        // conflictFace->arcs.push_back(arcToVertex);
         incAddToArcList(conflictFace->arcs, arcToVertex);
-
+        
         v = nextVertex;
     } while (v != incVertices);
 }
@@ -737,6 +734,7 @@ void incConstructFullHull()
     incVertex *nextVertex;
     do
     {
+        printf("Iter\n");   
         nextVertex = v->next;
         if (!v->isProcessed)
         {
@@ -774,7 +772,7 @@ void incInitializeContext(inc_context &incContext, vertex *vertices, int numberO
     {
         free(incContext.vertices);
     }
-
+    
     incCopyVertices(vertices, numberOfPoints);
     incContext.numberOfPoints = numberOfPoints;
     // incContext.epsilon = 0.0f;

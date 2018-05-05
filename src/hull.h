@@ -29,7 +29,7 @@ struct hull
 
     inc_context incContext;
     inc_context stepIncContext;
-    //inc_context timedStepIncContext;
+    inc_context timedStepIncContext;
 
     timer incTimer;
 
@@ -146,7 +146,7 @@ static void ReinitializeHull(hull &h, vertex *vertices, int numberOfPoints)
 
     h.incContext.initialized = false;
     h.stepIncContext.initialized = false;
-    //h.timedStepIncContext.initialized = false;
+    h.timedStepIncContext.initialized = false;
 }
 
 static mesh *UpdateHull(render_context &renderContext, hull &h, HullType hullType, double deltaTime)
@@ -175,19 +175,28 @@ static mesh *UpdateHull(render_context &renderContext, hull &h, HullType hullTyp
     break;
     case Inc:
     {
-        /*auto& incContext = h.timedStepIncContext;
-            if(h.incTimer.running)
+        static bool init = true;
+
+        if (h.incTimer.running)
+        {
+            if (h.incTimer.currentTime <= 0.0)
             {
-            if(h.incTimer.currentTime <= 0.0)
-            {
-            IncHullStep(renderContext, incContext);
-            h.incTimer.currentTime = h.incTimer.timerInit;
+                if (init)
+                {
+                    incInitStepHull();
+                    init = false;
+                }
+                else
+                {
+                    incHullStep();
+                }
+                h.incTimer.currentTime = h.incTimer.timerInit;
             }
             else
             {
-            h.incTimer.currentTime -= deltaTime;
+                h.incTimer.currentTime -= deltaTime;
             }
-            }*/
+        }
     }
     break;
     }
@@ -287,14 +296,14 @@ static mesh &TimedStepHull(render_context &renderContext, hull &h)
     break;
     case Inc:
     {
-        /*auto& incContext = h.timedStepIncContext;
-            if(!incContext.initialized)
-            {
-            InitializeIncContext(incContext, h.vertices, h.numberOfPoints);
-            }
-            
-            h.incTimer.running = !h.incTimer.running;
-            return incContext.m;*/
+        auto &incContext = h.timedStepIncContext;
+        if (!incContext.initialized)
+        {
+            incInitializeContext(incContext, h.vertices, h.numberOfPoints);
+        }
+        
+        h.incTimer.running = !h.incTimer.running;
+        return incConvertToMesh(renderContext);
     }
     break;
     }
