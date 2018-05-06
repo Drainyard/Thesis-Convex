@@ -191,6 +191,7 @@ static mesh *UpdateHull(render_context &renderContext, hull &h, HullType hullTyp
                         incHullStep();
                     }
                     h.incTimer.currentTime = h.incTimer.timerInit;
+                    return &incConvertToMesh(renderContext);
                 }
                 else
                 {
@@ -216,6 +217,7 @@ static mesh &FullHull(render_context &renderContext, hull &h)
             }
             
             auto timerIndex = startTimer();
+            printf("index: %d\n", timerIndex);
             qhFullHull(qhContext);
             TIME_END(timerIndex, "Full quick hull");
             

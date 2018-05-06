@@ -86,7 +86,7 @@ static void qhCopyVertices(qh_context& q, vertex* vertices, int numberOfPoints)
     for(int i = 0; i < numberOfPoints; i++)
     {
         q.vertices[i].numFaceHandles = 0;
-        q.vertices[i].faceHandles = (int*)malloc(sizeof(int) * 1024);
+        q.vertices[i].faceHandles = (int*)malloc(sizeof(int) * 2048);
         q.vertices[i].vertexIndex = i;
         q.vertices[i].position = vertices[i].position;
         q.vertices[i].normal = vertices[i].normal;
@@ -955,7 +955,7 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
 
 void qhFullHull(qh_context& qhContext)
 {
-    auto timerIndex = startTimer();
+    // auto timerIndex = startTimer();
     qhContext.currentFace = nullptr;
     qhContext.faceStack.clear();
     qhContext.epsilon = 0.0;
@@ -973,7 +973,7 @@ void qhFullHull(qh_context& qhContext)
             qhContext.v.clear();
         }
     }
-    qhContext.qHull.processingState.timeSpent = endTimer(timerIndex);
+    qhContext.qHull.processingState.timeSpent = 0.0; //endTimer(timerIndex);
 }
 
 qh_hull qhFullHull(qh_vertex* vertices, int numVertices)

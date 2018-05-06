@@ -118,7 +118,8 @@ int main()
     h.stepIncContext = {};
     h.timedStepIncContext = {};
     h.incTimer = {};
-    h.currentHullType = QH;
+    h.currentHullType = HullType::QH;
+    auto previousHullType = h.currentHullType;
     
     std::random_device rd{};
     std::mt19937 gen{rd()};
@@ -194,11 +195,22 @@ int main()
             timedHull = nullptr;
             stepHull = nullptr;
         }
+
+        if(KeyDown(Key_C))
+        {
+            ReinitializeHull(h, vertices, h.pointGenerator.numberOfPoints);
+            currentMesh = nullptr;
+            fullHull = nullptr;
+            timedHull = nullptr;
+            stepHull = nullptr;
+        }
         
         if(KeyDown(Key_H))
         {
-            if(!fullHull)
+            if(!fullHull || previousHullType != hullType)
+            {
                 fullHull = &FullHull(renderContext, h);
+            }
             currentMesh = fullHull;
         }
         
@@ -236,11 +248,13 @@ int main()
         
         if(KeyDown(Key_Q))
         {
+            previousHullType = hullType;
             hullType = HullType::QH;
         }
         
         if(KeyDown(Key_I))
         {
+            previousHullType = hullType;
             hullType = HullType::Inc;
         }
         
