@@ -16,10 +16,25 @@ struct qh_neighbour
     int endVertex;
 };
 
+struct qh_int_list
+{
+    size_t size = 0;
+    size_t capacity = 0;
+    int *list = nullptr;
+    
+    int &operator[](size_t index)
+    {
+        return this->list[index];
+    }
+    
+    int *begin() {return this->list;}
+    int *end() {return this->list + this->size;}
+};
+
 struct qh_vertex
 {
-    int* faceHandles;
-    int numFaceHandles;
+    qh_int_list faceHandles;
+    
     bool assigned;
     int vertexIndex;
     
@@ -80,13 +95,28 @@ struct qh_context
     std::vector<edge> horizon;
 };
 
+static void qhAddFaceHandle(qh_int_list &list, int handle)
+{
+    if (list.capacity == 0)
+    {
+        list.capacity = 2;
+        list.list = (int *)malloc(sizeof(int) * list.capacity);
+    }
+    if (list.size + 1 > list.capacity)
+    {
+        list.capacity *= 2;
+        list.list = (int *)realloc(list.list, sizeof(int) * list.capacity);
+    }
+    
+    list.list[list.size++] = handle;
+}
+
 static void qhCopyVertices(qh_context& q, vertex* vertices, int numberOfPoints)
 {
     q.vertices = (qh_vertex*)malloc(sizeof(qh_vertex) * numberOfPoints);
     for(int i = 0; i < numberOfPoints; i++)
     {
-        q.vertices[i].numFaceHandles = 0;
-        q.vertices[i].faceHandles = (int*)malloc(sizeof(int) * 2048);
+        q.vertices[i].faceHandles = {};
         q.vertices[i].vertexIndex = i;
         q.vertices[i].position = vertices[i].position;
         q.vertices[i].normal = vertices[i].normal;
@@ -99,7 +129,7 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f,
     auto& v1 = vertices[v1Handle];
     auto& v2 = vertices[v2Handle];
     
-    for(int v1FaceIndex = 0; v1FaceIndex < v1.numFaceHandles; v1FaceIndex++)
+    for(size_t v1FaceIndex = 0; v1FaceIndex < v1.faceHandles.size; v1FaceIndex++)
     {
         auto v1Face = v1.faceHandles[v1FaceIndex];
         
@@ -124,7 +154,7 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f,
         if(alreadyAdded)
             continue;
         
-        for(int v2FaceIndex = 0; v2FaceIndex < v2.numFaceHandles; v2FaceIndex++)
+        for(size_t v2FaceIndex = 0; v2FaceIndex < v2.faceHandles.size; v2FaceIndex++)
         {
             auto v2Face = v2.faceHandles[v2FaceIndex];
             
@@ -197,24 +227,27 @@ static qh_face* qhAddFace(qh_hull& q, int v1Handle, int v2Handle, int v3Handle, 
     qhFindNeighbours(v1Handle, v3Handle, q, newFace, vertices);
     qhFindNeighbours(v2Handle, v3Handle, q, newFace, vertices);
     
-    if(v1.numFaceHandles == 0)
+    if(v1.faceHandles.size == 0)
     {
         q.processingState.verticesInHull++;
     }
     
-    if(v2.numFaceHandles == 0)
+    if(v2.faceHandles.size == 0)
     {
         q.processingState.verticesInHull++;
     }
     
-    if(v3.numFaceHandles == 0)
+    if(v3.faceHandles.size == 0)
     {
         q.processingState.verticesInHull++;
     }
     
-    v1.faceHandles[v1.numFaceHandles++] = newFace.indexInHull;
-    v2.faceHandles[v2.numFaceHandles++] = newFace.indexInHull;
-    v3.faceHandles[v3.numFaceHandles++] = newFace.indexInHull;
+    //v1.faceHandles[v1.numFaceHandles++] = newFace.indexInHull;
+    //v2.faceHandles[v2.numFaceHandles++] = newFace.indexInHull;
+    //v3.faceHandles[v3.numFaceHandles++] = newFace.indexInHull;
+    qhAddFaceHandle(v1.faceHandles, newFace.indexInHull);
+    qhAddFaceHandle(v2.faceHandles, newFace.indexInHull);
+    qhAddFaceHandle(v3.faceHandles, newFace.indexInHull);
     
     newFace.vertices[0] = v1.vertexIndex;
     newFace.vertices[1] = v2.vertexIndex;
@@ -247,19 +280,19 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     
 #ifdef DEBUG
     bool contained = false;
-    for(int i = 0; i < v1.numFaceHandles; i++)
+    for(size_t i = 0; i < v1.faceHandles.size; i++)
     {
         contained |= v1.faceHandles[i] == f.indexInHull;
     }
     assert(contained);
     contained = false;
-    for(int i = 0; i < v2.numFaceHandles; i++)
+    for(size_t i = 0; i < v2.faceHandles.size; i++)
     {
         contained |= v2.faceHandles[i] == f.indexInHull;
     }
     assert(contained);
     contained = false;
-    for(int i = 0; i < v3.numFaceHandles; i++)
+    for(size_t i = 0; i < v3.faceHandles.size; i++)
     {
         contained |= v3.faceHandles[i] == f.indexInHull;
     }
@@ -311,53 +344,53 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
         }
     }
     
-    for(int fIndex = 0; fIndex < v1.numFaceHandles; fIndex++)
+    for(size_t fIndex = 0; fIndex < v1.faceHandles.size; fIndex++)
     {
         if(v1.faceHandles[fIndex] == indexInHull)
         {
-            v1.faceHandles[fIndex] = v1.faceHandles[v1.numFaceHandles - 1];
-            v1.numFaceHandles--;
+            v1.faceHandles[fIndex] = v1.faceHandles[v1.faceHandles.size - 1];
+            v1.faceHandles.size--;
             break;
         }
     }
     
-    if(v1.numFaceHandles == 0)
+    if(v1.faceHandles.size == 0)
     {
         qHull.processingState.verticesInHull--;
     }
     
-    for(int fIndex = 0; fIndex < v2.numFaceHandles; fIndex++)
+    for(size_t fIndex = 0; fIndex < v2.faceHandles.size; fIndex++)
     {
         if(v2.faceHandles[fIndex] == indexInHull)
         {
-            v2.faceHandles[fIndex] = v2.faceHandles[v2.numFaceHandles - 1];
-            v2.numFaceHandles--;
+            v2.faceHandles[fIndex] = v2.faceHandles[v2.faceHandles.size - 1];
+            v2.faceHandles.size--;
             break;
         }
     }
     
-    if(v2.numFaceHandles == 0)
+    if(v2.faceHandles.size == 0)
     {
         qHull.processingState.verticesInHull--;
     }
     
-    for(int fIndex = 0; fIndex < v3.numFaceHandles; fIndex++)
+    for(size_t fIndex = 0; fIndex < v3.faceHandles.size; fIndex++)
     {
         if(v3.faceHandles[fIndex] == indexInHull)
         {
-            v3.faceHandles[fIndex] = v3.faceHandles[v3.numFaceHandles - 1];
-            v3.numFaceHandles--;
+            v3.faceHandles[fIndex] = v3.faceHandles[v3.faceHandles.size - 1];
+            v3.faceHandles.size--;
             break;
         }
     }
     
-    if(v3.numFaceHandles == 0)
+    if(v3.faceHandles.size == 0)
     {
         qHull.processingState.verticesInHull--;
     }
     
     auto& v1new = vertices[newFace.vertices[0]];
-    for(int fIndex = 0; fIndex < v1new.numFaceHandles; fIndex++)
+    for(size_t fIndex = 0; fIndex < v1new.faceHandles.size; fIndex++)
     {
         if(v1new.faceHandles[fIndex] == newFace.indexInHull)
         {
@@ -367,7 +400,7 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     }
     
     auto& v2new = vertices[newFace.vertices[1]];
-    for(int fIndex = 0; fIndex < v2new.numFaceHandles; fIndex++)
+    for(size_t fIndex = 0; fIndex < v2new.faceHandles.size; fIndex++)
     {
         if(v2new.faceHandles[fIndex] == newFace.indexInHull)
         {
@@ -377,7 +410,7 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     }
     
     auto& v3new = vertices[newFace.vertices[2]];
-    for(int fIndex = 0; fIndex < v3new.numFaceHandles; fIndex++)
+    for(size_t fIndex = 0; fIndex < v3new.faceHandles.size; fIndex++)
     {
         if(v3new.faceHandles[fIndex] == newFace.indexInHull)
         {
@@ -599,7 +632,7 @@ void qhAssignToOutsideSets(qh_hull& q, qh_vertex* vertices, int numVertices, qh_
     {
         auto& vert = vertices[unassigned[vertexIndex].vertexIndex];
         
-        if(vert.numFaceHandles > 0)
+        if(vert.faceHandles.size > 0)
         {
             continue;
         }
@@ -869,7 +902,7 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
             {
                 auto osHandle = fInV.outsideSet[osIndex];
                 auto& q = vertices[osHandle];
-                if(!q.assigned && q.numFaceHandles == 0 && IsPointOnPositiveSide(newFace, q, epsilon))
+                if(!q.assigned && q.faceHandles.size == 0 && IsPointOnPositiveSide(newFace, q, epsilon))
                 {
                     auto newDist = DistancePointToFace(qHull, newFace, q);
                     if(newDist > currentDist)
@@ -1008,6 +1041,10 @@ void qhInitializeContext(qh_context& qhContext, vertex* vertices, int numberOfPo
 {
     if(qhContext.vertices)
     {
+        for(int i = 0; i < qhContext.numberOfPoints; i++)
+        {
+            free(qhContext.vertices[i].faceHandles.list);
+        }
         free(qhContext.vertices);
     }
     
