@@ -171,9 +171,9 @@ static void incCopyVertices(vertex *vertices, int numberOfPoints)
     vertex *shuffledVertices = (vertex *)malloc(sizeof(vertex) * numberOfPoints);
     memcpy(shuffledVertices, vertices, sizeof(vertex) * numberOfPoints);
     vertex temp;
-    int i, j;
+    int j;
     //Fisher Yates shuffle
-    for (i = numberOfPoints - 1; i > 0; i--)
+    for (int i = numberOfPoints - 1; i > 0; i--)
     {
         j = rand() % (i + 1);
         temp = shuffledVertices[j];
@@ -367,7 +367,6 @@ void incCleanConflictGraph(std::vector<incFace *> &facesToRemove)
             //But since every arc knows the index of its duplicate arc, we also have to update the endPoint arcs we swap with
             incVertex *v = arc.vertexEndpoint;
             
-            incArc dupArc = v->arcs[arc.indexInEndpoint];
             incArc lastArcInV = v->arcs[v->arcs.size - 1];
             lastArcInV.faceEndpoint->arcs[lastArcInV.indexInEndpoint].indexInEndpoint = arc.indexInEndpoint;
             v->arcs[arc.indexInEndpoint] = v->arcs[v->arcs.size - 1];

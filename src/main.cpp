@@ -107,7 +107,19 @@ int main()
     //int numberOfPoints = 27948;
     int numberOfPoints = configData.numberOfPoints;
     
-    hull h = {};
+    hull h;
+    h.vertices = nullptr;
+    h.numberOfPoints = 0;
+    h.qhContext = {};
+    h.stepQhContext = {};
+    h.timedStepQhContext = {};
+    h.qhTimer = {};
+    h.incContext = {};
+    h.stepIncContext = {};
+    h.timedStepIncContext = {};
+    h.incTimer = {};
+    h.currentHullType = QH;
+    
     std::random_device rd{};
     std::mt19937 gen{rd()};
     gen.seed(seed);
