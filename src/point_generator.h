@@ -33,7 +33,6 @@ struct config_data
 };
 
 
-
 void loadConfig(const char* filePath, config_data &configData)
 {
     FILE* f = fopen(filePath, "r");
@@ -60,7 +59,6 @@ void loadConfig(const char* filePath, config_data &configData)
         fclose(f);
     }
 }
-
 
 static void InitPointGenerator(point_generator& pointGenerator, GeneratorType type, int numberOfPoints)
 {
@@ -203,6 +201,7 @@ static GENERATOR_FUNCTION(Generate)
         }
         break;
     }
+    return nullptr;
 }
 
 

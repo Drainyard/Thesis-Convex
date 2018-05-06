@@ -186,3 +186,20 @@ QuickHull, 100, 32, 55, 28, 142, 18, 0.009980, In Sphere
 QuickHull, 81, 32, 55, 23, 145, 18, 0.008656, In Sphere
 QuickHull, 95, 32, 55, 27, 132, 18, 0.007813, In Sphere
 QuickHull, 92, 32, 55, 24, 127, 18, 0.009698, In Sphere
+QuickHull, 13162, 1734, 120000, 2518, 318441, 869, 4.118737, In Sphere
+QuickHull, 13162, 1734, 120000, 2518, 318441, 869, 0.062857, In Sphere
+QuickHull, 13162, 1734, 120000, 2518, 318441, 869, 0.067255, In Sphere
+QuickHull, 6937, 2396, 1200, 1200, 7669, 1200, 0.007608, On Sphere
+QuickHull, 72158, 23996, 12000, 12000, 87643, 12000, 0.315247, On Sphere
+QuickHull, 72863, 24000, 12000, 12004, 95607, 11998, 0.315730, On Normalized Sphere
+QuickHull, 72063, 23996, 12000, 12002, 94942, 11996, 0.319139, On Normalized Sphere
+QuickHull, 3273, 544, 12000, 635, 30491, 274, 0.035512, In Sphere
+QuickHull, 3170, 546, 12000, 623, 30607, 275, 0.033703, In Sphere
+QuickHull, 3635, 572, 12000, 705, 32364, 288, 0.037925, In Sphere
+QuickHull, 3323, 588, 12000, 643, 29033, 296, 0.034677, In Sphere
+QuickHull, 21, 14, 12, 9, 19, 9, 0.000092, In Sphere
+QuickHull, 24, 12, 12, 9, 22, 8, 0.000100, In Sphere
+QuickHull, 734, 172, 1200, 151, 2943, 88, 0.004428, In Sphere
+QuickHull, 811, 164, 1200, 162, 3144, 84, 0.004902, In Sphere
+QuickHull, 820, 172, 1200, 168, 3243, 88, 0.005195, In Sphere
+QuickHull, 897, 172, 1200, 177, 3304, 88, 0.005337, In Sphere

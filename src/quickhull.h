@@ -99,8 +99,6 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f,
     auto& v1 = vertices[v1Handle];
     auto& v2 = vertices[v2Handle];
     
-    log("Find neighbours\n");
-    
     for(int v1FaceIndex = 0; v1FaceIndex < v1.numFaceHandles; v1FaceIndex++)
     {
         auto v1Face = v1.faceHandles[v1FaceIndex];
@@ -280,7 +278,6 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
         {
             if(neighbourFace.neighbours[i].faceHandle == f.indexInHull)
             {
-                log("Removing\n");
                 // Found the neighbour
                 neighbourFace.neighbours[i] = neighbourFace.neighbours[neighbourFace.neighbourCount - 1];
                 neighbourFace.neighbourCount--;
@@ -314,15 +311,10 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
         }
     }
     
-    log("before faces: %d\n", v1.numFaceHandles);
-    log("before faces: %d\n", v2.numFaceHandles);
-    log("before faces: %d\n", v3.numFaceHandles);
-    
     for(int fIndex = 0; fIndex < v1.numFaceHandles; fIndex++)
     {
         if(v1.faceHandles[fIndex] == indexInHull)
         {
-            log("Removing facehandle for v1\n");
             v1.faceHandles[fIndex] = v1.faceHandles[v1.numFaceHandles - 1];
             v1.numFaceHandles--;
             break;
@@ -338,7 +330,6 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     {
         if(v2.faceHandles[fIndex] == indexInHull)
         {
-            log("Removing facehandle for v2\n");
             v2.faceHandles[fIndex] = v2.faceHandles[v2.numFaceHandles - 1];
             v2.numFaceHandles--;
             break;
@@ -354,7 +345,6 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     {
         if(v3.faceHandles[fIndex] == indexInHull)
         {
-            log("Removing facehandle for v3\n");
             v3.faceHandles[fIndex] = v3.faceHandles[v3.numFaceHandles - 1];
             v3.numFaceHandles--;
             break;
@@ -365,10 +355,6 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     {
         qHull.processingState.verticesInHull--;
     }
-    
-    log("faces: %d\n", v1.numFaceHandles);
-    log("faces: %d\n", v2.numFaceHandles);
-    log("faces: %d\n", v3.numFaceHandles);
     
     auto& v1new = vertices[newFace.vertices[0]];
     for(int fIndex = 0; fIndex < v1new.numFaceHandles; fIndex++)
@@ -674,7 +660,6 @@ bool qhHorizonValid(std::vector<edge>& horizon)
             if(currentEdge.end == cpyH[i].origin)
             {
                 foundEdge = true;
-                log("%d %d -> %d %d ->", currentEdge.origin, currentEdge.end, cpyH[i].origin, cpyH[i].end);
                 currentIndex = (int)i;
                 currentEdge = cpyH[currentIndex];
                 break;
@@ -683,7 +668,6 @@ bool qhHorizonValid(std::vector<edge>& horizon)
         
         if(!foundEdge)
         {
-            log("\n");
             return false;
         }
         
@@ -691,16 +675,7 @@ bool qhHorizonValid(std::vector<edge>& horizon)
         
         foundEdge = false;
     }
-    log("\n");
     return true;
-}
-
-void qhPrintHorizon(std::vector<edge>& list)
-{
-    for(size_t i = 0; i < list.size(); i++)
-    {
-        log("Edge: origin %d end %d\n", list[i].origin, list[i].end);
-    }
 }
 
 void qhFindConvexHorizon(qh_vertex& viewPoint, std::vector<int>& faces, qh_hull& qHull, std::vector<edge>& list, coord_t epsilon)
@@ -835,18 +810,14 @@ void qhHorizonStep(qh_hull& qHull, qh_vertex* vertices, qh_face& f, std::vector<
         }
     }
     
-    log("V size: %zd\n", v.size());
     *prevIterationFaces = (int)qHull.faces.size();
     
     horizon.clear();
     qhFindConvexHorizon(p, v, qHull, horizon, epsilon);
-    qhPrintHorizon(horizon);
 }
 
 void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStack, int fHandle, std::vector<int>& v, int prevIterationFaces, int numVertices, coord_t epsilon, std::vector<edge>& horizon)
 {
-    log("Horizon: %zd\n", horizon.size());
-    
     for(const auto& e : horizon)
     {
         auto f = qHull.faces[fHandle];
@@ -857,7 +828,6 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
         {
             if(IsPointOnPositiveSide(*newF, f.centerPoint, epsilon))
             {
-                log("Reversing normals\n");
                 auto t = newF->vertices[0];
                 newF->vertices[0] = newF->vertices[1];
                 newF->vertices[1] = t;
@@ -937,13 +907,8 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
         }
     }
     
-    //log("Faces before: %d\n", m.numFaces);
-    log("Faces before: %zu\n", qHull.faces.size());
-    
     for(size_t vIndex = 0; vIndex < uniqueInV.size(); vIndex++)
     {
-        log("Removing face: %d\n", uniqueInV[vIndex]);
-        
         auto movedHandle = qHull.faces.size() - 1;//m.numFaces - 1;
         
         auto newHandle = qhRemoveFace(qHull, uniqueInV[vIndex], vertices);
@@ -981,8 +946,6 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
             }
         }
     }
-    
-    log("Faces After: %zu\n", qHull.faces.size());
     
     for(int i = 0; i < (int)qHull.faces.size(); i++)
     {
@@ -1038,7 +1001,6 @@ qh_hull qhFullHull(qh_vertex* vertices, int numVertices)
         }
     }
     
-    //log_a(("Number of triangles: %d\n", m.numFaces);
     return qHull;
 }
 
@@ -1075,7 +1037,6 @@ void        qhStep(qh_context& context)
         {
             if(context.faceStack.size() > 0)
             {
-                log("Finding next iteration\n");
                 context.currentFace = qhFindNextIteration(context.qHull, context.faceStack);
                 if(context.currentFace)
                 {
@@ -1088,7 +1049,6 @@ void        qhStep(qh_context& context)
         {
             if(context.currentFace)
             {
-                log("Finding horizon\n");
                 qhHorizonStep(context.qHull, context.vertices, *context.currentFace, context.v, &context.previousIteration, context.epsilon, context.horizon);
                 context.iter = QHIteration::doIter;
             }
@@ -1098,7 +1058,6 @@ void        qhStep(qh_context& context)
         {
             if(context.currentFace)
             {
-                log("Doing iteration\n");
                 qhIteration(context.qHull, context.vertices, context.faceStack, context.currentFace->indexInHull, context.v, context.previousIteration, context.numberOfPoints, context.epsilon, context.horizon);
                 context.iter = QHIteration::findNextIter;
                 context.v.clear();

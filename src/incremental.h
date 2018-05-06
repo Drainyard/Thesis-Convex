@@ -85,7 +85,6 @@ struct incVertex
     incVertex *next;
     incVertex *prev;
     incArcList arcs;
-    // std::vector<incArc> arcs;
 };
 
 struct incEdge
@@ -109,7 +108,6 @@ struct incFace
     bool isRemoved;
     incFace *next;
     incFace *prev;
-    // std::vector<incArc> arcs;
     incArcList arcs;
 };
 
@@ -170,18 +168,18 @@ void incRemoveFromHead(T *head, T *pointer)
 
 static void incCopyVertices(vertex *vertices, int numberOfPoints)
 {
-    // vertex *shuffledVertices = (vertex *)malloc(sizeof(vertex) * numberOfPoints);
-    // memcpy(shuffledVertices, vertices, sizeof(vertex) * numberOfPoints);
-    // vertex temp;
-    // int i, j;
-    // //Fisher Yates shuffle
-    // for (i = numberOfPoints - 1; i > 0; i--)
-    // {
-    //     j = rand() % (i + 1);
-    //     temp = shuffledVertices[j];
-    //     shuffledVertices[j] = shuffledVertices[i];
-    //     shuffledVertices[i] = temp;
-    // }
+    vertex *shuffledVertices = (vertex *)malloc(sizeof(vertex) * numberOfPoints);
+    memcpy(shuffledVertices, vertices, sizeof(vertex) * numberOfPoints);
+    vertex temp;
+    int i, j;
+    //Fisher Yates shuffle
+    for (i = numberOfPoints - 1; i > 0; i--)
+    {
+        j = rand() % (i + 1);
+        temp = shuffledVertices[j];
+        shuffledVertices[j] = shuffledVertices[i];
+        shuffledVertices[i] = temp;
+    }
     
     incVertex *v;
     for (int i = 0; i < numberOfPoints; i++)
@@ -197,7 +195,7 @@ static void incCopyVertices(vertex *vertices, int numberOfPoints)
         v->arcs = {};
         incAddToHead(&incVertices, v);
     }
-    //free(shuffledVertices);
+    free(shuffledVertices);
 }
 
 incEdge *incCreateNullEdge()
@@ -541,13 +539,6 @@ std::pair<std::vector<incFace *>, std::vector<incEdge *>> incAddToHull(incVertex
     std::vector<incArc> vConflicts;
     std::copy(v->arcs.begin(), v->arcs.end(), std::back_inserter(vConflicts));
     
-    printf("Arc\n");
-    for(incArc arc : v->arcs)
-    {
-        printf("%zd\n", arc.indexInEndpoint);
-        printf("%p\n", (void*)arc.faceEndpoint);
-    }
-
     for (incArc &arc : vConflicts)
     {
         arc.faceEndpoint->isVisible = visible = true;
@@ -563,6 +554,7 @@ std::pair<std::vector<incFace *>, std::vector<incEdge *>> incAddToHull(incVertex
         std::pair<std::vector<incFace *>, std::vector<incEdge *>> cleaningBundle(facesToRemove, horizonEdges);
         return cleaningBundle;
     }
+    
     incEdge *e;
     for (incArc arc : vConflicts)
     {
@@ -733,7 +725,6 @@ void incConstructFullHull()
     incVertex *nextVertex;
     do
     {
-        printf("Iter\n");   
         nextVertex = v->next;
         if (!v->isProcessed)
         {
@@ -758,15 +749,58 @@ void incHullStep()
     nextVertex = currentStepVertex->next;
     if (!currentStepVertex->isProcessed)
     {
+        auto timerOne = startTimer();
         std::pair<std::vector<incFace *>, std::vector<incEdge *>> cleaningBundle = incAddToHull(currentStepVertex);
+        TIME_END(timerOne, "Add to hull");
         currentStepVertex->isProcessed = true;
+        auto timerTwo = startTimer();
         incCleanStuff(cleaningBundle);
+        TIME_END(timerTwo, "Clean stuff");
     }
     currentStepVertex = nextVertex;
 }
 
 void incInitializeContext(inc_context &incContext, vertex *vertices, int numberOfPoints)
 {
+    if(incVertices)
+    {
+        auto v = incVertices;
+        
+        do
+        {
+            auto toRemove = v;
+            v = v->prev;
+            incRemoveFromHead(&incVertices, &toRemove);
+        }
+        while(v != incVertices);
+        
+        auto f = incFaces;
+        
+        do
+        {
+            auto toRemove = f;
+            f = f->prev;
+            incRemoveFromHead(&incFaces, &toRemove);
+        }
+        while(f != incFaces);
+        
+        auto e = incEdges;
+        do
+        {
+            auto toRemove = e;
+            e = e->prev;
+            incRemoveFromHead(&incEdges, &toRemove);
+        }
+        while(e != incEdges);
+        
+        free(incVertices);
+        free(incFaces);
+        free(incEdges);
+        incVertices = nullptr;
+        incFaces = nullptr;
+        incEdges = nullptr;
+    }
+    
     if (incContext.vertices)
     {
         free(incContext.vertices);
