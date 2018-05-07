@@ -35,8 +35,8 @@ struct hull
     timer incTimer;
 
     dac_context dacContext;
-    //dac_context stepDacContext;
-    //dac_context timedStepDacContext;
+    dac_context stepDacContext;
+    dac_context timedStepDacContext;
 
     timer dacTimer;
 
@@ -136,8 +136,6 @@ static void InitializeHull(hull &h, vertex *vertices, int numberOfPoints, HullTy
 
     h.incContext.initialized = false;
     h.incContext = {};
-    //h.stepIncContext.initialized = false;
-    //h.timedStepIncContext.initialized = false;
 
     h.dacContext.initialized = false;
     h.dacContext = {};
@@ -155,8 +153,6 @@ static void ReinitializeHull(hull &h, vertex *vertices, int numberOfPoints)
     h.timedStepQhContext.initialized = false;
 
     h.incContext.initialized = false;
-    h.stepIncContext.initialized = false;
-    h.timedStepIncContext.initialized = false;
 }
 
 static mesh *UpdateHull(render_context &renderContext, hull &h, HullType hullType, double deltaTime)
@@ -209,6 +205,12 @@ static mesh *UpdateHull(render_context &renderContext, hull &h, HullType hullTyp
                 h.incTimer.currentTime -= deltaTime;
             }
         }
+    }
+    break;
+    case Dac:
+    {
+        auto &dacContext = h.timedStepDacContext;
+        return &dacConvertToMesh(dacContext, renderContext);
     }
     break;
     }
@@ -301,6 +303,12 @@ static mesh &StepHull(render_context &renderContext, hull &h)
         return incConvertToMesh(incContext, renderContext);
     }
     break;
+    case Dac:
+    {
+        auto &dacContext = h.stepDacContext;
+        return dacConvertToMesh(dacContext, renderContext);
+    }
+    break;
     }
 }
 
@@ -330,6 +338,12 @@ static mesh &TimedStepHull(render_context &renderContext, hull &h)
 
         h.incTimer.running = !h.incTimer.running;
         return incConvertToMesh(incContext, renderContext);
+    }
+    break;
+    case Dac:
+    {
+        auto &dacContext = h.timedStepDacContext;
+        return dacConvertToMesh(dacContext, renderContext);
     }
     break;
     }

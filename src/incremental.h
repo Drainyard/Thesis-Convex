@@ -1,13 +1,6 @@
 #ifndef INCREMENTAL_H
 #define INCREMENTAL_H
 
-enum class IHIteration
-{
-    initIH,
-    findNextIter,
-    doIter
-};
-
 /*
 
 Når vi skal fjerne en arc:
@@ -123,9 +116,7 @@ struct inc_context
     bool initialized;
     incVertex *vertices;
     int numberOfPoints;
-    IHIteration iter;
     mesh* m;
-    int previousIteration;
 };
 
 template <typename T>
@@ -808,8 +799,6 @@ void incInitializeContext(inc_context &incContext, vertex *vertices, int numberO
     
     incCopyVertices(vertices, numberOfPoints);
     incContext.numberOfPoints = numberOfPoints;
-    incContext.iter = IHIteration::initIH;
-    incContext.previousIteration = 0;
     incContext.initialized = true;
 }
 
