@@ -6,6 +6,7 @@
 #include <stack>
 #include <unordered_map>
 #include <unordered_set>
+#include <iostream>
 #include <cstdio>
 #include <cstdlib>
 #if defined(__linux)
@@ -57,6 +58,7 @@ static input_state inputState;
 
 #include "quickhull.h"
 #include "incremental.h"
+#include "divideconquer.h"
 
 #include "point_generator.h"
 #include "hull.h"
