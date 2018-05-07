@@ -14,38 +14,6 @@ struct shader
     int programID;
 };
 
-enum Buffer_Type
-{
-    BT_vertexBuffer,
-    BT_uvBuffer,
-    BT_colorBuffer,
-    BT_normalBuffer
-};
-
-struct gl_buffer
-{
-    Buffer_Type type;
-    GLfloat* data;
-    size_t size;
-    int count;
-    union
-    {
-        struct
-        {
-        } vbo;
-        struct
-        {
-            texture tex;
-        } uv;
-        struct
-        {
-        } color;
-        struct
-        {
-        } normal;
-    };
-};
-
 struct light
 {
     glm::vec3 position;

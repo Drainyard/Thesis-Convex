@@ -30,7 +30,7 @@ static void SetFloatUniform(GLuint programID, const char* name, float value)
     glUniform1f(glGetUniformLocation(programID, name), value);
 }
 
-static vertex* LoadObj(const char* filePath)
+static vertex* LoadObj(const char* filePath, float scale = 1.0f)
 {
     vertex* vertices = nullptr;
     auto file = fopen(filePath, "r");
@@ -59,7 +59,7 @@ static vertex* LoadObj(const char* filePath)
             {
                 sscanf(buffer, "v %f %f %f", &vertices[i].position.x, &vertices[i].position.y, &vertices[i].position.z);
                 
-                vertices[i].position = vertices[i].position;
+                vertices[i].position = vertices[i].position * scale;
                 vertices[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
                 i++;
             }
@@ -560,7 +560,6 @@ static mesh& InitEmptyMesh(render_context& renderContext, int meshIndex = -1)
     {
         mesh& object = renderContext.meshes[renderContext.meshCount++];
         object.meshIndex = renderContext.meshCount - 1;
-        
         glGenVertexArrays(1, &object.VAO);
         glBindVertexArray(object.VAO);
         glGenBuffers(1, &object.VBO);
@@ -636,6 +635,7 @@ static void RenderPointCloud(render_context& renderContext, vertex* inputPoints,
     
     glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, numPoints);
     
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
     free(positions);
     free(colors);
@@ -661,6 +661,7 @@ static void RenderQuad(render_context& renderContext, glm::vec3 position = glm::
     
     
     glDrawElements(GL_TRIANGLES, sizeof(renderContext.quadIndices), GL_UNSIGNED_INT, (void*)0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
 
@@ -784,6 +785,7 @@ static void RenderMesh(render_context& renderContext, mesh& m)
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
     
     if(renderContext.renderNormals)

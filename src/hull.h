@@ -190,8 +190,9 @@ static mesh *UpdateHull(render_context &renderContext, hull &h, HullType hullTyp
                     {
                         incHullStep();
                     }
+                    auto &incContext = h.timedStepIncContext;
                     h.incTimer.currentTime = h.incTimer.timerInit;
-                    return &incConvertToMesh(renderContext);
+                    return &incConvertToMesh(incContext, renderContext);
                 }
                 else
                 {
@@ -236,7 +237,7 @@ static mesh &FullHull(render_context &renderContext, hull &h)
             auto timerIndex = startTimer();
             incConstructFullHull();
             TIME_END(timerIndex, "Full inc hull");
-            return incConvertToMesh(renderContext);
+            return incConvertToMesh(incContext, renderContext);
         }
         break;
     }
@@ -274,7 +275,7 @@ static mesh &StepHull(render_context &renderContext, hull &h)
             {
                 incHullStep();
             }
-            return incConvertToMesh(renderContext);
+            return incConvertToMesh(incContext, renderContext);
         }
         break;
     }
@@ -305,7 +306,7 @@ static mesh &TimedStepHull(render_context &renderContext, hull &h)
             }
             
             h.incTimer.running = !h.incTimer.running;
-            return incConvertToMesh(renderContext);
+            return incConvertToMesh(incContext, renderContext);
         }
         break;
     }

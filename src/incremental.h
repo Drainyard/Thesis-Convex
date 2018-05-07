@@ -124,7 +124,7 @@ struct inc_context
     incVertex *vertices;
     int numberOfPoints;
     IHIteration iter;
-    mesh m;
+    mesh* m;
     int previousIteration;
 };
 
@@ -659,12 +659,16 @@ void incCleanStuff(std::pair<std::vector<incFace *>, std::vector<incEdge *>> &cl
     //    TIME_END(timerCleanEdgesAndFaces, "incCleanEdgesAndFaces");
 }
 
-mesh &incConvertToMesh(render_context &renderContext)
+mesh &incConvertToMesh(inc_context &context, render_context &renderContext)
 {
-    auto &m = InitEmptyMesh(renderContext);
-    m.position = glm::vec3(0.0f);
-    m.scale = glm::vec3(globalScale);
-    m.dirty = true;
+    if(!context.m)
+    {
+        context.m = &InitEmptyMesh(renderContext);
+    }
+    
+    context.m->position = glm::vec3(0.0f);
+    context.m->scale = glm::vec3(globalScale);
+    context.m->dirty = true;
     
     incFace *f = incFaces;
     if (f)
@@ -683,13 +687,13 @@ mesh &incConvertToMesh(render_context &renderContext)
             newFace.faceColor.w = 0.5f;
             newFace.faceNormal = f->normal;
             newFace.centerPoint = f->centerPoint;
-            m.faces.push_back(newFace);
+            context.m->faces.push_back(newFace);
             
             f = f->next;
         } while (f != incFaces);
     }
     
-    return m;
+    return *context.m;
 }
 
 void incInitConflictLists()
@@ -792,12 +796,9 @@ void incInitializeContext(inc_context &incContext, vertex *vertices, int numberO
             incRemoveFromHead(&incEdges, &toRemove);
         } while (e != incEdges);
         
-        free(incVertices);
-        free(incFaces);
-        free(incEdges);
-        incVertices = nullptr;
-        incFaces = nullptr;
-        incEdges = nullptr;
+        incRemoveFromHead(&incVertices, &incVertices);
+        incRemoveFromHead(&incEdges, &incEdges);
+        incRemoveFromHead(&incFaces, &incFaces);
     }
     
     if (incContext.vertices)

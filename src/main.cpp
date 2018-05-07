@@ -105,6 +105,7 @@ int main()
     //int numberOfPoints = 645932; // Man in vest numbers
     //int numberOfPoints = 17536; // Arnold
     //int numberOfPoints = 27948;
+    //int numberOfPoints = 3057;
     int numberOfPoints = configData.numberOfPoints;
     
     hull h;
@@ -129,9 +130,10 @@ int main()
     InitPointGenerator(h.pointGenerator, configData.genType, numberOfPoints);
     
     auto vertices = Generate(h.pointGenerator, renderContext, 0.0f, 200.0f);
-    //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ");
+    //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ", 200.0f);
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
     //auto vertices = LoadObj("../assets/obj/CarpetBit.obj");
+    //auto vertices = LoadObj("../assets/obj/globaglwhat.obj");
     
     InitializeHull(h, vertices, h.pointGenerator.numberOfPoints, hullType);
     
@@ -195,7 +197,7 @@ int main()
             timedHull = nullptr;
             stepHull = nullptr;
         }
-
+        
         if(KeyDown(Key_C))
         {
             ReinitializeHull(h, vertices, h.pointGenerator.numberOfPoints);

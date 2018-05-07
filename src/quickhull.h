@@ -242,9 +242,6 @@ static qh_face* qhAddFace(qh_hull& q, int v1Handle, int v2Handle, int v3Handle, 
         q.processingState.verticesInHull++;
     }
     
-    //v1.faceHandles[v1.numFaceHandles++] = newFace.indexInHull;
-    //v2.faceHandles[v2.numFaceHandles++] = newFace.indexInHull;
-    //v3.faceHandles[v3.numFaceHandles++] = newFace.indexInHull;
     qhAddFaceHandle(v1.faceHandles, newFace.indexInHull);
     qhAddFaceHandle(v2.faceHandles, newFace.indexInHull);
     qhAddFaceHandle(v3.faceHandles, newFace.indexInHull);
@@ -277,27 +274,6 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     auto& v1 = vertices[f.vertices[0]];
     auto& v2 = vertices[f.vertices[1]];
     auto& v3 = vertices[f.vertices[2]];
-    
-#ifdef DEBUG
-    bool contained = false;
-    for(size_t i = 0; i < v1.faceHandles.size; i++)
-    {
-        contained |= v1.faceHandles[i] == f.indexInHull;
-    }
-    assert(contained);
-    contained = false;
-    for(size_t i = 0; i < v2.faceHandles.size; i++)
-    {
-        contained |= v2.faceHandles[i] == f.indexInHull;
-    }
-    assert(contained);
-    contained = false;
-    for(size_t i = 0; i < v3.faceHandles.size; i++)
-    {
-        contained |= v3.faceHandles[i] == f.indexInHull;
-    }
-    assert(contained);
-#endif
     
     // Go through all of f's neighbours to remove itself
     for(int n = 0; n < (int)f.neighbourCount; n++)
@@ -732,7 +708,6 @@ void qhFindConvexHorizon(qh_vertex& viewPoint, std::vector<int>& faces, qh_hull&
                 {
                     list.push_back(newEdge);
                 }
-                
             }
             else if(!neighbourFace.visited)
             {
@@ -873,12 +848,12 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
     
     for(const auto& handle : v)
     {
-        auto& fInV = qHull.faces[handle];
+        auto &fInV = qHull.faces[handle];
         
-        for(int osIndex = 0; osIndex < (int)fInV.outsideSet.size(); osIndex++)
+        for(size_t osIndex = 0; osIndex < fInV.outsideSet.size(); osIndex++)
         {
             auto osHandle = fInV.outsideSet[osIndex];
-            auto& q = vertices[osHandle];
+            auto &q = vertices[osHandle];
             q.assigned = false;
         }
     }
@@ -886,7 +861,7 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
     // The way we understand this, is that unassigned now means any point that was
     // assigned in the first round, but is part of a face that is about to be
     // removed. Thus about to be unassigned.
-    for(int newFaceIndex = prevIterationFaces; newFaceIndex < (int)qHull.faces.size(); newFaceIndex++)
+    for(size_t newFaceIndex = prevIterationFaces; newFaceIndex < qHull.faces.size(); newFaceIndex++)
     {
         if(qHull.faces[newFaceIndex].outsideSet.size() > 0)
             continue;
@@ -898,7 +873,7 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
         for(const auto& handle : v)
         {
             auto& fInV = qHull.faces[handle];
-            for(int osIndex = 0; osIndex < (int)fInV.outsideSet.size(); osIndex++)
+            for(size_t osIndex = 0; osIndex < fInV.outsideSet.size(); osIndex++)
             {
                 auto osHandle = fInV.outsideSet[osIndex];
                 auto& q = vertices[osHandle];
@@ -912,13 +887,11 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
                         newFace.furthestPointIndex = q.vertexIndex;
                     }
                     
-                    assert((int)newFace.outsideSet.size() <= numVertices);
                     qhAddToOutsideSet(newFace, q);
                 }
             }
         }
     }
-    
     
     std::vector<int> uniqueInV;
     uniqueInV.reserve(v.size());
@@ -942,7 +915,7 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
     
     for(size_t vIndex = 0; vIndex < uniqueInV.size(); vIndex++)
     {
-        auto movedHandle = qHull.faces.size() - 1;//m.numFaces - 1;
+        auto movedHandle = qHull.faces.size() - 1;
         
         auto newHandle = qhRemoveFace(qHull, uniqueInV[vIndex], vertices);
         if(newHandle == -1)
@@ -1060,7 +1033,7 @@ void qhInitializeContext(qh_context& qhContext, vertex* vertices, int numberOfPo
     qhContext.initialized = true;
 }
 
-void        qhStep(qh_context& context)
+void qhStep(qh_context& context)
 {
     switch(context.iter)
     {

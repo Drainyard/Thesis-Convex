@@ -1,8 +1,6 @@
 #ifndef POINT_GENERATOR_H
 #define POINT_GENERATOR_H
 
-#include <random>
-
 struct point_generator;
 
 #define GENERATOR_FUNCTION(name) vertex* name(point_generator& pointGenerator, render_context& renderContext, coord_t min, coord_t max)
