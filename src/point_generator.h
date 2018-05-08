@@ -58,13 +58,13 @@ void loadConfig(const char* filePath, config_data &configData)
     }
 }
 
-static void InitPointGenerator(point_generator& pointGenerator, GeneratorType type, int numberOfPoints)
+static void initPointGenerator(point_generator& pointGenerator, GeneratorType type, int numberOfPoints)
 {
     pointGenerator.type = type;
     pointGenerator.numberOfPoints = numberOfPoints;
 }
 
-static GENERATOR_FUNCTION(GeneratePoints)
+static GENERATOR_FUNCTION(generatePoints)
 {
     auto res = (vertex*)malloc(sizeof(vertex) * pointGenerator.numberOfPoints);
     for(int i = 0; i < pointGenerator.numberOfPoints; i++)
@@ -79,7 +79,7 @@ static GENERATOR_FUNCTION(GeneratePoints)
     return res;
 }
 
-static GENERATOR_FUNCTION(GeneratePointsOnSphere)
+static GENERATOR_FUNCTION(generatePointsOnSphere)
 {
     UNUSED(min);
     auto radius = max / 2.0f;
@@ -98,7 +98,7 @@ static GENERATOR_FUNCTION(GeneratePointsOnSphere)
     return res;
 }
 
-static GENERATOR_FUNCTION(GeneratePointsInSphere)
+static GENERATOR_FUNCTION(generatePointsInSphere)
 {
     auto res = (vertex*)malloc(sizeof(vertex) * pointGenerator.numberOfPoints);
     for(int i = 0; i < pointGenerator.numberOfPoints; i++) 
@@ -117,7 +117,7 @@ static GENERATOR_FUNCTION(GeneratePointsInSphere)
     return res;
 }
 
-GENERATOR_FUNCTION(GeneratePointsOnNormalizedSphere)
+GENERATOR_FUNCTION(generatePointsOnNormalizedSphere)
 {
     auto res = (vertex*)malloc(sizeof(vertex) * pointGenerator.numberOfPoints);
     for(int i = 0; i < pointGenerator.numberOfPoints; i++)
@@ -132,7 +132,7 @@ GENERATOR_FUNCTION(GeneratePointsOnNormalizedSphere)
     return res;
 }
 
-GENERATOR_FUNCTION(GeneratePointsManyInternal)
+GENERATOR_FUNCTION(generatePointsManyInternal)
 {
     auto res = (vertex*)malloc(sizeof(vertex) * pointGenerator.numberOfPoints);
     
@@ -169,33 +169,33 @@ GENERATOR_FUNCTION(GeneratePointsManyInternal)
     return res;
 }
 
-static GENERATOR_FUNCTION(Generate)
+static GENERATOR_FUNCTION(generate)
 {
     switch(pointGenerator.type)
     {
         case GeneratorType::InSphere:
         {
-            return GeneratePointsInSphere(pointGenerator, renderContext, min, max);
+            return generatePointsInSphere(pointGenerator, renderContext, min, max);
         }
         break;
         case GeneratorType::OnSphere:
         {
-            return GeneratePointsOnSphere(pointGenerator, renderContext, min, max);
+            return generatePointsOnSphere(pointGenerator, renderContext, min, max);
         }
         break;
         case GeneratorType::InCube:
         {
-            return GeneratePoints(pointGenerator, renderContext, min, max);
+            return generatePoints(pointGenerator, renderContext, min, max);
         }
         break;
         case GeneratorType::NormalizedSphere:
         {
-            return GeneratePointsOnNormalizedSphere(pointGenerator, renderContext, min, max);
+            return generatePointsOnNormalizedSphere(pointGenerator, renderContext, min, max);
         }
         break;
         case GeneratorType::ManyInternal:
         {
-            return GeneratePointsManyInternal(pointGenerator, renderContext, min, max);
+            return generatePointsManyInternal(pointGenerator, renderContext, min, max);
         }
         break;
     }

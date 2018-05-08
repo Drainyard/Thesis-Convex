@@ -58,18 +58,41 @@ static input_state inputState;
 
 #include "quickhull.h"
 #include "incremental.h"
-#include "divideconquer.h"
+//#include "divideconquer.h"
 
 #include "point_generator.h"
 #include "hull.h"
 
+void reinitPoints(vertex **vertices, config_data &configData, hull &h, render_context &renderContext)
+{
+    if(*vertices)
+    {
+        free(*vertices);
+    }
+    
+    loadConfig("../.config", configData);
+    
+    initPointGenerator(h.pointGenerator, configData.genType, configData.numberOfPoints);
+    *vertices = generate(h.pointGenerator, renderContext, 0.0f, 200.0f);
+}
+
+void reinitHull(vertex *vertices, config_data &configData, hull &h, vertex **currentVertices, mesh **currentMesh, mesh **fullHull, mesh **timedHull, mesh **stepHull)
+{
+    reinitializeHull(h, vertices, h.pointGenerator.numberOfPoints);
+    
+    *currentVertices = vertices;
+    *currentMesh = nullptr;
+    *fullHull = nullptr;
+    *timedHull = nullptr;
+    *stepHull = nullptr;
+}
 
 int main()
 {
     // Degenerate: 1520515408
     //auto seed = 1521294278;
     auto seed = time(NULL);
-    //seed = 1524827039;
+    //seed = 1525801902;
     srand((unsigned int)seed);
     printf("Seed: %zd\n", seed);
     render_context renderContext = {};
@@ -129,9 +152,9 @@ int main()
     gen.seed(seed);
     h.pointGenerator.gen = gen;
     
-    InitPointGenerator(h.pointGenerator, configData.genType, numberOfPoints);
+    initPointGenerator(h.pointGenerator, configData.genType, numberOfPoints);
     
-    auto vertices = Generate(h.pointGenerator, renderContext, 0.0f, 200.0f);
+    auto vertices = generate(h.pointGenerator, renderContext, 0.0f, 200.0f);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ", 200.0f);
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
     //auto vertices = LoadObj("../assets/obj/CarpetBit.obj");
@@ -182,31 +205,13 @@ int main()
         
         if(KeyDown(Key_Y))
         {
-            if(vertices)
-            {
-                free(vertices);
-            }
-            
-            loadConfig("../.config", configData);
-            
-            InitPointGenerator(h.pointGenerator, configData.genType, configData.numberOfPoints);
-            vertices = Generate(h.pointGenerator, renderContext, 0.0f, 200.0f);
-            ReinitializeHull(h, vertices, h.pointGenerator.numberOfPoints);
-            
-            currentVertices = vertices;
-            currentMesh = nullptr;
-            fullHull = nullptr;
-            timedHull = nullptr;
-            stepHull = nullptr;
+            reinitPoints(&vertices, configData, h, renderContext);
+            reinitHull(vertices, configData, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
         }
         
         if(KeyDown(Key_C))
         {
-            ReinitializeHull(h, vertices, h.pointGenerator.numberOfPoints);
-            currentMesh = nullptr;
-            fullHull = nullptr;
-            timedHull = nullptr;
-            stepHull = nullptr;
+            reinitHull(vertices, configData, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
         }
         
         if(KeyDown(Key_H))

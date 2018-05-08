@@ -26,6 +26,10 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
+build/main.exe
+build/main.obj
+build/main.pdb
+
 ### C++ ###
 # Prerequisites
 

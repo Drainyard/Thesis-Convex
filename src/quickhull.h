@@ -106,6 +106,10 @@ static void qhAddFaceHandle(qh_int_list &list, int handle)
     {
         list.capacity *= 2;
         list.list = (int *)realloc(list.list, sizeof(int) * list.capacity);
+        for(size_t i = list.size; i < list.capacity; i++)
+        {
+            list.list[i] = 0;
+        }
     }
     
     list.list[list.size++] = handle;
@@ -140,9 +144,12 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f,
         
         auto& fe = q.faces[v1Face];
         
-        for(int n = 0; n < (int)fe.neighbourCount; n++)
+        for(int n = 0; n < fe.neighbourCount; n++)
         {
             auto& neigh = fe.neighbours[n];
+            if(neigh.faceHandle >= (int)q.faces.size())
+                continue;
+            
             auto& neighbour = q.faces[neigh.faceHandle];
             if(neighbour.indexInHull == f.indexInHull)
             {
@@ -166,6 +173,7 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f,
                 auto index = f.neighbourCount++;
                 
                 f.neighbours[index].faceHandle = v1Face;
+                
                 f.neighbours[index].originVertex = v1.vertexIndex;
                 f.neighbours[index].endVertex = v2.vertexIndex;
                 
@@ -179,8 +187,8 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f,
                 
                 // Can we have 3+ neighbours while we're constructing?
                 // Meaning: Can we temporarily have malformed triangles?
-                //assert(neighbour.neighbourCount <= 3);
-                //assert(f.neighbourCount <= 3);
+                //assert(foundNeighbour.neighbourCount <= 6);
+                //assert(f.neighbourCount <= 6);
             }
         }
     }
@@ -264,7 +272,7 @@ static qh_face* qhAddFace(qh_hull& q, int v1Handle, int v2Handle, int v3Handle, 
 // Returns index of moved mesh
 static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
 {
-    if(qHull.faces.size() == 0)
+    if(qHull.faces.size() == 0 || faceId < 0)
     {
         return -1;
     }
@@ -276,20 +284,22 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     auto& v3 = vertices[f.vertices[2]];
     
     // Go through all of f's neighbours to remove itself
-    for(int n = 0; n < (int)f.neighbourCount; n++)
+    for(int n = 0; n < f.neighbourCount; n++)
     {
         // Get the neighbour of f and corresponding face
         auto& neighbour = f.neighbours[n];
         auto& neighbourFace = qHull.faces[neighbour.faceHandle];
         
         // go through the neighbours of the neighbour to find f
-        for(int i = 0; i < (int)neighbourFace.neighbourCount; i++)
+        for(int i = 0; i < neighbourFace.neighbourCount; i++)
         {
             if(neighbourFace.neighbours[i].faceHandle == f.indexInHull)
             {
                 // Found the neighbour
                 neighbourFace.neighbours[i] = neighbourFace.neighbours[neighbourFace.neighbourCount - 1];
-                neighbourFace.neighbourCount--;
+                auto before = neighbourFace.neighbourCount;
+                neighbourFace.neighbourCount = neighbourFace.neighbourCount - 1;
+                assert(before > neighbourFace.neighbourCount);
                 break;
             }
         }
@@ -304,12 +314,12 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     
     auto& newFace = qHull.faces[indexInHull];
     
-    for(int neighbourIndex = 0; neighbourIndex < (int)newFace.neighbourCount; neighbourIndex++)
+    for(int neighbourIndex = 0; neighbourIndex < newFace.neighbourCount; neighbourIndex++)
     {
         auto& neighbour = newFace.neighbours[neighbourIndex];
         auto& neighbourFace = qHull.faces[neighbour.faceHandle];
         
-        for(int n = 0; n < (int)neighbourFace.neighbourCount; n++)
+        for(int n = 0; n < neighbourFace.neighbourCount; n++)
         {
             if(neighbourFace.neighbours[n].faceHandle == newFace.indexInHull)
             {
@@ -325,7 +335,7 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
         if(v1.faceHandles[fIndex] == indexInHull)
         {
             v1.faceHandles[fIndex] = v1.faceHandles[v1.faceHandles.size - 1];
-            v1.faceHandles.size--;
+            v1.faceHandles.size = v1.faceHandles.size - 1;
             break;
         }
     }
@@ -340,7 +350,7 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
         if(v2.faceHandles[fIndex] == indexInHull)
         {
             v2.faceHandles[fIndex] = v2.faceHandles[v2.faceHandles.size - 1];
-            v2.faceHandles.size--;
+            v2.faceHandles.size = v2.faceHandles.size - 1;
             break;
         }
     }
@@ -355,7 +365,7 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
         if(v3.faceHandles[fIndex] == indexInHull)
         {
             v3.faceHandles[fIndex] = v3.faceHandles[v3.faceHandles.size - 1];
-            v3.faceHandles.size--;
+            v3.faceHandles.size = v3.faceHandles.size - 1;
             break;
         }
     }
@@ -694,7 +704,7 @@ void qhFindConvexHorizon(qh_vertex& viewPoint, std::vector<int>& faces, qh_hull&
     {
         auto& f = qHull.faces[possibleVisibleFaces[faceIndex]];
         
-        for(int neighbourIndex = 0; neighbourIndex < (int)f.neighbourCount; neighbourIndex++)
+        for(int neighbourIndex = 0; neighbourIndex < f.neighbourCount; neighbourIndex++)
         {
             auto& neighbour = f.neighbours[neighbourIndex];
             auto& neighbourFace = qHull.faces[neighbour.faceHandle];
@@ -747,9 +757,14 @@ mesh& qhConvertToMesh(render_context& renderContext, qh_hull& qHull, vertex* ver
     return *qHull.m;
 }
 
-qh_hull qhInit(qh_vertex* vertices, int numVertices, std::vector<int>& faceStack, coord_t* epsilon)
+qh_hull qhInit(qh_vertex* vertices, int numVertices, std::vector<int>& faceStack, coord_t* epsilon, qh_hull *oldHull = nullptr)
 {
     qh_hull qHull = {};
+    
+    if(oldHull)
+    {
+        qHull.m = oldHull->m;
+    }
     
     qHull.processingState.addedFaces = 0;
     qHull.processingState.pointsProcessed = 4;
@@ -806,7 +821,7 @@ void qhHorizonStep(qh_hull& qHull, qh_vertex* vertices, qh_face& f, std::vector<
         
         fa.visitedV = true;
         
-        for(int neighbourIndex = 0; neighbourIndex < (int)fa.neighbourCount; neighbourIndex++)
+        for(int neighbourIndex = 0; neighbourIndex < fa.neighbourCount; neighbourIndex++)
         {
             auto& neighbour = qHull.faces[fa.neighbours[neighbourIndex].faceHandle];
             
@@ -965,7 +980,8 @@ void qhFullHull(qh_context& qhContext)
     qhContext.currentFace = nullptr;
     qhContext.faceStack.clear();
     qhContext.epsilon = 0.0;
-    qhContext.qHull = qhInit(qhContext.vertices, qhContext.numberOfPoints, qhContext.faceStack, &qhContext.epsilon);
+    qhContext.qHull = qhInit(qhContext.vertices, qhContext.numberOfPoints, qhContext.faceStack, &qhContext.epsilon, &qhContext.qHull);
+    
     qhContext.v.clear();
     qhContext.previousIteration = 0;
     while(qhContext.faceStack.size() > 0)
