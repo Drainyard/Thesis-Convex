@@ -34,11 +34,11 @@ struct hull
     
     timer incTimer;
     
-    //dac_context dacContext;
-    //dac_context stepDacContext;
-    //dac_context timedStepDacContext;
+    dac_context dacContext;
+    dac_context stepDacContext;
+    dac_context timedStepDacContext;
     
-    //timer dacTimer;
+    timer dacTimer;
     
     HullType currentHullType;
     
@@ -254,7 +254,7 @@ static mesh &FullHull(render_context &renderContext, hull &h)
             return incConvertToMesh(incContext, renderContext);
         }
         break;
-        /*case Dac:
+        case Dac:
         {
             auto &dacContext = h.dacContext;
             if (!dacContext.initialized)
@@ -262,11 +262,11 @@ static mesh &FullHull(render_context &renderContext, hull &h)
                 dacInitializeContext(dacContext, h.vertices, h.numberOfPoints);
             }
             auto timerIndex = startTimer();
-            dacConstructFullHull();
+            dacConstructFullHull(dacContext);
             TIME_END(timerIndex, "Full dac hull");
             return dacConvertToMesh(dacContext, renderContext);
         }
-        break;*/
+        break;
         default:
         break;
     }

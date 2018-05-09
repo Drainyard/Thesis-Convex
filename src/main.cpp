@@ -58,7 +58,7 @@ static input_state inputState;
 
 #include "quickhull.h"
 #include "incremental.h"
-//#include "divideconquer.h"
+#include "divideconquer.h"
 
 #include "point_generator.h"
 #include "hull.h"
@@ -143,6 +143,9 @@ int main()
     h.incContext = {};
     h.stepIncContext = {};
     h.timedStepIncContext = {};
+    h.dacContext = {};
+    h.stepDacContext = {};
+    h.timedStepDacContext = {};
     h.incTimer = {};
     h.currentHullType = HullType::QH;
     auto previousHullType = h.currentHullType;
@@ -265,6 +268,12 @@ int main()
         {
             previousHullType = hullType;
             hullType = HullType::Inc;
+        }
+
+        if(KeyDown(Key_L))
+        {
+            previousHullType = hullType;
+            hullType = HullType::Dac;
         }
         
         if(currentMesh)
