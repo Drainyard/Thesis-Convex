@@ -100,7 +100,6 @@ dacFace *dacCreateFaceFromPoints(dacVertex *u, dacVertex *v, dacVertex *w)
     f->vertex[2] = w;
     f->normal = dacComputeFaceNormal(f);
     f->centerPoint = (u->vector + v->vector + w->vector) / 3.0f;
-    ;
 
     return f;
 }
@@ -113,28 +112,35 @@ static void dacCopyVertices(dac_context &dac, vertex *vertices, int numberOfPoin
         dac.vertices[i].vIndex = i;
         dac.vertices[i].vector = vertices[i].position;
     }
-    dac.vertices = sort(dac.vertices, numberOfPoints);
 }
 
-inline double turn(dacVertex *p, dacVertex *q, dacVertex *r)
-{ // <0 iff cw
+double orient(dacVertex *p, dacVertex *q, dacVertex *r)
+{ 
+    //orient(p,q,r)=det(1  p_x  p_y)
+    //                 (1  q_x  q_y)
+    //                 (1  r_x  r_y)
+
     if (p == NIL || q == NIL || r == NIL)
+    {
         return 1.0;
+    }
     return (q->vector.x - p->vector.x) * (r->vector.y - p->vector.y) - (r->vector.x - p->vector.x) * (q->vector.y - p->vector.y);
 }
 
-inline double time(dacVertex *p, dacVertex *q, dacVertex *r)
+double time(dacVertex *p, dacVertex *q, dacVertex *r)
 {
     if (p == NIL || q == NIL || r == NIL)
+    {
         return INF;
-    return ((q->vector.x - p->vector.x) * (r->vector.z - p->vector.z) - (r->vector.x - p->vector.x) * (q->vector.z - p->vector.z)) / turn(p, q, r);
+    }
+    return ((q->vector.x - p->vector.x) * (r->vector.z - p->vector.z) - (r->vector.x - p->vector.x) * (q->vector.z - p->vector.z)) / orient(p, q, r);
 }
 
 void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B)
-{ // main algorithm
+{ 
 
     dacVertex *u, *v, *mid;
-    double t[6], oldt, newt;
+    double t[6], oldTime, newTime;
     int i, j, k, l, minl;
 
     if (n == 1)
@@ -149,31 +155,49 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B)
     dacHull(list, n / 2, B, A); // recurse on left and right sides
     dacHull(mid, n - n / 2, B + n / 2 * 2, A + n / 2 * 2);
 
-    for (;;) // find initial bridge
-        if (turn(u, v, v->next) < 0)
+    // find initial bridge
+    for (;;) 
+    {
+        if (orient(u, v, v->next) < 0)
             v = v->next;
-        else if (turn(u->prev, u, v) < 0)
+        else if (orient(u->prev, u, v) < 0)
             u = u->prev;
         else
             break;
+    }
 
+    i = k = 0;
+    j = n / 2 * 2;
+    oldTime = -INF;
     // merge by tracking bridge uv over time
-    for (i = k = 0, j = n / 2 * 2, oldt = -INF;; oldt = newt)
+    // infinite loop until no insertion/deletion events occur
+    for (;; oldTime = newTime)
     {
+        //as time progresses, we keep track of the current hulls L and R and the current bridge uv,
+        //--> The movies for L and R tell us when and how L and R change
         t[0] = time(B[i]->prev, B[i], B[i]->next);
         t[1] = time(B[j]->prev, B[j], B[j]->next);
         t[2] = time(u, u->next, v);
         t[3] = time(u->prev, u, v);
         t[4] = time(u, v->prev, v);
         t[5] = time(u, v, v->next);
-        for (newt = INF, l = 0; l < 6; l++)
-            if (t[l] > oldt && t[l] < newt)
+
+        //we find the movie with the lowest t
+        newTime = INF;
+        for (l = 0; l < 6; l++)
+        {
+            if (t[l] > oldTime && t[l] < newTime)
             {
                 minl = l;
-                newt = t[l];
+                newTime = t[l];
             }
-        if (newt == INF)
+        }
+        //if newTime==INF, no insertion/deletion events occured, and we break for loop
+        if (newTime == INF)
+        {
             break;
+        }
+        //act on the smallest time value
         switch (minl)
         {
         case 0:
@@ -204,9 +228,13 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B)
     }
     A[k] = NIL;
 
+    //The bridge uv
     u->next = v;
-    v->prev = u; // now go back in time to update pointers
+    v->prev = u; 
+    
+    // now go back in time to update pointers
     for (k--; k >= 0; k--)
+    {
         if (A[k]->vector.x <= u->vector.x || A[k]->vector.x >= v->vector.x)
         {
             A[k]->act();
@@ -226,6 +254,7 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B)
             else
                 v = A[k];
         }
+    }
 }
 
 mesh &dacConvertToMesh(dac_context &context, render_context &renderContext)
@@ -269,22 +298,24 @@ void dacConstructFullHull(dac_context &dacContext)
     int i;
     int n = dacContext.numberOfPoints;
 
-    dacVertex *P = (dacVertex *)malloc(sizeof(dacVertex) * n);
-    memcpy(P, dacContext.vertices, sizeof(dacVertex) * n);
-
-    dacVertex *list = dacContext.vertices;
-    dacVertex **L = new dacVertex *[2 * n];
-    dacVertex **R = new dacVertex *[2 * n];
-    dacHull(list, n, L, R);
+    //dacVertex *P = (dacVertex *)malloc(sizeof(dacVertex) * n);
+    //memcpy(P, dacContext.vertices, sizeof(dacVertex) * n);
+    dacVertex *P = dacContext.vertices;
+    dacVertex *list = sort(dacContext.vertices, n);
+    dacVertex **A = new dacVertex *[2 * n];
+    //temporary storage
+    dacVertex **B = new dacVertex *[2 * n];
+    dacHull(list, n, A, B);
 
     //create faces
-    for (i = 0; L[i] != NIL; L[i++]->act())
+    for (i = 0; A[i] != NIL; A[i++]->act())
     {
-        dacContext.faces.push_back(dacCreateFaceFromPoints(L[i]->prev, L[i], L[i]->next));
+        dacFace *newFace = dacCreateFaceFromPoints(A[i]->prev, A[i], A[i]->next);
+        dacContext.faces.push_back(newFace);
     }
 
-    //delete L;
-    //delete R;
+    //delete A;
+    //delete B;
 }
 
 void dacHullStep()
