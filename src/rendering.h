@@ -14,9 +14,32 @@ struct shader
     int programID;
 };
 
+enum LightType
+{
+    LT_DIRECTIONAL,
+    LT_SPOT
+};
+
 struct light
 {
-    glm::vec3 position;
+    LightType lightType;
+    union
+    {
+        struct
+        {
+            float cutOff;
+            float outerCutOff;
+            float constant;
+            float linear;
+            float quadratic;
+            glm::vec3 position;
+        } spot;
+    };
+    
+    glm::vec3 ambient;
+    glm::vec3 diffuse;
+    glm::vec3 specular;
+    glm::vec3 direction;
     glm::vec3 color;
     float power;
 };
@@ -34,7 +57,7 @@ struct render_material
     {
         struct
         {
-            glm::vec3 diffuseColor;
+            glm::vec3 color;
         } diffuse;
         struct
         {

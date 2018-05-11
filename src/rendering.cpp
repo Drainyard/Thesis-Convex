@@ -329,7 +329,7 @@ static void InitializeOpenGL(render_context& renderContext)
     
     glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     
-    renderContext.textureShader = LoadShaders("../shaders/texture.vert", "../shaders/texture.frag");
+    
     renderContext.colorShader = LoadShaders("../shaders/color.vert", "../shaders/color.frag");
     renderContext.basicShader = LoadShaders("../shaders/basic.vert", "../shaders/basic.frag");
     renderContext.particleShader = LoadShaders("../shaders/particle.vert", "../shaders/particle.frag");
@@ -441,15 +441,32 @@ static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec
     
 }
 
-static light& CreateLight(render_context& renderContext, glm::vec3 position = glm::vec3(0.0f), glm::vec3 color = glm::vec3(1.0f), float power = 2.0f)
+static void CreateDirectionalLight(render_context &renderContext, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular)
 {
-    auto& l = renderContext.lights[renderContext.lightCount++];
+    auto &light = renderContext.lights[renderContext.lightCount++];
+    light.direction = direction;
+    light.ambient = ambient;
+    light.diffuse = diffuse;
+    light.specular = specular;
+    light.lightType = LT_DIRECTIONAL;
+}
+
+
+static void CreateSpotLight(render_context &renderContext, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, glm::vec3 position, float cutOff, float outerCutOff, float constant, float linear, float quadratic)
+{
+    auto &light = renderContext.lights[renderContext.lightCount++];
+    light.direction = direction;
+    light.ambient = ambient;
+    light.diffuse = diffuse;
+    light.specular = specular;
     
-    l.position = position;
-    l.color = color;
-    l.power = power;
-    
-    return l;
+    light.spot.position = position;
+    light.spot.cutOff = cutOff;
+    light.spot.outerCutOff = outerCutOff;
+    light.spot.constant = constant;
+    light.spot.linear = linear;
+    light.spot.quadratic = quadratic;
+    light.lightType = LT_SPOT;
 }
 
 static GLfloat* BuildVertexBuffer(face* faces, int numFaces)
@@ -569,7 +586,7 @@ static mesh& InitEmptyMesh(render_context& renderContext, int meshIndex = -1)
         mat.specularColor = glm::vec3(1.0f);
         mat.alpha = 1.0f;
         mat.type = MT_color;
-        mat.diffuse.diffuseColor = glm::vec3(1.0f);
+        mat.diffuse.color = glm::vec3(0.0f, 1.0f, 1.0f);
         mat.materialShader = renderContext.colorShader;
         
         object.dirty = true;
@@ -715,8 +732,6 @@ static void RenderFaceEdges(render_context& renderContext, std::vector<edge>& ed
         e.end = v3.vertexIndex;
         edges.push_back(e);
     }
-    
-    
 }
 
 static void RenderMesh(render_context& renderContext, mesh& m)
@@ -735,27 +750,41 @@ static void RenderMesh(render_context& renderContext, mesh& m)
     SetMatrixUniform(material.materialShader.programID, "V", renderContext.viewMatrix);
     SetMatrixUniform(material.materialShader.programID, "P", renderContext.projectionMatrix);
     
-    auto lightPos = glm::vec3(1, 1, 1);
-    auto lightColor = glm::vec3(1, 1, 1);
-    auto lightPower = 2.0f;
-    
-    if(renderContext.lightCount > 0)
+    for(int i = 0; i < renderContext.lightCount; i++)
     {
-        auto& light = renderContext.lights[0];
-        lightPos = light.position;
-        lightColor = light.color;
-        lightPower = light.power;
+        auto &light = renderContext.lights[i];
+        switch(light.lightType)
+        {
+            case LT_DIRECTIONAL:
+            {
+                SetVec3Uniform(material.materialShader.programID, "dirLight.direction", light.direction);
+                SetVec3Uniform(material.materialShader.programID, "dirLight.ambient", light.ambient);
+                SetVec3Uniform(material.materialShader.programID, "dirLight.diffuse", light.diffuse);
+                SetVec3Uniform(material.materialShader.programID, "dirLight.specular", light.specular);
+            }
+            break;
+            case LT_SPOT:
+            {
+                SetVec3Uniform(material.materialShader.programID, "spotLight.position", renderContext.position);
+                SetVec3Uniform(material.materialShader.programID, "spotLight.direction", renderContext.direction);
+                SetVec3Uniform(material.materialShader.programID, "spotLight.ambient", light.ambient);
+                SetVec3Uniform(material.materialShader.programID, "spotLight.diffuse", light.diffuse);
+                SetVec3Uniform(material.materialShader.programID, "spotLight.specular", light.specular);
+                SetFloatUniform(material.materialShader.programID, "spotLight.cutOff", light.spot.cutOff);
+                SetFloatUniform(material.materialShader.programID, "spotLight.outerCutOff", light.spot.outerCutOff);
+                SetFloatUniform(material.materialShader.programID, "spotLight.constant", light.spot.constant);
+                SetFloatUniform(material.materialShader.programID, "spotLight.linear", light.spot.linear);
+                SetFloatUniform(material.materialShader.programID, "spotLight.quadratic", light.spot.quadratic);
+            }
+            break;
+        }
     }
     
-    SetVec3Uniform(material.materialShader.programID, "lightPosWorld", lightPos);
-    SetVec3Uniform(material.materialShader.programID, "lightColor", lightColor);
-    SetFloatUniform(material.materialShader.programID, "lightPower", lightPower);
-    SetVec3Uniform(material.materialShader.programID, "specularColor", material.specularColor);
-    SetFloatUniform(material.materialShader.programID, "alpha", material.alpha);
+    SetVec3Uniform(material.materialShader.programID, "viewPos", renderContext.position);
     
     if(material.type == MT_color)
     {
-        SetVec3Uniform(material.materialShader.programID, "diffuseColor", material.diffuse.diffuseColor);
+        SetVec3Uniform(material.materialShader.programID, "diffuseColor", material.diffuse.color);
     }
     
     glBindVertexArray(m.VAO);
