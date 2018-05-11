@@ -657,6 +657,7 @@ mesh &incConvertToMesh(inc_context &context, render_context &renderContext)
         context.m = &InitEmptyMesh(renderContext);
     }
     
+    context.m->faces.clear();
     context.m->position = glm::vec3(0.0f);
     context.m->scale = glm::vec3(globalScale);
     context.m->dirty = true;

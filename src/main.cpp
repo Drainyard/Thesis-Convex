@@ -119,8 +119,8 @@ int main()
     
     auto disableMouse = false;
     
-    CreateLight(renderContext, glm::vec3(0.0f, 80.0f, 80.0f), glm::vec3(1, 1, 1), 2000.0f);
-    CreateLight(renderContext, glm::vec3(10.0f, -20.0f, 20.0f), glm::vec3(1, 1, 1), 2000.0f);
+    CreateDirectionalLight(renderContext, glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.05f), glm::vec3(0.4f), glm::vec3(0.5f));
+    CreateSpotLight(renderContext, glm::vec3(0.0f, -1.0f, 1.0f), glm::vec3(0.0f), glm::vec3(1.0f), glm::vec3(1.0f), glm::vec3(0.0f, 80.0f, 80.0f), glm::cos(glm::radians(120.5f)), glm::cos(glm::radians(170.5f)), 1.0f, 0.0014f, 0.000007f);
     
     HullType hullType = HullType::QH;
     
@@ -269,7 +269,7 @@ int main()
             previousHullType = hullType;
             hullType = HullType::Inc;
         }
-
+        
         if(KeyDown(Key_L))
         {
             previousHullType = hullType;
