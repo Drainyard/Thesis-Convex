@@ -77,4 +77,31 @@ char* concat(const char* left, const char* right)
     return res;
 }
 
+bool FileExists(const char *file)
+{
+#if defined(__linux)
+    return access(file, F_OK) != -1;
+#else
+    return PathFileExists(file) != 0;
+#endif
+}
+
+int countLinesFromCurrent(FILE *file)
+{
+    auto curPos = ftell(file);
+    int ch = 0;
+    int lines = 0;
+    
+    while(!feof(file))
+    {
+        ch = fgetc(file);
+        if(ch == '\n')
+        {
+            lines++;
+        }
+    }
+    fseek(file, curPos, SEEK_SET);
+    return lines;
+}
+
 #endif

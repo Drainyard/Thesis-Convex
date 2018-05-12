@@ -73,7 +73,7 @@ void reinitPoints(vertex **vertices, config_data &configData, hull &h, render_co
     loadConfig("../.config", configData);
     
     initPointGenerator(h.pointGenerator, configData.genType, configData.numberOfPoints);
-    *vertices = generate(h.pointGenerator, renderContext, 0.0f, 200.0f);
+    *vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
 }
 
 void reinitHull(vertex *vertices, config_data &configData, hull &h, vertex **currentVertices, mesh **currentMesh, mesh **fullHull, mesh **timedHull, mesh **stepHull)
@@ -157,7 +157,7 @@ int main()
     
     initPointGenerator(h.pointGenerator, configData.genType, numberOfPoints);
     
-    auto vertices = generate(h.pointGenerator, renderContext, 0.0f, 200.0f);
+    auto vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ", 200.0f);
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
     //auto vertices = LoadObj("../assets/obj/CarpetBit.obj");
@@ -204,6 +204,14 @@ int main()
         if(updatedMesh)
         {
             currentMesh = updatedMesh;
+        }
+        
+        if(KeyDown(Key_T))
+        {
+            for(size_t i = 0; i < configData.testSets.count; i++)
+            {
+                RunFullHullTest(configData.testSets.testSets[i]);
+            }
         }
         
         if(KeyDown(Key_Y))

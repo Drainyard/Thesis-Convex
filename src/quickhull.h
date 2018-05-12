@@ -277,11 +277,11 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
         return -1;
     }
     
-    auto& f = qHull.faces[faceId];
+    auto &f = qHull.faces[faceId];
     
-    auto& v1 = vertices[f.vertices[0]];
-    auto& v2 = vertices[f.vertices[1]];
-    auto& v3 = vertices[f.vertices[2]];
+    auto &v1 = vertices[f.vertices[0]];
+    auto &v2 = vertices[f.vertices[1]];
+    auto &v3 = vertices[f.vertices[2]];
     
     // Go through all of f's neighbours to remove itself
     for(int n = 0; n < f.neighbourCount; n++)
@@ -297,9 +297,7 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
             {
                 // Found the neighbour
                 neighbourFace.neighbours[i] = neighbourFace.neighbours[neighbourFace.neighbourCount - 1];
-                auto before = neighbourFace.neighbourCount;
                 neighbourFace.neighbourCount = neighbourFace.neighbourCount - 1;
-                assert(before > neighbourFace.neighbourCount);
                 break;
             }
         }
@@ -310,9 +308,11 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     // Invalidates the f pointer
     // But we only need to swap two faces to make this work
     qHull.faces[indexInHull] = qHull.faces[qHull.faces.size() - 1];
-    qHull.faces.erase(qHull.faces.begin() + qHull.faces.size() - 1);
+    qHull.faces.pop_back();
     
-    auto& newFace = qHull.faces[indexInHull];
+    auto &newFace = qHull.faces[indexInHull];
+    
+    assert(newFace.neighbourCount < (int)qHull.faces.size());
     
     for(int neighbourIndex = 0; neighbourIndex < newFace.neighbourCount; neighbourIndex++)
     {
@@ -336,6 +336,7 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
         {
             v1.faceHandles[fIndex] = v1.faceHandles[v1.faceHandles.size - 1];
             v1.faceHandles.size = v1.faceHandles.size - 1;
+            v1.faceHandles[v1.faceHandles.size] = 0;
             break;
         }
     }
@@ -351,6 +352,7 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
         {
             v2.faceHandles[fIndex] = v2.faceHandles[v2.faceHandles.size - 1];
             v2.faceHandles.size = v2.faceHandles.size - 1;
+            v2.faceHandles[v2.faceHandles.size] = 0;
             break;
         }
     }
@@ -366,6 +368,7 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
         {
             v3.faceHandles[fIndex] = v3.faceHandles[v3.faceHandles.size - 1];
             v3.faceHandles.size = v3.faceHandles.size - 1;
+            v3.faceHandles[v3.faceHandles.size] = 0;
             break;
         }
     }
@@ -976,7 +979,7 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
 
 void qhFullHull(qh_context& qhContext)
 {
-    // auto timerIndex = startTimer();
+    auto timerIndex = startTimer();
     qhContext.currentFace = nullptr;
     qhContext.faceStack.clear();
     qhContext.epsilon = 0.0;
@@ -995,7 +998,7 @@ void qhFullHull(qh_context& qhContext)
             qhContext.v.clear();
         }
     }
-    qhContext.qHull.processingState.timeSpent = 0.0; //endTimer(timerIndex);
+    qhContext.qHull.processingState.timeSpent = endTimer(timerIndex);
 }
 
 qh_hull qhFullHull(qh_vertex* vertices, int numVertices)

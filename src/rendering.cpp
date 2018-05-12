@@ -906,6 +906,7 @@ static void ComputeMatrices(render_context& renderContext, double deltaTime)
     renderContext.right = glm::normalize(glm::cross(renderContext.direction, renderContext.up));
     
     renderContext.viewMatrix = glm::lookAt(renderContext.position, renderContext.position + renderContext.direction, renderContext.up);
+    
 }
 
 static texture LoadTexture(const char* Path)

@@ -78,46 +78,23 @@ const char *GetGeneratorTypeString(GeneratorType type)
     }
 }
 
-void WriteHullToCSV(const char *filename, const char *typeString, int facesAdded, int totalFaceCount, int vertexCount, int pointsProcessed, int distanceQueryCount, int verticesInHull, double timeSpent, GeneratorType generateType)
+void WriteHullToCSV(const char *filename, int facesAdded, int totalFaceCount, int vertexCount, int pointsProcessed, int distanceQueryCount, int verticesInHull, double timeSpent, GeneratorType generateType)
 {
     char *fullFilename = concat(filename, ".csv");
-#if defined(__linux)
-    bool fileExists = access(fullFilename, F_OK) != -1;
-#else
-    auto fileExists = PathFileExists(fullFilename);
-#endif
+    
+    auto fileExists = FileExists(fullFilename);
+    
     FILE *f = fopen(fullFilename, "a+");
+    free(fullFilename);
     
     if (f)
     {
         if (!fileExists)
         {
-            fprintf(f, "type, faces added, faces in hull, input vertices, points processed, distance queries, vertices in hull, time spent\n");
+            fprintf(f, "input vertices, faces added, faces in hull, points processed, distance queries, vertices in hull, time spent, point distribution\n");
         }
         
-        fprintf(f, "%s, %d, %d, %d, %d, %d, %d, %lf, %s\n", typeString, facesAdded, totalFaceCount, vertexCount, pointsProcessed, distanceQueryCount, verticesInHull, timeSpent, GetGeneratorTypeString(generateType));
-        fclose(f);
-    }
-    free(fullFilename);
-}
-
-void WriteHullToFile(const char *filename, const char *typeString, int facesAdded, int totalFaceCount, int vertexCount, int pointsProcessed, int distanceQueryCount, int verticesInHull, double timeSpent, GeneratorType generateType)
-{
-    FILE *f = fopen(filename, "a+");
-    
-    if (f)
-    {
-        
-        fprintf(f, "Hull result for %s\n", typeString);
-        fprintf(f, " Faces added:      %d\n", facesAdded);
-        fprintf(f, " Faces in hull:    %d\n", totalFaceCount);
-        fprintf(f, " Input vertices:   %d\n", vertexCount);
-        fprintf(f, " Points processed: %d\n", pointsProcessed);
-        fprintf(f, " Distance queries: %d\n", distanceQueryCount);
-        fprintf(f, " Vertices in hull: %d\n", verticesInHull);
-        fprintf(f, " Time spent:       %lf\n", timeSpent);
-        fprintf(f, " Point generation: %s\n", GetGeneratorTypeString(generateType));
-        
+        fprintf(f, "%d, %d, %d, %d, %d, %d, %lf, %s\n", vertexCount, facesAdded, totalFaceCount, pointsProcessed, distanceQueryCount, verticesInHull, timeSpent, GetGeneratorTypeString(generateType));
         fclose(f);
     }
 }
@@ -219,6 +196,59 @@ static mesh *UpdateHull(render_context &renderContext, hull &h, HullType hullTyp
     return nullptr;
 }
 
+static void RunFullHullTest(TestSet &testSet)
+{
+    auto vertexAmounts = testSet.testSet;
+    auto iterations = testSet.count;
+    auto genType = testSet.genType;
+    
+    vertex *vertices = nullptr;
+    
+    auto seed = time(NULL);
+    point_generator generator;
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    gen.seed(seed);
+    generator.gen = gen;
+    
+    qh_context qhContext = {};
+    
+    for(size_t i = 0; i < iterations; i++)
+    {
+        int addedFaces = 0;
+        int numFaces = 0;
+        int pointsProcessed = 0;
+        int distanceQueries = 0;
+        int verticesOnHull = 0;
+        double timeSpent = 0.0;
+        
+        int numForAvg = 10;
+        auto n = vertexAmounts[i];
+        
+        log_a("Num: %d\n", n);
+        
+        for(int j = 0; j < numForAvg; j++)
+        {
+            initPointGenerator(generator, genType, n);
+            vertices = generate(generator, 0.0f, 200.0f, glm::vec3(0.0f));
+            
+            qhInitializeContext(qhContext, vertices, n);
+            qhFullHull(qhContext);
+            qhContext.initialized = false;
+            
+            addedFaces += qhContext.qHull.processingState.addedFaces;
+            numFaces += (int)qhContext.qHull.faces.size();
+            pointsProcessed += qhContext.qHull.processingState.pointsProcessed;
+            distanceQueries += qhContext.qHull.processingState.distanceQueryCount;
+            verticesOnHull += qhContext.qHull.processingState.verticesInHull;
+            timeSpent += qhContext.qHull.processingState.timeSpent;
+        }
+        
+        WriteHullToCSV("../data/qh_hull_out", addedFaces / numForAvg, numFaces / numFaces, n, pointsProcessed / numForAvg, distanceQueries / numForAvg, verticesOnHull / numForAvg, timeSpent / numForAvg, genType);
+    }
+    log_a("Done\n");
+}
+
 static mesh &FullHull(render_context &renderContext, hull &h)
 {
     switch (h.currentHullType)
@@ -236,7 +266,7 @@ static mesh &FullHull(render_context &renderContext, hull &h)
             qhFullHull(qhContext);
             TIME_END(timerIndex, "Full quick hull");
             
-            WriteHullToCSV("hull_out", "QuickHull", qhContext.qHull.processingState.addedFaces, (int)qhContext.qHull.faces.size(), h.numberOfPoints, qhContext.qHull.processingState.pointsProcessed, qhContext.qHull.processingState.distanceQueryCount, qhContext.qHull.processingState.verticesInHull, qhContext.qHull.processingState.timeSpent, h.pointGenerator.type);
+            WriteHullToCSV("qh_hull_out", qhContext.qHull.processingState.addedFaces, (int)qhContext.qHull.faces.size(), h.numberOfPoints, qhContext.qHull.processingState.pointsProcessed, qhContext.qHull.processingState.distanceQueryCount, qhContext.qHull.processingState.verticesInHull, qhContext.qHull.processingState.timeSpent, h.pointGenerator.type);
             
             return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
         }
