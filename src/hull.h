@@ -87,6 +87,7 @@ void WriteHullToCSV(const char *filename, int facesAdded, int totalFaceCount, in
     FILE *f = fopen(fullFilename, "a+");
     free(fullFilename);
     
+    
     if (f)
     {
         if (!fileExists)
@@ -196,7 +197,7 @@ static mesh *UpdateHull(render_context &renderContext, hull &h, HullType hullTyp
     return nullptr;
 }
 
-static void RunFullHullTest(TestSet &testSet)
+static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
 {
     auto vertexAmounts = testSet.testSet;
     auto iterations = testSet.count;
@@ -222,29 +223,39 @@ static void RunFullHullTest(TestSet &testSet)
         int verticesOnHull = 0;
         double timeSpent = 0.0;
         
-        int numForAvg = 10;
+        int numForAvg = 1;
         auto n = vertexAmounts[i];
         
         log_a("Num: %d\n", n);
+        initPointGenerator(generator, genType, n);
         
-        for(int j = 0; j < numForAvg; j++)
+        for(int j = 0; j < numForAvg;  j++)
         {
-            initPointGenerator(generator, genType, n);
-            vertices = generate(generator, 0.0f, 200.0f, glm::vec3(0.0f));
+            log_a("%d \n", j);
+            
+            vertices = generate(generator, 0.0f, 200.0f, offset);
             
             qhInitializeContext(qhContext, vertices, n);
             qhFullHull(qhContext);
             qhContext.initialized = false;
             
             addedFaces += qhContext.qHull.processingState.addedFaces;
-            numFaces += (int)qhContext.qHull.faces.size();
+            numFaces += (int)qhContext.qHull.faces.size;
             pointsProcessed += qhContext.qHull.processingState.pointsProcessed;
             distanceQueries += qhContext.qHull.processingState.distanceQueryCount;
             verticesOnHull += qhContext.qHull.processingState.verticesInHull;
             timeSpent += qhContext.qHull.processingState.timeSpent;
+            
+            free(vertices);
         }
         
-        WriteHullToCSV("../data/qh_hull_out", addedFaces / numForAvg, numFaces / numFaces, n, pointsProcessed / numForAvg, distanceQueries / numForAvg, verticesOnHull / numForAvg, timeSpent / numForAvg, genType);
+        WriteHullToCSV("../data/qh_hull_out", addedFaces / numForAvg, numFaces / numForAvg, n, pointsProcessed / numForAvg, distanceQueries / numForAvg, verticesOnHull / numForAvg, timeSpent / numForAvg, genType);
+        addedFaces = 0;
+        numFaces = 0;
+        pointsProcessed = 0;
+        distanceQueries = 0;
+        verticesOnHull = 0;
+        timeSpent = 0.0;
     }
     log_a("Done\n");
 }
@@ -266,7 +277,7 @@ static mesh &FullHull(render_context &renderContext, hull &h)
             qhFullHull(qhContext);
             TIME_END(timerIndex, "Full quick hull");
             
-            WriteHullToCSV("qh_hull_out", qhContext.qHull.processingState.addedFaces, (int)qhContext.qHull.faces.size(), h.numberOfPoints, qhContext.qHull.processingState.pointsProcessed, qhContext.qHull.processingState.distanceQueryCount, qhContext.qHull.processingState.verticesInHull, qhContext.qHull.processingState.timeSpent, h.pointGenerator.type);
+            WriteHullToCSV("qh_hull_out", qhContext.qHull.processingState.addedFaces, (int)qhContext.qHull.faces.size, h.numberOfPoints, qhContext.qHull.processingState.pointsProcessed, qhContext.qHull.processingState.distanceQueryCount, qhContext.qHull.processingState.verticesInHull, qhContext.qHull.processingState.timeSpent, h.pointGenerator.type);
             
             return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
         }

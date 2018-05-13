@@ -73,7 +73,7 @@ char* concat(const char* left, const char* right)
     char* res = (char*)malloc(sizeof(char) * (strlen(left) + strlen(right) + 1));
     strcpy(res, left);
     strcat(res, right);
-    res[strlen(left) + strlen(right) + 1] = '\0';
+    //res[strlen(left) + strlen(right) + 1] = '\0';
     return res;
 }
 

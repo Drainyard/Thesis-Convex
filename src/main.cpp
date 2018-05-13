@@ -72,7 +72,25 @@ void reinitPoints(vertex **vertices, config_data &configData, hull &h, render_co
     
     loadConfig("../.config", configData);
     
-    initPointGenerator(h.pointGenerator, configData.genType, configData.numberOfPoints);
+    if(h.numberOfPoints != configData.numberOfPoints)
+    {
+        initPointGenerator(h.pointGenerator, configData.genType, configData.numberOfPoints);
+    }
+    *vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
+}
+
+
+void reinitPoints(vertex **vertices, int numPoints, hull &h, render_context &renderContext)
+{
+    if(*vertices)
+    {
+        free(*vertices);
+    }
+    
+    if(h.numberOfPoints != numPoints)
+    {
+        initPointGenerator(h.pointGenerator, GeneratorType::InSphere, numPoints);
+    }
     *vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
 }
 
@@ -153,6 +171,7 @@ int main()
     std::random_device rd{};
     std::mt19937 gen{rd()};
     gen.seed(seed);
+    //gen.seed(1526208347);
     h.pointGenerator.gen = gen;
     
     initPointGenerator(h.pointGenerator, configData.genType, numberOfPoints);
@@ -210,7 +229,7 @@ int main()
         {
             for(size_t i = 0; i < configData.testSets.count; i++)
             {
-                RunFullHullTest(configData.testSets.testSets[i]);
+                RunFullHullTest(configData.testSets.testSets[i], renderContext.originOffset);
             }
         }
         
@@ -218,6 +237,17 @@ int main()
         {
             reinitPoints(&vertices, configData, h, renderContext);
             reinitHull(vertices, configData, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
+        }
+        
+        if(KeyDown(Key_U))
+        {
+            reinitPoints(&vertices, configData, h, renderContext);
+            reinitHull(vertices, configData, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
+            FullHull(renderContext, h);
+            
+            reinitPoints(&vertices, 200000, h, renderContext);
+            reinitHull(vertices, configData, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
+            FullHull(renderContext, h);
         }
         
         if(KeyDown(Key_C))

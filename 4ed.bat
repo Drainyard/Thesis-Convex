@@ -1,3 +1,3 @@
 @echo off
-start 4ed.exe -f 15 -h -F
+start 4ed.exe -f 14 -h -F
 
