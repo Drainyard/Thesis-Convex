@@ -47,7 +47,7 @@ static dacVertex nil = {glm::vec3(INF, INF, INF), 0, nullptr, nullptr};
 dacVertex *NIL = &nil;
 
 dacVertex *sort(dacVertex points[], int numberOfPoints)
-{ // mergesort
+{
     dacVertex *l, *r, *c, head;
 
     if (numberOfPoints == 1)
@@ -59,6 +59,7 @@ dacVertex *sort(dacVertex points[], int numberOfPoints)
     r = sort(points + (numberOfPoints / 2), numberOfPoints - (numberOfPoints / 2));
     c = &head;
     do
+    {
         if (l->vector.x < r->vector.x)
         {
             c = c->next = l;
@@ -69,7 +70,7 @@ dacVertex *sort(dacVertex points[], int numberOfPoints)
             c = c->next = r;
             r = r->next;
         }
-    while (c != NIL);
+    } while (c != NIL);
     return head.next;
 }
 
@@ -115,7 +116,7 @@ static void dacCopyVertices(dac_context &dac, vertex *vertices, int numberOfPoin
 }
 
 double orient(dacVertex *p, dacVertex *q, dacVertex *r)
-{ 
+{
     //orient(p,q,r)=det(1  p_x  p_y)
     //                 (1  q_x  q_y)
     //                 (1  r_x  r_y)
@@ -137,8 +138,7 @@ double time(dacVertex *p, dacVertex *q, dacVertex *r)
 }
 
 void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B)
-{ 
-
+{
     dacVertex *u, *v, *mid;
     double t[6], oldTime, newTime;
     int i, j, k, l, minl;
@@ -156,14 +156,19 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B)
     dacHull(mid, n - n / 2, B + n / 2 * 2, A + n / 2 * 2);
 
     // find initial bridge
-    for (;;) 
+    for (;;)
     {
         if (orient(u, v, v->next) < 0)
+        {
             v = v->next;
-        else if (orient(u->prev, u, v) < 0)
+            continue;
+        }
+        if (orient(u->prev, u, v) < 0)
+        {
             u = u->prev;
-        else
-            break;
+            continue;
+        }
+        break;
     }
 
     i = k = 0;
@@ -171,10 +176,8 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B)
     oldTime = -INF;
     // merge by tracking bridge uv over time
     // infinite loop until no insertion/deletion events occur
-    for (;; oldTime = newTime)
+    for (;;)
     {
-        //as time progresses, we keep track of the current hulls L and R and the current bridge uv,
-        //--> The movies for L and R tell us when and how L and R change
         t[0] = time(B[i]->prev, B[i], B[i]->next);
         t[1] = time(B[j]->prev, B[j], B[j]->next);
         t[2] = time(u, u->next, v);
@@ -182,7 +185,7 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B)
         t[4] = time(u, v->prev, v);
         t[5] = time(u, v, v->next);
 
-        //we find the movie with the lowest t
+        //we find the movie with the lowest t for chronology
         newTime = INF;
         for (l = 0; l < 6; l++)
         {
@@ -202,36 +205,49 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B)
         {
         case 0:
             if (B[i]->vector.x < u->vector.x)
-                A[k++] = B[i];
-            B[i++]->act();
+            {
+                A[k] = B[i];
+                k++;
+            }
+            B[i]->act();
+            i++;
             break;
         case 1:
             if (B[j]->vector.x > v->vector.x)
-                A[k++] = B[j];
-            B[j++]->act();
+            {
+                A[k] = B[j];
+                k++;
+            }
+            B[j]->act();
+            j++;
             break;
         case 2:
-            A[k++] = u = u->next;
+            A[k] = u = u->next;
+            k++;
             break;
         case 3:
-            A[k++] = u;
+            A[k] = u;
+            k++;
             u = u->prev;
             break;
         case 4:
-            A[k++] = v = v->prev;
+            A[k] = v = v->prev;
+            k++;
             break;
         case 5:
-            A[k++] = v;
+            A[k] = v;
+            k++;
             v = v->next;
             break;
         }
+        oldTime = newTime;
     }
     A[k] = NIL;
 
     //The bridge uv
     u->next = v;
-    v->prev = u; 
-    
+    v->prev = u;
+
     // now go back in time to update pointers
     for (k--; k >= 0; k--)
     {
