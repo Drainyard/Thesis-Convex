@@ -16,24 +16,71 @@ struct qh_neighbour
     int endVertex;
 };
 
-struct qh_int_list
+
+template<typename T>
+struct qh_list
 {
     size_t size = 0;
     size_t capacity = 0;
-    int *list = nullptr;
+    T *list = nullptr;
     
-    int &operator[](size_t index)
+    T &operator[](size_t index)
     {
+#if DEBUG
+        if(index > this->size)
+        {
+            assert(false);
+        }
+#endif
         return this->list[index];
     }
     
-    int *begin() {return this->list;}
-    int *end() {return this->list + this->size;}
+    T *begin() {return this->list;}
+    T *end() {return this->list + this->size;}
+    
 };
+
+template<typename T>
+static void qhAddToList(qh_list<T> &list, T element)
+{
+    if (list.capacity == 0)
+    {
+        list.capacity = 2;
+        list.list = (T*)malloc(sizeof(T) * list.capacity);
+    }
+    if (list.size + 1 > list.capacity)
+    {
+        list.capacity *= 2;
+        list.list = (T*)realloc(list.list, sizeof(T) * list.capacity);
+        for(size_t i = list.size; i < list.capacity; i++)
+        {
+            list.list[i] = {};
+        }
+    }
+    
+    list.list[list.size++] = element;
+}
+
+template<typename T>
+static void clear(qh_list<T> &list)
+{
+    for(int i = 0; i < list.size; i++)
+    {
+        list[i] = {};
+    }
+    
+    if(list.size > 0)
+    {
+        free(list.list);
+    }
+    
+    list.size = 0;
+    list.capacity = 0;
+}
 
 struct qh_vertex
 {
-    qh_int_list faceHandles;
+    qh_list<int> faceHandles;
     
     bool assigned;
     int vertexIndex;
@@ -48,7 +95,7 @@ struct qh_vertex
 struct qh_face
 {
     int vertices[3];
-    qh_int_list outsideSet;
+    qh_list<int> outsideSet;
     
     int furthestPointIndex;
     
@@ -65,30 +112,9 @@ struct qh_face
 };
 
 
-struct qh_face_list
-{
-    size_t size = 0;
-    size_t capacity = 0;
-    qh_face *list = nullptr;
-    
-    qh_face &operator[](size_t index)
-    {
-#if DEBUG
-        if(index > this->size)
-        {
-            assert(false);
-        }
-#endif
-        return this->list[index];
-    }
-    
-    qh_face *begin() {return this->list;}
-    qh_face *end() {return this->list + this->size;}
-};
-
 struct qh_hull
 {
-    qh_face_list faces;
+    qh_list<qh_face> faces;
     mesh* m;
     
     struct
@@ -118,43 +144,6 @@ struct qh_context
     
     std::vector<edge> horizon;
 };
-
-static void qhAddToIntList(qh_int_list &list, int handle)
-{
-    if (list.capacity == 0)
-    {
-        list.capacity = 2;
-        list.list = (int *)malloc(sizeof(int) * list.capacity);
-    }
-    if (list.size + 1 > list.capacity)
-    {
-        list.capacity *= 2;
-        list.list = (int *)realloc(list.list, sizeof(int) * list.capacity);
-        for(size_t i = list.size; i < list.capacity; i++)
-        {
-            list.list[i] = 0;
-        }
-    }
-    
-    list.list[list.size++] = handle;
-}
-
-static void qhAddToFaceList(qh_face_list &list, qh_face face)
-{
-    if (list.capacity == 0)
-    {
-        list.capacity = 2;
-        list.list = (qh_face *)malloc(sizeof(qh_face) * list.capacity);
-    }
-    if (list.size + 1 > list.capacity)
-    {
-        list.capacity *= 2;
-        list.list = (qh_face *)realloc(list.list, sizeof(qh_face) * list.capacity);
-    }
-    
-    list.list[list.size++] = face;
-}
-
 
 static void qhCopyVertices(qh_context& q, vertex* vertices, int numberOfPoints)
 {
@@ -189,7 +178,6 @@ static bool IsPointOnPositiveSide(qh_face& f, glm::vec3 v, coord_t epsilon = 0.0
     auto d = glm::dot(f.faceNormal, v - f.centerPoint);
     return d > epsilon;
 }
-
 
 static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f, qh_vertex* vertices)
 {
@@ -235,8 +223,8 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f,
                 bool duplicateVerts = false;
                 for(int i = 0; i < f.neighbourCount; i++)
                 {
-                    if(v1.vertexIndex == f.neighbours[i].originVertex && v2.vertexIndex == f.neighbours[i].endVertex ||
-                       v2.vertexIndex == f.neighbours[i].originVertex && v1.vertexIndex == f.neighbours[i].endVertex)
+                    if((v1.vertexIndex == f.neighbours[i].originVertex && v2.vertexIndex == f.neighbours[i].endVertex) ||
+                       (v2.vertexIndex == f.neighbours[i].originVertex && v1.vertexIndex == f.neighbours[i].endVertex))
                     {
                         if(fe.visitedV)
                         {
@@ -246,10 +234,10 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f,
                     }
                 }
                 
-                /*for(int i = 0; i < fe.neighbourCount; i++)
+                for(int i = 0; i < fe.neighbourCount; i++)
                 {
-                    if(v1.vertexIndex == fe.neighbours[i].originVertex && v2.vertexIndex == fe.neighbours[i].endVertex ||
-                       v2.vertexIndex == fe.neighbours[i].originVertex && v1.vertexIndex == fe.neighbours[i].endVertex)
+                    if((v1.vertexIndex == fe.neighbours[i].originVertex && v2.vertexIndex == fe.neighbours[i].endVertex) ||
+                       (v2.vertexIndex == fe.neighbours[i].originVertex && v1.vertexIndex == fe.neighbours[i].endVertex))
                     {
                         if(fe.visitedV)
                         {
@@ -257,7 +245,7 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f,
                             break;
                         }
                     }
-                }*/
+                }
                 
                 if(duplicateVerts)
                     continue;
@@ -345,9 +333,9 @@ static qh_face* qhAddFace(qh_hull& q, int v1Handle, int v2Handle, int v3Handle, 
         q.processingState.verticesInHull++;
     }
     
-    qhAddToIntList(v1.faceHandles, newFace.indexInHull);
-    qhAddToIntList(v2.faceHandles, newFace.indexInHull);
-    qhAddToIntList(v3.faceHandles, newFace.indexInHull);
+    qhAddToList(v1.faceHandles, newFace.indexInHull);
+    qhAddToList(v2.faceHandles, newFace.indexInHull);
+    qhAddToList(v3.faceHandles, newFace.indexInHull);
     
     
     newFace.faceNormal = ComputeFaceNormal(newFace, vertices);
@@ -355,7 +343,7 @@ static qh_face* qhAddFace(qh_hull& q, int v1Handle, int v2Handle, int v3Handle, 
     newFace.faceColor = glm::vec4(0.0f, 1.0f, 1.0f, 0.7f);
     newFace.faceColor.w = 0.5f;
     
-    qhAddToFaceList(q.faces, newFace);
+    qhAddToList(q.faces, newFace);
     
     return &q.faces[q.faces.size - 1];
 }
@@ -685,7 +673,7 @@ coord_t qhGenerateInitialSimplex(qh_vertex* vertices, int numVertices, qh_hull& 
 void qhAddToOutsideSet(qh_face& f, qh_vertex& v)
 {
     //f.outsideSet.push_back(v.vertexIndex);
-    qhAddToIntList(f.outsideSet, v.vertexIndex);
+    qhAddToList(f.outsideSet, v.vertexIndex);
     v.assigned = true;
 }
 
@@ -918,7 +906,7 @@ void qhHorizonStep(qh_hull& qHull, qh_vertex* vertices, qh_face& f, std::vector<
     qhFindConvexHorizon(p, v, qHull, horizon, epsilon);
 }
 
-void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStack, int fHandle, std::vector<int>& v, int prevIterationFaces, int numVertices, coord_t epsilon, std::vector<edge>& horizon)
+void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStack, int fHandle, std::vector<int>& v, int prevIterationFaces, coord_t epsilon, std::vector<edge>& horizon)
 {
     for(const auto& e : horizon)
     {
@@ -1070,7 +1058,7 @@ void qhFullHull(qh_context& qhContext)
         {
             qhHorizonStep(qhContext.qHull, qhContext.vertices, *qhContext.currentFace, qhContext.v, &qhContext.previousIteration, qhContext.epsilon, qhContext.horizon);
             qhIteration(qhContext.qHull, qhContext.vertices, qhContext.faceStack, qhContext.currentFace->indexInHull, qhContext.v, 
-                        qhContext.previousIteration, qhContext.numberOfPoints, qhContext.epsilon, qhContext.horizon);
+                        qhContext.previousIteration, qhContext.epsilon, qhContext.horizon);
             qhContext.v.clear();
         }
     }
@@ -1097,7 +1085,7 @@ qh_hull qhFullHull(qh_vertex* vertices, int numVertices)
             qhHorizonStep(qHull, vertices, *currentFace, v, &previousIteration,
                           epsilon, horizon);
             qhIteration(qHull, vertices, faceStack, currentFace->indexInHull, v,
-                        previousIteration, numVertices, epsilon, horizon);
+                        previousIteration, epsilon, horizon);
             v.clear();
         }
     }
@@ -1121,8 +1109,7 @@ void qhInitializeContext(qh_context& qhContext, vertex* vertices, int numberOfPo
         free(f.outsideSet.list);
     }
     
-    //qhContext.qHull.faces.clear();
-    qhContext.qHull.faces.size = 0;
+    clear(qhContext.qHull.faces);
     qhContext.qHull.processingState = {};
     
     qhContext.faceStack.clear();
@@ -1173,7 +1160,7 @@ void qhStep(qh_context& context)
         {
             if(context.currentFace)
             {
-                qhIteration(context.qHull, context.vertices, context.faceStack, context.currentFace->indexInHull, context.v, context.previousIteration, context.numberOfPoints, context.epsilon, context.horizon);
+                qhIteration(context.qHull, context.vertices, context.faceStack, context.currentFace->indexInHull, context.v, context.previousIteration, context.epsilon, context.horizon);
                 context.iter = QHIteration::findNextIter;
                 context.v.clear();
             }

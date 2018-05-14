@@ -94,7 +94,7 @@ void reinitPoints(vertex **vertices, int numPoints, hull &h, render_context &ren
     *vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
 }
 
-void reinitHull(vertex *vertices, config_data &configData, hull &h, vertex **currentVertices, mesh **currentMesh, mesh **fullHull, mesh **timedHull, mesh **stepHull)
+void reinitHull(vertex *vertices, hull &h, vertex **currentVertices, mesh **currentMesh, mesh **fullHull, mesh **timedHull, mesh **stepHull)
 {
     reinitializeHull(h, vertices, h.pointGenerator.numberOfPoints);
     
@@ -236,23 +236,23 @@ int main()
         if(KeyDown(Key_Y))
         {
             reinitPoints(&vertices, configData, h, renderContext);
-            reinitHull(vertices, configData, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
+            reinitHull(vertices, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
         }
         
         if(KeyDown(Key_U))
         {
             reinitPoints(&vertices, configData, h, renderContext);
-            reinitHull(vertices, configData, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
+            reinitHull(vertices, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
             FullHull(renderContext, h);
             
             reinitPoints(&vertices, 200000, h, renderContext);
-            reinitHull(vertices, configData, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
+            reinitHull(vertices, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
             FullHull(renderContext, h);
         }
         
         if(KeyDown(Key_C))
         {
-            reinitHull(vertices, configData, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
+            reinitHull(vertices, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
         }
         
         if(KeyDown(Key_H))
