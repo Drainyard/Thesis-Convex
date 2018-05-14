@@ -587,3 +587,53 @@ input vertices, faces added, faces in hull, points processed, distance queries, 
 280000, 21947, 2740, 4175, 746057, 1372, 1.018601, In Sphere
 280000, 22049, 2632, 4162, 734500, 1318, 1.083197, In Sphere
 280000, 22423, 3010, 4294, 708457, 1485, 1.100457, In Sphere
+280000, 21172, 2666, 4049, 634876, 1335, 0.966261, In Sphere
+480000, 29537, 3568, 5577, 1161045, 1786, 1.792498, In Sphere
+680000, 33582, 4519, 6284, 1772940, 2148, 2.742100, In Sphere
+880000, 48578, 5883, 8601, 2295417, 2642, 3.638571, In Sphere
+1080000, 45494, 5382, 8674, 2514994, 2693, 3.973494, In Sphere
+280000, 288, 92, 66, 513937, 48, 0.140978, Many internal, some on sphere
+280, 235, 92, 50, 647, 48, 369.445154, Many internal, some on sphere
+280, 224, 92, 48, 720, 48, 0.007813, Many internal, some on sphere
+280, 237, 92, 48, 607, 48, 0.008032, Many internal, some on sphere
+280, 228, 92, 49, 606, 48, 0.007526, Many internal, some on sphere
+280, 227, 92, 49, 539, 48, 0.008013, Many internal, some on sphere
+280, 247, 92, 53, 585, 48, 0.007596, Many internal, some on sphere
+280, 219, 92, 48, 514, 48, 0.007300, Many internal, some on sphere
+280, 239, 92, 53, 610, 48, 0.007990, Many internal, some on sphere
+280, 235, 92, 50, 510, 48, 0.008065, Many internal, some on sphere
+280, 227, 92, 49, 606, 48, 0.007489, Many internal, some on sphere
+280, 237, 92, 50, 587, 48, 0.007820, Many internal, some on sphere
+280, 236, 92, 48, 620, 48, 0.007881, Many internal, some on sphere
+280, 250, 92, 50, 569, 48, 0.008457, Many internal, some on sphere
+280, 233, 92, 48, 670, 48, 0.007681, Many internal, some on sphere
+280, 238, 92, 51, 650, 48, 0.008087, Many internal, some on sphere
+280, 223, 92, 48, 510, 48, 0.008104, Many internal, some on sphere
+280, 225, 92, 48, 555, 48, 0.009225, Many internal, some on sphere
+280, 237, 92, 48, 537, 48, 0.008172, Many internal, some on sphere
+280, 234, 92, 50, 660, 48, 0.007566, Many internal, some on sphere
+280, 245, 92, 50, 560, 48, 0.008303, Many internal, some on sphere
+280, 240, 92, 49, 587, 48, 0.008177, Many internal, some on sphere
+280, 228, 92, 48, 501, 48, 0.007680, Many internal, some on sphere
+280, 234, 92, 51, 567, 48, 0.008013, Many internal, some on sphere
+280, 229, 92, 49, 560, 48, 0.007626, Many internal, some on sphere
+280, 241, 92, 54, 647, 48, 0.008359, Many internal, some on sphere
+280, 224, 92, 50, 573, 48, 0.008234, Many internal, some on sphere
+280, 231, 92, 49, 540, 48, 0.007495, Many internal, some on sphere
+280, 227, 92, 51, 565, 48, 0.007869, Many internal, some on sphere
+280, 241, 92, 51, 634, 48, 0.008319, Many internal, some on sphere
+280, 235, 92, 51, 600, 48, 0.007571, Many internal, some on sphere
+280, 220, 92, 48, 592, 48, 0.008058, Many internal, some on sphere
+280, 211, 92, 48, 545, 48, 0.007845, Many internal, some on sphere
+280, 232, 92, 48, 497, 48, 0.008533, Many internal, some on sphere
+280, 225, 92, 49, 617, 48, 0.007918, Many internal, some on sphere
+280, 227, 92, 50, 740, 48, 0.007768, Many internal, some on sphere
+280, 237, 92, 51, 495, 48, 0.008059, Many internal, some on sphere
+280, 236, 92, 48, 511, 48, 0.008168, Many internal, some on sphere
+280, 233, 92, 50, 586, 48, 0.007742, Many internal, some on sphere
+280, 231, 92, 49, 533, 48, 0.008107, Many internal, some on sphere
+280, 235, 92, 52, 532, 48, 0.008104, Many internal, some on sphere
+280, 239, 92, 51, 653, 48, 0.007858, Many internal, some on sphere
+280, 246, 92, 52, 549, 48, 0.007771, Many internal, some on sphere
+280, 229, 92, 49, 690, 48, 0.008419, Many internal, some on sphere
+280, 223, 92, 48, 521, 48, 0.007977, Many internal, some on sphere

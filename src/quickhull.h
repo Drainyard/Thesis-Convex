@@ -229,9 +229,10 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f,
         {
             auto v2Face = v2.faceHandles[v2FaceIndex];
             
-            bool duplicateVerts = false;
+            //  Found an edge that connects two faces
             if(v1Face == v2Face)
             {
+                bool duplicateVerts = false;
                 for(int i = 0; i < f.neighbourCount; i++)
                 {
                     if(v1.vertexIndex == f.neighbours[i].originVertex && v2.vertexIndex == f.neighbours[i].endVertex ||
@@ -245,7 +246,7 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f,
                     }
                 }
                 
-                for(int i = 0; i < fe.neighbourCount; i++)
+                /*for(int i = 0; i < fe.neighbourCount; i++)
                 {
                     if(v1.vertexIndex == fe.neighbours[i].originVertex && v2.vertexIndex == fe.neighbours[i].endVertex ||
                        v2.vertexIndex == fe.neighbours[i].originVertex && v1.vertexIndex == fe.neighbours[i].endVertex)
@@ -256,7 +257,7 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f,
                             break;
                         }
                     }
-                }
+                }*/
                 
                 if(duplicateVerts)
                     continue;
@@ -276,11 +277,6 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f,
                 fe.neighbours[neighbourIndex].originVertex = v2.vertexIndex;
                 
                 fe.visited = false;
-                
-                if(fe.neighbourCount > MAX_NEIGHBOURS)
-                {
-                    assert(false);
-                }
             }
         }
     }
@@ -393,6 +389,7 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
                 // Found the neighbour
                 neighbourFace.neighbours[i] = neighbourFace.neighbours[neighbourFace.neighbourCount - 1];
                 neighbourFace.neighbourCount = neighbourFace.neighbourCount - 1;
+                neighbourFace.neighbours[neighbourFace.neighbourCount] = {};
                 break;
             }
         }

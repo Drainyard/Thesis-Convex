@@ -72,7 +72,7 @@ void reinitPoints(vertex **vertices, config_data &configData, hull &h, render_co
     
     loadConfig("../.config", configData);
     
-    if(h.numberOfPoints != configData.numberOfPoints)
+    if(h.numberOfPoints != configData.numberOfPoints || h.pointGenerator.type != configData.genType)
     {
         initPointGenerator(h.pointGenerator, configData.genType, configData.numberOfPoints);
     }
