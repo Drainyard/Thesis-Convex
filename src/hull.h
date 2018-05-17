@@ -21,85 +21,80 @@ struct hull
 {
     vertex *vertices;
     int numberOfPoints;
-
+    
     qh_context qhContext;
     qh_context stepQhContext;
     qh_context timedStepQhContext;
-
+    
     timer qhTimer;
-
+    
     inc_context incContext;
     inc_context stepIncContext;
     inc_context timedStepIncContext;
-
+    
     timer incTimer;
-
+    
     dac_context dacContext;
     dac_context stepDacContext;
     dac_context timedStepDacContext;
-
+    
     timer dacTimer;
-
+    
     HullType currentHullType;
-
+    
     point_generator pointGenerator;
 };
 
 const char *GetGeneratorTypeString(GeneratorType type)
 {
-
+    
     switch (type)
     {
-    case GeneratorType::InSphere:
-    {
-        return "In Sphere";
-    }
-    break;
-    case GeneratorType::OnSphere:
-    {
-        return "On Sphere";
-    }
-    break;
-    case GeneratorType::InCube:
-    {
-        return "In Cube";
-    }
-    break;
-    case GeneratorType::NormalizedSphere:
-    {
-        return "On Normalized Sphere";
-    }
-    break;
-    case GeneratorType::ManyInternal:
-    {
-        return "Many internal, some on sphere";
-    }
-    break;
+        case GeneratorType::InSphere:
+        {
+            return "In Sphere";
+        }
+        break;
+        case GeneratorType::OnSphere:
+        {
+            return "On Sphere";
+        }
+        break;
+        case GeneratorType::InCube:
+        {
+            return "In Cube";
+        }
+        break;
+        case GeneratorType::NormalizedSphere:
+        {
+            return "On Normalized Sphere";
+        }
+        break;
+        case GeneratorType::ManyInternal:
+        {
+            return "Many internal, some on sphere";
+        }
+        break;
     }
 }
 
 void WriteHullToCSV(const char *filename, int facesAdded, int totalFaceCount, int vertexCount, int pointsProcessed, int distanceQueryCount, int sidednessQueries, int verticesInHull, unsigned long long nstimeSpent, GeneratorType generateType)
 {
     char *fullFilename = concat(filename, ".csv");
-
+    
     auto fileExists = FileExists(fullFilename);
-
+    
     FILE *f = fopen(fullFilename, "a+");
     free(fullFilename);
-
+    
     if (f)
     {
         if (!fileExists)
         {
             fprintf(f, "input vertices, faces added, faces in hull, points processed, distance queries, sidednessQueries, vertices in hull, time spent, point distribution\n");
         }
-<<<<<<< HEAD
-
-        fprintf(f, "%d, %d, %d, %d, %d, %d, %lf, %s\n", vertexCount, facesAdded, totalFaceCount, pointsProcessed, distanceQueryCount, verticesInHull, timeSpent, GetGeneratorTypeString(generateType));
-=======
         
         fprintf(f, "%d, %d, %d, %d, %d, %d, %d, %lld, %s\n", vertexCount, facesAdded, totalFaceCount, pointsProcessed, distanceQueryCount, sidednessQueries, verticesInHull, nstimeSpent, GetGeneratorTypeString(generateType));
->>>>>>> e5df18c2afa213748fc6e3bd2504a1bd0df260b2
         fclose(f);
     }
 }
@@ -108,20 +103,20 @@ static void InitializeHull(hull &h, vertex *vertices, int numberOfPoints, HullTy
 {
     h.vertices = vertices;
     h.numberOfPoints = numberOfPoints;
-
+    
     h.qhContext = {};
     h.qhContext.initialized = false;
     h.stepQhContext.initialized = false;
     h.stepQhContext = {};
     h.timedStepQhContext.initialized = false;
     h.timedStepQhContext = {};
-
+    
     h.incContext.initialized = false;
     h.incContext = {};
-
+    
     //h.dacContext.initialized = false;
     //h.dacContext = {};
-
+    
     h.currentHullType = hullType;
 }
 
@@ -129,73 +124,73 @@ static void reinitializeHull(hull &h, vertex *vertices, int numberOfPoints)
 {
     h.vertices = vertices;
     h.numberOfPoints = numberOfPoints;
-
+    
     h.qhContext.initialized = false;
     h.stepQhContext.initialized = false;
     h.timedStepQhContext.initialized = false;
-
+    
     h.incContext.initialized = false;
 }
 
 static mesh *UpdateHull(render_context &renderContext, hull &h, HullType hullType, double deltaTime)
 {
     h.currentHullType = hullType;
-
+    
     switch (h.currentHullType)
     {
-    case QH:
-    {
-        auto &qhContext = h.timedStepQhContext;
-        if (h.qhTimer.running)
+        case QH:
         {
-            if (h.qhTimer.currentTime <= 0.0)
+            auto &qhContext = h.timedStepQhContext;
+            if (h.qhTimer.running)
             {
-                qhStep(qhContext);
-                h.qhTimer.currentTime = h.qhTimer.timerInit;
-                return &qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
-            }
-            else
-            {
-                h.qhTimer.currentTime -= deltaTime;
-            }
-        }
-    }
-    break;
-    case Inc:
-    {
-        static bool init = true;
-
-        if (h.incTimer.running)
-        {
-            if (h.incTimer.currentTime <= 0.0)
-            {
-                if (init)
+                if (h.qhTimer.currentTime <= 0.0)
                 {
-                    incInitStepHull();
-                    init = false;
+                    qhStep(qhContext);
+                    h.qhTimer.currentTime = h.qhTimer.timerInit;
+                    return &qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
                 }
                 else
                 {
-                    incHullStep();
+                    h.qhTimer.currentTime -= deltaTime;
                 }
-                auto &incContext = h.timedStepIncContext;
-                h.incTimer.currentTime = h.incTimer.timerInit;
-                return &incConvertToMesh(incContext, renderContext);
-            }
-            else
-            {
-                h.incTimer.currentTime -= deltaTime;
             }
         }
-    }
-    break;
-    /*case Dac:
+        break;
+        case Inc:
         {
-            auto &dacContext = h.timedStepDacContext;
-            return &dacConvertToMesh(dacContext, renderContext);
+            static bool init = true;
+            
+            if (h.incTimer.running)
+            {
+                if (h.incTimer.currentTime <= 0.0)
+                {
+                    if (init)
+                    {
+                        incInitStepHull();
+                        init = false;
+                    }
+                    else
+                    {
+                        incHullStep();
+                    }
+                    auto &incContext = h.timedStepIncContext;
+                    h.incTimer.currentTime = h.incTimer.timerInit;
+                    return &incConvertToMesh(incContext, renderContext);
+                }
+                else
+                {
+                    h.incTimer.currentTime -= deltaTime;
+                }
+            }
         }
-        break;*/
-    default:
+        break;
+        /*case Dac:
+            {
+                auto &dacContext = h.timedStepDacContext;
+                return &dacConvertToMesh(dacContext, renderContext);
+            }
+            break;*/
+        default:
         break;
     }
     return nullptr;
@@ -206,25 +201,21 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
     auto vertexAmounts = testSet.testSet;
     auto iterations = testSet.count;
     auto genType = testSet.genType;
-
+    
     vertex *vertices = nullptr;
-
+    
     auto seed = time(NULL);
     point_generator generator;
     std::random_device rd{};
     std::mt19937 gen{rd()};
     gen.seed(seed);
     generator.gen = gen;
-
+    
     qh_context qhContext = {};
-<<<<<<< HEAD
-
-    for (size_t i = 0; i < iterations; i++)
-=======
+    inc_context incContext = {};
     
     log_a("Count: %zd\n", testSet.count);
     for(size_t i = 0; i < testSet.count; i++)
->>>>>>> e5df18c2afa213748fc6e3bd2504a1bd0df260b2
     {
         int addedFaces = 0;
         int numFaces = 0;
@@ -232,40 +223,26 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
         int distanceQueries = 0;
         int sidednessQueries = 0;
         int verticesOnHull = 0;
-<<<<<<< HEAD
-        double timeSpent = 0.0;
-
-=======
         unsigned long long timeSpent = 0;
         
->>>>>>> e5df18c2afa213748fc6e3bd2504a1bd0df260b2
         int numForAvg = Max(1, testSet.iterations);
         auto n = vertexAmounts[i];
-
+        
         log_a("Num: %d\n", n);
         initPointGenerator(generator, genType, n);
-
+        
         for (int j = 0; j < numForAvg; j++)
         {
             log_a("%d \n", j);
-<<<<<<< HEAD
-
-            vertices = generate(generator, 0.0f, 200.0f, offset);
-
-=======
             
-            vertices = generate(generator, 0.0f, 500.0f, offset);
+            vertices = generate(generator, 0.0f, 5000.0f, offset);
             
->>>>>>> e5df18c2afa213748fc6e3bd2504a1bd0df260b2
             qhInitializeContext(qhContext, vertices, n);
             auto timerIndex = startTimer();
             qhFullHull(qhContext);
             qhContext.qHull.processingState.timeSpent = endTimer(timerIndex);
             
             qhContext.initialized = false;
-<<<<<<< HEAD
-
-=======
             if(qhContext.qHull.failed)
             {
                 free(vertices);
@@ -273,7 +250,6 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
                 continue;
             }
             
->>>>>>> e5df18c2afa213748fc6e3bd2504a1bd0df260b2
             addedFaces += qhContext.qHull.processingState.addedFaces;
             numFaces += (int)qhContext.qHull.faces.size;
             pointsProcessed += qhContext.qHull.processingState.pointsProcessed;
@@ -281,18 +257,10 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
             sidednessQueries += qhContext.qHull.processingState.sidednessQueries;
             verticesOnHull += qhContext.qHull.processingState.verticesInHull;
             timeSpent += qhContext.qHull.processingState.timeSpent;
-<<<<<<< HEAD
-
-            free(vertices);
-        }
-
-        WriteHullToCSV("../data/qh_hull_out", addedFaces / numForAvg, numFaces / numForAvg, n, pointsProcessed / numForAvg, distanceQueries / numForAvg, verticesOnHull / numForAvg, timeSpent / numForAvg, genType);
-=======
         }
         
         WriteHullToCSV("../data/qh_hull_out", addedFaces / numForAvg, numFaces / numForAvg, n, pointsProcessed / numForAvg, distanceQueries / numForAvg, sidednessQueries / numForAvg,  verticesOnHull / numForAvg, timeSpent / numForAvg, genType);
         
->>>>>>> e5df18c2afa213748fc6e3bd2504a1bd0df260b2
         addedFaces = 0;
         numFaces = 0;
         pointsProcessed = 0;
@@ -308,65 +276,64 @@ static mesh &FullHull(render_context &renderContext, hull &h)
 {
     switch (h.currentHullType)
     {
-    case QH:
-    {
-        auto &qhContext = h.qhContext;
-        if (!qhContext.initialized)
+        case QH:
         {
             auto &qhContext = h.qhContext;
             if (!qhContext.initialized)
             {
-                qhInitializeContext(qhContext, h.vertices, h.numberOfPoints);
+                auto &qhContext = h.qhContext;
+                if (!qhContext.initialized)
+                {
+                    qhInitializeContext(qhContext, h.vertices, h.numberOfPoints);
+                }
+                
+                auto timerIndex = startTimer();
+                qhFullHull(qhContext);
+                TIME_END(timerIndex, "Full quick hull");
+                
+                WriteHullToCSV("qh_hull_out", qhContext.qHull.processingState.addedFaces, (int)qhContext.qHull.faces.size, h.numberOfPoints, qhContext.qHull.processingState.pointsProcessed, qhContext.qHull.processingState.distanceQueryCount,
+                               qhContext.qHull.processingState.sidednessQueries, qhContext.qHull.processingState.verticesInHull, qhContext.qHull.processingState.timeSpent, h.pointGenerator.type);
+                
+                return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
             }
             
             auto timerIndex = startTimer();
-            printf("index: %d\n", timerIndex);
             qhFullHull(qhContext);
             TIME_END(timerIndex, "Full quick hull");
             
             WriteHullToCSV("qh_hull_out", qhContext.qHull.processingState.addedFaces, (int)qhContext.qHull.faces.size, h.numberOfPoints, qhContext.qHull.processingState.pointsProcessed, qhContext.qHull.processingState.distanceQueryCount,
-                           qhContext.qHull.processingState.sidednessQueries, qhContext.qHull.processingState.verticesInHull, qhContext.qHull.processingState.timeSpent, h.pointGenerator.type);
+                           qhContext.qHull.processingState.sidednessQueries,qhContext.qHull.processingState.verticesInHull, qhContext.qHull.processingState.timeSpent, h.pointGenerator.type);
             
             return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
         }
-
-        auto timerIndex = startTimer();
-        printf("index: %d\n", timerIndex);
-        qhFullHull(qhContext);
-        TIME_END(timerIndex, "Full quick hull");
-
-        WriteHullToCSV("qh_hull_out", qhContext.qHull.processingState.addedFaces, (int)qhContext.qHull.faces.size, h.numberOfPoints, qhContext.qHull.processingState.pointsProcessed, qhContext.qHull.processingState.distanceQueryCount, qhContext.qHull.processingState.verticesInHull, qhContext.qHull.processingState.timeSpent, h.pointGenerator.type);
-
-        return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
-    }
-    break;
-    case Inc:
-    {
-        auto &incContext = h.incContext;
-        if (!incContext.initialized)
+        break;
+        case Inc:
         {
-            incInitializeContext(incContext, h.vertices, h.numberOfPoints);
+            auto &incContext = h.incContext;
+            if (!incContext.initialized)
+            {
+                incInitializeContext(incContext, h.vertices, h.numberOfPoints);
+            }
+            auto timerIndex = startTimer();
+            incConstructFullHull();
+            TIME_END(timerIndex, "Full inc hull");
+            return incConvertToMesh(incContext, renderContext);
         }
-        auto timerIndex = startTimer();
-        incConstructFullHull();
-        TIME_END(timerIndex, "Full inc hull");
-        return incConvertToMesh(incContext, renderContext);
-    }
-    break;
-    case Dac:
-    {
-        auto &dacContext = h.dacContext;
-        if (!dacContext.initialized)
+        break;
+        case Dac:
         {
-            dacInitializeContext(dacContext, h.vertices, h.numberOfPoints);
+            auto &dacContext = h.dacContext;
+            if (!dacContext.initialized)
+            {
+                dacInitializeContext(dacContext, h.vertices, h.numberOfPoints);
+            }
+            auto timerIndex = startTimer();
+            dacConstructFullHull(dacContext);
+            TIME_END(timerIndex, "Full dac hull");
+            return dacConvertToMesh(dacContext, renderContext);
         }
-        auto timerIndex = startTimer();
-        dacConstructFullHull(dacContext);
-        TIME_END(timerIndex, "Full dac hull");
-        return dacConvertToMesh(dacContext, renderContext);
-    }
-    break;
-    default:
+        break;
+        default:
         break;
     }
 }
@@ -375,50 +342,50 @@ static mesh &StepHull(render_context &renderContext, hull &h)
 {
     switch (h.currentHullType)
     {
-    case QH:
-    {
-        auto &qhContext = h.stepQhContext;
-        if (!qhContext.initialized)
+        case QH:
         {
-            qhInitializeContext(qhContext, h.vertices, h.numberOfPoints);
+            auto &qhContext = h.stepQhContext;
+            if (!qhContext.initialized)
+            {
+                qhInitializeContext(qhContext, h.vertices, h.numberOfPoints);
+            }
+            qhStep(qhContext);
+            return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
         }
-        qhStep(qhContext);
-        return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
-    }
-    break;
-    case Inc:
-    {
-        static bool init = true;
-        auto &incContext = h.stepIncContext;
-        if (!incContext.initialized)
+        break;
+        case Inc:
         {
-            incInitializeContext(incContext, h.vertices, h.numberOfPoints);
+            static bool init = true;
+            auto &incContext = h.stepIncContext;
+            if (!incContext.initialized)
+            {
+                incInitializeContext(incContext, h.vertices, h.numberOfPoints);
+            }
+            if (init)
+            {
+                incInitStepHull();
+                init = false;
+            }
+            else
+            {
+                incHullStep();
+            }
+            return incConvertToMesh(incContext, renderContext);
         }
-        if (init)
+        break;
+        case Dac:
         {
-            incInitStepHull();
-            init = false;
+            /*auto &dacContext = h.dacContext;
+            if (!dacContext.initialized)
+            {
+                dacInitializeContext(dacContext, h.vertices, h.numberOfPoints);
+            }
+            dacHullStep(dacContext);
+            return dacConvertToMesh(dacContext, renderContext);
+            */
         }
-        else
-        {
-            incHullStep();
-        }
-        return incConvertToMesh(incContext, renderContext);
-    }
-    break;
-    case Dac:
-    {
-        /*auto &dacContext = h.dacContext;
-        if (!dacContext.initialized)
-        {
-            dacInitializeContext(dacContext, h.vertices, h.numberOfPoints);
-        }
-        dacHullStep(dacContext);
-        return dacConvertToMesh(dacContext, renderContext);
-        */
-    }
-    break;
-    default:
+        break;
+        default:
         break;
     }
 }
@@ -427,37 +394,37 @@ static mesh &TimedStepHull(render_context &renderContext, hull &h)
 {
     switch (h.currentHullType)
     {
-    case QH:
-    {
-        auto &qhContext = h.timedStepQhContext;
-        if (!qhContext.initialized)
+        case QH:
         {
-            qhInitializeContext(qhContext, h.vertices, h.numberOfPoints);
+            auto &qhContext = h.timedStepQhContext;
+            if (!qhContext.initialized)
+            {
+                qhInitializeContext(qhContext, h.vertices, h.numberOfPoints);
+            }
+            
+            h.qhTimer.running = !h.qhTimer.running;
+            return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
         }
-
-        h.qhTimer.running = !h.qhTimer.running;
-        return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
-    }
-    break;
-    case Inc:
-    {
-        auto &incContext = h.timedStepIncContext;
-        if (!incContext.initialized)
+        break;
+        case Inc:
         {
-            incInitializeContext(incContext, h.vertices, h.numberOfPoints);
+            auto &incContext = h.timedStepIncContext;
+            if (!incContext.initialized)
+            {
+                incInitializeContext(incContext, h.vertices, h.numberOfPoints);
+            }
+            
+            h.incTimer.running = !h.incTimer.running;
+            return incConvertToMesh(incContext, renderContext);
         }
-
-        h.incTimer.running = !h.incTimer.running;
-        return incConvertToMesh(incContext, renderContext);
-    }
-    break;
-    /*case Dac:
-        {
-            auto &dacContext = h.timedStepDacContext;
-            return dacConvertToMesh(dacContext, renderContext);
-        }
-        break;*/
-    default:
+        break;
+        /*case Dac:
+            {
+                auto &dacContext = h.timedStepDacContext;
+                return dacConvertToMesh(dacContext, renderContext);
+            }
+            break;*/
+        default:
         break;
     }
 }
