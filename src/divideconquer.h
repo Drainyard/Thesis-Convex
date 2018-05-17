@@ -178,7 +178,7 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B, bool lower)
     i = k = 0;
     j = n / 2 * 2;
 
-    double t[6], oldTime, newTime;    
+    double t[6], oldTime, newTime;
     oldTime = -INF;
     // merge by tracking bridge uv over time
     // infinite loop until no insertion/deletion events occur
@@ -193,7 +193,7 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B, bool lower)
             t[4] = time(u, v, v->next);
             t[5] = time(u, v->prev, v);
         }
-        else
+        else 
         {
             t[0] = -time(B[i]->prev, B[i], B[i]->next);
             t[1] = -time(B[j]->prev, B[j], B[j]->next);
@@ -203,7 +203,7 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B, bool lower)
             t[5] = -time(u, v->prev, v);
         }
 
-        //we find the movie with chronologic time
+        //we find the movies in chronological time
         newTime = INF;
         for (l = 0; l < 6; l++)
         {
@@ -347,7 +347,9 @@ void dacConstructFullHull(dac_context &dacContext)
     int n = dacContext.numberOfPoints;
 
     dacVertex *P = dacContext.vertices;
-    dacVertex *list = sort(dacContext.vertices, n);
+    dacVertex *upperP = (dacVertex *)malloc(sizeof(dacVertex) * n);
+    memcpy(upperP, P, sizeof(dacVertex) * n);
+    dacVertex *list = sort(P, n);
 
     //Each vertex is inserted at most once and deleted at most once, so at most 2n events (facets).
     dacVertex **A = new dacVertex *[2 * n];
@@ -355,17 +357,18 @@ void dacConstructFullHull(dac_context &dacContext)
     dacVertex **B = new dacVertex *[2 * n];
     dacHull(list, n, A, B, true);
 
-    //create faces
+    //create faces by processing the events in event array A
     for (i = 0; A[i] != NIL; A[i++]->act())
     {
         dacFace *newFace = dacCreateFaceFromPoints(A[i]->prev, A[i], A[i]->next);
         dacContext.faces.push_back(newFace);
     }
 
+    dacVertex *upperList = sort(upperP, n);
     dacVertex **C = new dacVertex *[2 * n];
     //work array
     dacVertex **D = new dacVertex *[2 * n];
-    dacHull(list, n, C, D, false);
+    dacHull(upperList, n, C, D, false);
 
     for (i = 0; C[i] != NIL; C[i++]->act())
     {
