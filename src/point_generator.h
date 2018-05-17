@@ -29,6 +29,7 @@ struct TestSet
 {
     int *testSet;
     size_t count;
+    int iterations;
     GeneratorType genType;
 };
 
@@ -51,6 +52,7 @@ void readTestSet(const char *filename, TestSet &testSet)
     if(f)
     {
         testSet.count = countLinesFromCurrent(f);
+        testSet.iterations = 0;
         testSet.testSet = (int*)malloc(sizeof(int) * testSet.count);
         
         char buf[64];
@@ -61,11 +63,15 @@ void readTestSet(const char *filename, TestSet &testSet)
             {
                 int genType;
                 sscanf(buf, "type %d", &genType);
-                if(genType > GeneratorType::ManyInternal)
+                if(genType > GeneratorType::ManyInternal || genType < 0)
                 {
                     genType = GeneratorType::InSphere;
                 }
                 testSet.genType = (GeneratorType)genType;
+            }
+            else if(startsWith(buf, "iterations"))
+            {
+                sscanf(buf, "iterations %d\n", &testSet.iterations);
             }
             else
             {
@@ -104,7 +110,7 @@ void loadConfig(const char* filePath, config_data &configData)
             else if(startsWith(buffer, "set")) // Always needs to be at the end
             {
                 set = true;
-                configData.testSets.count = countLinesFromCurrent(f);
+                configData.testSets.count = countLinesFromCurrent(f) + 1;
                 configData.testSets.testSets = (TestSet*)malloc(sizeof(TestSet) * configData.testSets.count);
                 int i = 0;
                 do
@@ -114,6 +120,7 @@ void loadConfig(const char* filePath, config_data &configData)
                         char filename[64];
                         sscanf(buffer, "set %s", filename);
                         readTestSet(filename, configData.testSets.testSets[i++]);
+                        printf("Set: %d\n", configData.testSets.count);
                     }
                 }
                 while(fgets(buffer, 64, f));

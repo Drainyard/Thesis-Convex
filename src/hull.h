@@ -223,7 +223,7 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
         int verticesOnHull = 0;
         double timeSpent = 0.0;
         
-        int numForAvg = 1;
+        int numForAvg = Max(1, testSet.iterations);
         auto n = vertexAmounts[i];
         
         log_a("Num: %d\n", n);

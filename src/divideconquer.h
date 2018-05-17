@@ -149,6 +149,7 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B)
         return;
     }
 
+    //find middle
     for (u = list, i = 0; i < n / 2 - 1; u = u->next, i++)
         ;
     mid = v = u->next;
@@ -275,7 +276,6 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B)
 
 mesh &dacConvertToMesh(dac_context &context, render_context &renderContext)
 {
-
     /*  This version of the code prints the facets of the 3-d lower hull. This is done by
         processing the events in the output array A and tracking the linked list for the 2-d hull using the
         same prev and next fields.  */
