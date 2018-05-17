@@ -30,6 +30,22 @@ static void SetFloatUniform(GLuint programID, const char* name, float value)
     glUniform1f(glGetUniformLocation(programID, name), value);
 }
 
+struct Resolution
+{
+    int window_width;
+    int window_height;
+};
+
+static Resolution get_resolution() 
+{
+    const GLFWvidmode * mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+    
+    Resolution res = {};
+    res.window_width = mode->width;
+    res.window_height = mode->height;
+    return res;
+}
+
 static vertex* LoadObj(const char* filePath, float scale = 1.0f)
 {
     vertex* vertices = nullptr;
@@ -294,10 +310,13 @@ static void InitializeOpenGL(render_context& renderContext)
     
     // Open a window and create its OpenGL context
     // (In the accompanying source code, this variable is global for simplicity)
-    renderContext.screenWidth= 1600;
-    renderContext.screenHeight = 900;
+    auto res = get_resolution();
+    
+    renderContext.screenWidth= res.window_width;
+    renderContext.screenHeight = res.window_height;
     renderContext.window = glfwCreateWindow(renderContext.screenWidth, renderContext.screenHeight, "Convex Hull", NULL, NULL);
-    if(renderContext.window == NULL){
+    if(renderContext.window == NULL)
+    {
         fprintf( stderr, "Failed to open GLFW window\n" );
         glfwTerminate();
         exit(0);

@@ -64,7 +64,7 @@ static void qhAddToList(qh_list<T> &list, T element)
 template<typename T>
 static void clear(qh_list<T> &list)
 {
-    for(int i = 0; i < list.size; i++)
+    for(size_t i = 0; i < list.size; i++)
     {
         list[i] = {};
     }
@@ -90,7 +90,7 @@ struct qh_vertex
     glm::vec4 color;
 };
 
-#define MAX_NEIGHBOURS 6400
+#define MAX_NEIGHBOURS 16
 
 struct qh_face
 {
@@ -122,10 +122,12 @@ struct qh_hull
         int addedFaces;
         int pointsProcessed;
         int distanceQueryCount;
+        int sidednessQueries;
         int verticesInHull;
-        double timeSpent;
+        unsigned long long timeSpent;
     } processingState;
     
+    bool failed;
 };
 
 struct qh_context
@@ -161,25 +163,27 @@ static void qhCopyVertices(qh_context& q, vertex* vertices, int numberOfPoints)
 
 // t=nn·v1−nn·p
 // p0=p+t·nn
-float DistancePointToFace(qh_hull& q, qh_face& f, qh_vertex& v)
+float DistancePointToFace(qh_hull &q, qh_face f, qh_vertex v)
 {
     q.processingState.distanceQueryCount++;
     return glm::abs((glm::dot(f.faceNormal, v.position) - glm::dot(f.faceNormal, f.centerPoint))); 
 }
 
-static bool IsPointOnPositiveSide(qh_face& f, qh_vertex& v, coord_t epsilon = 0.0f)
+static bool IsPointOnPositiveSide(qh_hull &q, qh_face f, qh_vertex v, coord_t epsilon = 0.0f)
 {
+    q.processingState.sidednessQueries++;
     auto d = glm::dot(f.faceNormal, v.position - f.centerPoint);
     return d > epsilon;
 }
 
-static bool IsPointOnPositiveSide(qh_face& f, glm::vec3 v, coord_t epsilon = 0.0f)
+static bool IsPointOnPositiveSide(qh_hull &q, qh_face f, glm::vec3 v, coord_t epsilon = 0.0f)
 {
+    q.processingState.sidednessQueries++;
     auto d = glm::dot(f.faceNormal, v - f.centerPoint);
     return d > epsilon;
 }
 
-static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f, qh_vertex* vertices)
+static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull &q, qh_face& f, qh_vertex* vertices)
 {
     auto& v1 = vertices[v1Handle];
     auto& v2 = vertices[v2Handle];
@@ -265,6 +269,13 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull& q, qh_face& f,
                 fe.neighbours[neighbourIndex].originVertex = v2.vertexIndex;
                 
                 fe.visited = false;
+                
+                if(fe.neighbourCount + 1 >= MAX_NEIGHBOURS)
+                {
+                    q.failed = true;
+                    log_a("FAILED QH\n");
+                    return;
+                }
             }
         }
     }
@@ -315,8 +326,15 @@ static qh_face* qhAddFace(qh_hull& q, int v1Handle, int v2Handle, int v3Handle, 
     newFace.centerPoint = (vertices[newFace.vertices[0]].position + vertices[newFace.vertices[1]].position + vertices[newFace.vertices[2]].position) / 3.0f;
     
     qhFindNeighbours(v1Handle, v2Handle, q, newFace, vertices);
+    
+    if(q.failed)
+        return nullptr;
     qhFindNeighbours(v1Handle, v3Handle, q, newFace, vertices);
+    if(q.failed)
+        return nullptr;
     qhFindNeighbours(v2Handle, v3Handle, q, newFace, vertices);
+    if(q.failed)
+        return nullptr;
     
     if(v1.faceHandles.size == 0)
     {
@@ -650,21 +668,33 @@ coord_t qhGenerateInitialSimplex(qh_vertex* vertices, int numVertices, qh_hull& 
         }
     }
     
-    if(IsPointOnPositiveSide(*f, vertices[currentIndex], epsilon))
+    if(IsPointOnPositiveSide(q, *f, vertices[currentIndex], epsilon))
     {
         auto t = f->vertices[0];
         f->vertices[0] = f->vertices[1];
         f->vertices[1] = t;
         f->faceNormal = ComputeFaceNormal(*f, vertices);
         qhAddFace(q, mostDist1, currentIndex, extremePointCurrentIndex, vertices);
+        if(q.failed)
+            return epsilon;
         qhAddFace(q, currentIndex, mostDist2, extremePointCurrentIndex, vertices);
+        if(q.failed)
+            return epsilon;
         qhAddFace(q, mostDist1, mostDist2, currentIndex, vertices);
+        if(q.failed)
+            return epsilon;
     }
     else
     {
         qhAddFace(q, currentIndex, mostDist1, extremePointCurrentIndex, vertices);
+        if(q.failed)
+            return epsilon;
         qhAddFace(q, mostDist2, currentIndex, extremePointCurrentIndex, vertices);
+        if(q.failed)
+            return epsilon;
         qhAddFace(q, mostDist2, mostDist1, currentIndex, vertices);
+        if(q.failed)
+            return epsilon;
     }
     
     return epsilon;
@@ -696,7 +726,7 @@ void qhAssignToOutsideSets(qh_hull& q, qh_vertex* vertices, int numVertices, qh_
             coord_t currentDist = 0.0;
             int currentDistIndex = 0;
             
-            if(IsPointOnPositiveSide(f, unassigned[vertexIndex], epsilon))
+            if(IsPointOnPositiveSide(q, f, unassigned[vertexIndex], epsilon))
             {
                 auto v = unassigned[vertexIndex];
                 auto newDist = DistancePointToFace(q, f, v);
@@ -776,7 +806,7 @@ void qhFindConvexHorizon(qh_vertex& viewPoint, std::vector<int>& faces, qh_hull&
             auto& neighbour = f.neighbours[neighbourIndex];
             auto& neighbourFace = qHull.faces[neighbour.faceHandle];
             
-            if(!IsPointOnPositiveSide(neighbourFace, viewPoint, epsilon))
+            if(!IsPointOnPositiveSide(qHull, neighbourFace, viewPoint, epsilon))
             {
                 edge newEdge = {};
                 newEdge.origin = neighbour.originVertex;
@@ -836,9 +866,17 @@ qh_hull qhInit(qh_vertex* vertices, int numVertices, std::vector<int>& faceStack
     qHull.processingState.addedFaces = 0;
     qHull.processingState.pointsProcessed = 4;
     qHull.processingState.distanceQueryCount = 0;
+    qHull.processingState.sidednessQueries = 0;
+    qHull.processingState.verticesInHull = 0;
+    qHull.processingState.timeSpent = 0.0;
     
     *epsilon = qhGenerateInitialSimplex(vertices, numVertices, qHull);
+    if(qHull.failed)
+        return qHull;
+    
     qhAssignToOutsideSets(qHull, vertices, numVertices, qHull.faces.list,  (int)qHull.faces.size, *epsilon);
+    if(qHull.failed)
+        return qHull;
     
     for(int i = 0; i < (int)qHull.faces.size; i++)
     {
@@ -893,7 +931,7 @@ void qhHorizonStep(qh_hull& qHull, qh_vertex* vertices, qh_face& f, std::vector<
             auto& neighbour = qHull.faces[fa.neighbours[neighbourIndex].faceHandle];
             
             auto& newF = qHull.faces[fa.neighbours[neighbourIndex].faceHandle];
-            if(!newF.visitedV && IsPointOnPositiveSide(neighbour, p, epsilon))
+            if(!newF.visitedV && IsPointOnPositiveSide(qHull, neighbour, p, epsilon))
             {
                 v.push_back(newF.indexInHull);
             }
@@ -914,9 +952,12 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
         
         auto* newF = qhAddFace(qHull, e.origin, e.end, f.furthestPointIndex, vertices);
         
+        if(qHull.failed)
+            return;
+        
         if(newF)
         {
-            if(IsPointOnPositiveSide(*newF, f.centerPoint, epsilon))
+            if(IsPointOnPositiveSide(qHull, *newF, f.centerPoint, epsilon))
             {
                 auto t = newF->vertices[0];
                 newF->vertices[0] = newF->vertices[1];
@@ -959,7 +1000,7 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
             {
                 auto osHandle = fInV.outsideSet[osIndex];
                 auto& q = vertices[osHandle];
-                if(!q.assigned && q.faceHandles.size == 0 && IsPointOnPositiveSide(newFace, q, epsilon))
+                if(!q.assigned && q.faceHandles.size == 0 && IsPointOnPositiveSide(qHull, newFace, q, epsilon))
                 {
                     auto newDist = DistancePointToFace(qHull, newFace, q);
                     if(newDist > currentDist)
@@ -1043,26 +1084,35 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
 
 void qhFullHull(qh_context& qhContext)
 {
-    auto timerIndex = startTimer();
     qhContext.currentFace = nullptr;
     qhContext.faceStack.clear();
     qhContext.epsilon = 0.0;
     qhContext.qHull = qhInit(qhContext.vertices, qhContext.numberOfPoints, qhContext.faceStack, &qhContext.epsilon, &qhContext.qHull);
+    if(qhContext.qHull.failed)
+        return;
     
     qhContext.v.clear();
     qhContext.previousIteration = 0;
     while(qhContext.faceStack.size() > 0)
     {
         qhContext.currentFace = qhFindNextIteration(qhContext.qHull, qhContext.faceStack);
+        if(qhContext.qHull.failed)
+            return;
+        
         if(qhContext.currentFace)
         {
             qhHorizonStep(qhContext.qHull, qhContext.vertices, *qhContext.currentFace, qhContext.v, &qhContext.previousIteration, qhContext.epsilon, qhContext.horizon);
+            if(qhContext.qHull.failed)
+                return;
+            
             qhIteration(qhContext.qHull, qhContext.vertices, qhContext.faceStack, qhContext.currentFace->indexInHull, qhContext.v, 
                         qhContext.previousIteration, qhContext.epsilon, qhContext.horizon);
+            if(qhContext.qHull.failed)
+                return;
+            
             qhContext.v.clear();
         }
     }
-    qhContext.qHull.processingState.timeSpent = endTimer(timerIndex);
 }
 
 qh_hull qhFullHull(qh_vertex* vertices, int numVertices)
@@ -1072,6 +1122,9 @@ qh_hull qhFullHull(qh_vertex* vertices, int numVertices)
     coord_t epsilon;
     
     auto qHull = qhInit(vertices, numVertices, faceStack, &epsilon);
+    if(qHull.failed)
+        return qHull;
+    
     std::vector<int> v;
     
     std::vector<edge> horizon;
@@ -1080,12 +1133,18 @@ qh_hull qhFullHull(qh_vertex* vertices, int numVertices)
     while(faceStack.size() > 0)
     {
         currentFace = qhFindNextIteration(qHull, faceStack);
+        if(qHull.failed)
+            return qHull;
         if(currentFace)
         {
             qhHorizonStep(qHull, vertices, *currentFace, v, &previousIteration,
                           epsilon, horizon);
+            if(qHull.failed)
+                return qHull;
             qhIteration(qHull, vertices, faceStack, currentFace->indexInHull, v,
                         previousIteration, epsilon, horizon);
+            if(qHull.failed)
+                return qHull;
             v.clear();
         }
     }

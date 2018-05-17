@@ -4,7 +4,7 @@ set WERROR=
 set DEBUG=
 set GLM=
 set PRP=
-set WIGNORED=-wd4201 -wd4505 -wd4100 -wd4996 -wd4456 -wd4127 -wd4582 -wd4587 -wd4820 -wd4061 -wd4710 -wd4191 -wd4623 -wd4625 -wd5026 -wd4668 -wd4244 -wd4365 -wd4711 -wd4715
+set WIGNORED=-wd4201 -wd4505 -wd4100 -wd4996 -wd4456 -wd4127 -wd4582 -wd4587 -wd4820 -wd4061 -wd4710 -wd4191 -wd4623 -wd4625 -wd5026 -wd4668 -wd4244 -wd4365 -wd4571 -wd4756 -wd4715 -wd5045 -wd4626 -wd4774 -wd5039 -wd5027 -wd4711
 
 WHERE cl
 IF %ERRORLEVEL% NEQ 0 call %VCVARSALL% x64
