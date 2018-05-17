@@ -212,7 +212,6 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
     generator.gen = gen;
     
     qh_context qhContext = {};
-    inc_context incContext = {};
     
     log_a("Count: %zd\n", testSet.count);
     for(size_t i = 0; i < testSet.count; i++)
