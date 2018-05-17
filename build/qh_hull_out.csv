@@ -651,3 +651,4 @@ input vertices, faces added, faces in hull, points processed, distance queries, 
 300000, 21308, 2884, 4075, 859796, 1444, 3.053300, In Sphere
 30000, 5799, 846, 1130, 74645, 425, 0.679856, In Sphere
 30000, 5857, 864, 1126, 88391, 434, 0.687999, In Sphere
+30000, 5455, 900, 1067, 74535, 452, 0.513075, In Sphere
