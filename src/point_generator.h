@@ -51,7 +51,7 @@ void readTestSet(const char *filename, TestSet &testSet)
     FILE *f = fopen(filename, "r");
     if(f)
     {
-        testSet.count = countLinesFromCurrent(f);
+        testSet.count = 0;
         testSet.iterations = 0;
         testSet.testSet = (int*)malloc(sizeof(int) * testSet.count);
         
@@ -75,8 +75,14 @@ void readTestSet(const char *filename, TestSet &testSet)
             }
             else
             {
+                if(testSet.count == 0)
+                {
+                    testSet.count = countLinesFromCurrent(f) + 1;
+                }
+                
                 sscanf(buf, "%d\n", &testSet.testSet[i++]);
             }
+            log_a("%s", buf);
         }
         fclose(f);
     }
@@ -120,7 +126,6 @@ void loadConfig(const char* filePath, config_data &configData)
                         char filename[64];
                         sscanf(buffer, "set %s", filename);
                         readTestSet(filename, configData.testSets.testSets[i++]);
-                        printf("Set: %d\n", configData.testSets.count);
                     }
                 }
                 while(fgets(buffer, 64, f));

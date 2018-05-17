@@ -1,4 +1,5 @@
 #include <ctime>
+#include <chrono>
 #include <random>
 #include <vector>
 #include <iterator>
@@ -22,15 +23,16 @@
 #include <cmath>
 #include <algorithm>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
-#include <glad/glad.h>
-#include "GLFW/glfw3.h"
 
 // BEGIN IGNORE WARNINGS IN LIBS ON Windows
 #ifdef _WIN32
 #pragma warning(push, 0)
 #endif
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+#include <glad/glad.h>
+#include "GLFW/glfw3.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp> 
