@@ -203,7 +203,7 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B, bool lower)
             t[5] = -time(u, v->prev, v);
         }
 
-        //we find the movie with the lowest t for chronology
+        //we find the movie with chronologic time
         newTime = INF;
         for (l = 0; l < 6; l++)
         {
@@ -268,20 +268,25 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B, bool lower)
     }
     A[k] = NIL;
 
-    //The bridge uv
+    //connect the bridge uv
     u->next = v;
     v->prev = u;
 
     // now go back in time to update pointers
+    // during insertion of q between p and r, we cannot store p and r in the prev and next fields, as they are still in use in L and R
     for (k--; k >= 0; k--)
     {
         if (A[k]->vector.x <= u->vector.x || A[k]->vector.x >= v->vector.x)
         {
             A[k]->act();
             if (A[k] == u)
+            {
                 u = u->prev;
+            }
             else if (A[k] == v)
+            {
                 v = v->next;
+            }
         }
         else
         {
