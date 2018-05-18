@@ -141,14 +141,14 @@ enum Key_State
 
 struct input_state
 {
-    double xPos;
-    double yPos;
+    float xPos;
+    float yPos;
     
-    double xDelta;
-    double yDelta;
+    float xDelta;
+    float yDelta;
     
-    double xScroll;
-    double yScroll;
+    float xScroll;
+    float yScroll;
     
     float sensitivity = 0.05f;
     

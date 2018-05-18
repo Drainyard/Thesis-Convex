@@ -207,7 +207,7 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
     point_generator generator;
     std::random_device rd{};
     std::mt19937 gen{rd()};
-    gen.seed(seed);
+    gen.seed((unsigned int)seed);
     generator.gen = gen;
     
     qh_context qhContext = {};
@@ -265,7 +265,7 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
         distanceQueries = 0;
         sidednessQueries = 0;
         verticesOnHull = 0;
-        timeSpent = 0.0;
+        timeSpent = 0;
     }
     log_a("Done\n");
 }
@@ -279,20 +279,7 @@ static mesh &FullHull(render_context &renderContext, hull &h)
             auto &qhContext = h.qhContext;
             if (!qhContext.initialized)
             {
-                auto &qhContext = h.qhContext;
-                if (!qhContext.initialized)
-                {
-                    qhInitializeContext(qhContext, h.vertices, h.numberOfPoints);
-                }
-                
-                auto timerIndex = startTimer();
-                qhFullHull(qhContext);
-                TIME_END(timerIndex, "Full quick hull");
-                
-                WriteHullToCSV("qh_hull_out", qhContext.qHull.processingState.addedFaces, (int)qhContext.qHull.faces.size, h.numberOfPoints, qhContext.qHull.processingState.pointsProcessed, qhContext.qHull.processingState.distanceQueryCount,
-                               qhContext.qHull.processingState.sidednessQueries, qhContext.qHull.processingState.verticesInHull, qhContext.qHull.processingState.timeSpent, h.pointGenerator.type);
-                
-                return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
+                qhInitializeContext(qhContext, h.vertices, h.numberOfPoints);
             }
             
             auto timerIndex = startTimer();
@@ -300,7 +287,7 @@ static mesh &FullHull(render_context &renderContext, hull &h)
             TIME_END(timerIndex, "Full quick hull");
             
             WriteHullToCSV("qh_hull_out", qhContext.qHull.processingState.addedFaces, (int)qhContext.qHull.faces.size, h.numberOfPoints, qhContext.qHull.processingState.pointsProcessed, qhContext.qHull.processingState.distanceQueryCount,
-                           qhContext.qHull.processingState.sidednessQueries,qhContext.qHull.processingState.verticesInHull, qhContext.qHull.processingState.timeSpent, h.pointGenerator.type);
+                           qhContext.qHull.processingState.sidednessQueries, qhContext.qHull.processingState.verticesInHull, qhContext.qHull.processingState.timeSpent, h.pointGenerator.type);
             
             return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
         }
@@ -425,11 +412,6 @@ static mesh &TimedStepHull(render_context &renderContext, hull &h)
         default:
         break;
     }
-}
-
-static bool TimerRunning(hull &h)
-{
-    return h.qhTimer.running || h.incTimer.running;
 }
 
 #endif

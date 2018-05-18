@@ -172,7 +172,7 @@ int main()
     
     std::random_device rd{};
     std::mt19937 gen{rd()};
-    gen.seed(seed);
+    gen.seed((unsigned int)seed);
     //gen.seed(1526208347);
     h.pointGenerator.gen = gen;
     

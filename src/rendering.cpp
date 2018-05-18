@@ -15,16 +15,6 @@ static void SetVec4Uniform(GLuint programID, const char* name, glm::vec4 vec)
     glUniform4f(glGetUniformLocation(programID, name), vec.x, vec.y, vec.z, vec.w);
 }
 
-static void SetVec3Uniform(GLuint programID, const char* name, glm::vec4 vec)
-{
-    glUniform3f(glGetUniformLocation(programID, name), vec.x, vec.y, vec.z);
-}
-
-static void SetVec2Uniform(GLuint programID, const char* name, glm::vec2 vec)
-{
-    glUniform2f(glGetUniformLocation(programID, name), vec.x, vec.y);
-}
-
 static void SetFloatUniform(GLuint programID, const char* name, float value)
 {
     glUniform1f(glGetUniformLocation(programID, name), value);
@@ -52,7 +42,7 @@ static vertex* LoadObj(const char* filePath, float scale = 1.0f)
     auto file = fopen(filePath, "r");
     if(file)
     {
-        int vCount = 0;
+        size_t vCount = 0;
         char buffer[64];
         
         while(fgets(buffer, 64, file))
@@ -85,17 +75,6 @@ static vertex* LoadObj(const char* filePath, float scale = 1.0f)
     }
     
     return vertices;
-}
-
-static vertex* CopyVertices(vertex* vertices, int numberOfPoints)
-{
-    auto res = (vertex*)malloc(sizeof(vertex) * numberOfPoints);
-    for(int i = 0; i < numberOfPoints; i++)
-    {
-        res[i].position = vertices[i].position;
-        res[i].color = vertices[i].color;
-    }
-    return res;
 }
 
 void MessageCallback(GLenum source,
@@ -205,7 +184,7 @@ static char* LoadShaderFromFile(const char* path)
                 return nullptr;
             }
             
-            auto newLen = fread(source, sizeof(GLchar), bufSize, file);
+            auto newLen = fread(source, sizeof(GLchar), (size_t)bufSize, file);
             if(ferror(file) != 0)
             {
                 log_a("Error reading file");
@@ -381,7 +360,7 @@ static void InitializeOpenGL(render_context& renderContext)
     
     glUseProgram(renderContext.basicShader.programID);
     
-    auto pos = glGetAttribLocation(renderContext.basicShader.programID, "position");
+    GLuint pos = (GLuint)glGetAttribLocation(renderContext.basicShader.programID, "position");
     
     glEnableVertexAttribArray(pos);
     glVertexAttribPointer(pos, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
@@ -552,37 +531,6 @@ static GLfloat* BuildVertexBuffer(face* faces, int numFaces)
     return vertices;
 }
 
-static bool IsPointOnPositiveSide(face& f, vertex& v, coord_t epsilon = 0.0f)
-{
-    auto d = glm::dot(f.faceNormal, v.position - f.centerPoint);
-    return d > epsilon;
-}
-
-static bool IsPointOnPositiveSide(face& f, glm::vec3 v, coord_t epsilon = 0.0f)
-{
-    auto d = glm::dot(f.faceNormal, v - f.centerPoint);
-    return d > epsilon;
-}
-
-static glm::vec3 ComputeFaceNormal(face f)
-{
-    // Newell's Method
-    // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
-    glm::vec3 normal = glm::vec3(0.0f);
-    
-    for(int i = 0; i < 3; i++)
-    {
-        auto& current = f.vertices[i].position;
-        auto& next = f.vertices[(i + 1) % 3].position;
-        
-        normal.x = normal.x + (current.y - next.y) * (current.z + next.z);
-        normal.y = normal.y + (current.z - next.z) * (current.x + next.x);
-        normal.z = normal.z + (current.x - next.x) * (current.y + next.y);
-    }
-    
-    return glm::normalize(normal);
-}
-
 static mesh& InitEmptyMesh(render_context& renderContext, int meshIndex = -1)
 {
     if(meshIndex != -1)
@@ -622,7 +570,7 @@ static void RenderPointCloud(render_context& renderContext, vertex* inputPoints,
     glUseProgram(renderContext.particleShader.programID);
     
     glBindBuffer(GL_ARRAY_BUFFER, renderContext.particlesVBO);
-    glBufferData(GL_ARRAY_BUFFER, numPoints * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(numPoints * 4 * sizeof(GLfloat)), NULL, GL_STREAM_DRAW);
     
     GLfloat* positions = (GLfloat*)malloc(numPoints * sizeof(GLfloat) * 4);
     GLfloat* colors = (GLfloat*)malloc(numPoints * sizeof(GLfloat) * 4);
@@ -640,12 +588,12 @@ static void RenderPointCloud(render_context& renderContext, vertex* inputPoints,
         colors[4 * i + 3] = c.w;
     }
     
-    glBufferSubData(GL_ARRAY_BUFFER, 0, numPoints * sizeof(GLfloat) * 4, positions);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)(numPoints * sizeof(GLfloat) * 4), positions);
     
     glBindBuffer(GL_ARRAY_BUFFER, renderContext.particlesColorVBO);
-    glBufferData(GL_ARRAY_BUFFER, numPoints * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(numPoints * 4 * sizeof(GLfloat)), NULL, GL_STREAM_DRAW);
     
-    glBufferSubData(GL_ARRAY_BUFFER, 0, numPoints * sizeof(GLfloat) * 4, colors);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)(numPoints * sizeof(GLfloat) * 4), colors);
     
     glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, renderContext.billboardVBO);
@@ -817,7 +765,7 @@ static void RenderMesh(render_context& renderContext, mesh& m)
     }
     
     auto vertexCount = (int)m.faces.size() * 3;
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_info) * vertexCount, &m.currentVBO[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(sizeof(vertex_info) * vertexCount), &m.currentVBO[0], GL_STATIC_DRAW);
     
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_info), (void*)offsetof(vertex, position));
@@ -926,31 +874,6 @@ static void ComputeMatrices(render_context& renderContext, double deltaTime)
     
     renderContext.viewMatrix = glm::lookAt(renderContext.position, renderContext.position + renderContext.direction, renderContext.up);
     
-}
-
-static texture LoadTexture(const char* Path)
-{
-    texture newTex;
-    newTex.data = stbi_load(Path, &newTex.width, &newTex.height, 0, STBI_rgb_alpha);
-    
-    if(!newTex.data)
-    {
-        fprintf(stderr, "Could not load texture\n");
-        return newTex;
-    }
-    
-    GLuint textureID;
-    glGenTextures(1, &textureID);
-    
-    glBindTexture(GL_TEXTURE_2D, textureID);
-    
-    newTex.textureID = textureID;
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, newTex.width, newTex.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, newTex.data);
-    
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    
-    return newTex;
 }
 
 

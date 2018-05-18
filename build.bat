@@ -4,13 +4,14 @@ set WERROR=
 set DEBUG=-DDEBUG
 set GLM=
 set PRP=
-set WIGNORED=-wd4201 -wd4505 -wd4100 -wd4996 -wd4456 -wd4127 -wd4582 -wd4587 -wd4820 -wd4061 -wd4710 -wd4191 -wd4623 -wd4625 -wd5026 -wd4668 -wd4244 -wd4365 -wd4715 -wd5045 -wd4571 -wd4626 -wd4774 -wd5039 -wd5027
+REM set WIGNORED=-wd4201 -wd4505 -wd4100 -wd4996 -wd4456 -wd4127 -wd4582 -wd4587 -wd4820 -wd4061 -wd4710 -wd4191 -wd4623 -wd4625 -wd5026 -wd4668 -wd4244 -wd4365 -wd5045 -wd4571 -wd4626 -wd4774 -wd5039 -wd5027
+set WIGNORED=-wd4668 -wd4820 -wd5045 -wd4571 -wd4201 -wd4996 -wd5039 -wd4505
  
 WHERE cl
 IF %ERRORLEVEL% NEQ 0 call %VCVARSALL% x64
 
 echo %cd%
-set CommonCompilerFlags=/MD -nologo -Od -Oi -Wall -Gm- -EHsc -FC -Z7 %PRP% %WIGNORED% %DEBUG%  /I..\libs /I..\libs\glad\include 
+set CommonCompilerFlags=/MD -nologo -Od -Oi -W4 -Gm- -EHsc -FC -Z7 %PRP% %WIGNORED% %DEBUG%  /I..\libs /I..\libs\glad\include 
 set CommonLinkerFlags= Comdlg32.lib Ole32.lib kernel32.lib user32.lib gdi32.lib winmm.lib Shlwapi.lib opengl32.lib shell32.lib ..\libs\glfw\lib-vc2015\glfw3.lib ..\libs\glad\glad.obj 
 set ExtraLinkerFlags=/NODEFAULTLIB:"LIBCMT" -incremental:no -opt:ref /ignore:4099
 

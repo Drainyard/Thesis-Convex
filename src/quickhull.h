@@ -16,7 +16,6 @@ struct qh_neighbour
     int endVertex;
 };
 
-
 template<typename T>
 struct qh_list
 {
@@ -34,6 +33,19 @@ struct qh_list
 #endif
         return this->list[index];
     }
+    
+    
+    T &operator[](int index)
+    {
+#if DEBUG
+        if(index > (int)this->size)
+        {
+            assert(false);
+        }
+#endif
+        return this->list[index];
+    }
+    
     
     T *begin() {return this->list;}
     T *end() {return this->list + this->size;}
@@ -108,7 +120,7 @@ struct qh_face
     int furthestPointIndex;
     
     qh_neighbour neighbours[MAX_NEIGHBOURS];
-    int neighbourCount;
+    size_t neighbourCount;
     
     int indexInHull;
     bool visited;
@@ -149,7 +161,7 @@ struct qh_context
     QHIteration iter;
     qh_face* currentFace;
     std::vector<int> v;
-    int previousIteration;
+    size_t previousIteration;
     qh_hull qHull;
     
     std::vector<edge> horizon;
@@ -205,14 +217,14 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull &q, qh_face& f,
         
         bool alreadyAdded = false;
         
-        auto& fe = q.faces[v1Face];
+        auto &fe = q.faces[v1Face];
         
         if(fe.visitedV)
         {
             continue;
         }
         
-        for(int n = 0; n < fe.neighbourCount; n++)
+        for(size_t n = 0; n < fe.neighbourCount; n++)
         {
             auto& neigh = fe.neighbours[n];
             if(neigh.faceHandle >= (int)q.faces.size)
@@ -233,7 +245,7 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull &q, qh_face& f,
             if(v1Face == v2Face)
             {
                 bool duplicateVerts = false;
-                for(int i = 0; i < f.neighbourCount; i++)
+                for(size_t i = 0; i < f.neighbourCount; i++)
                 {
                     if((v1.vertexIndex == f.neighbours[i].originVertex && v2.vertexIndex == f.neighbours[i].endVertex) ||
                        (v2.vertexIndex == f.neighbours[i].originVertex && v1.vertexIndex == f.neighbours[i].endVertex))
@@ -246,7 +258,7 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull &q, qh_face& f,
                     }
                 }
                 
-                for(int i = 0; i < fe.neighbourCount; i++)
+                for(size_t i = 0; i < fe.neighbourCount; i++)
                 {
                     if((v1.vertexIndex == fe.neighbours[i].originVertex && v2.vertexIndex == fe.neighbours[i].endVertex) ||
                        (v2.vertexIndex == fe.neighbours[i].originVertex && v1.vertexIndex == fe.neighbours[i].endVertex))
@@ -389,14 +401,14 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     auto &v3 = vertices[f.vertices[2]];
     
     // Go through all of f's neighbours to remove itself
-    for(int n = 0; n < f.neighbourCount; n++)
+    for(size_t n = 0; n < f.neighbourCount; n++)
     {
         // Get the neighbour of f and corresponding face
         auto& neighbour = f.neighbours[n];
         auto& neighbourFace = qHull.faces[neighbour.faceHandle];
         
         // go through the neighbours of the neighbour to find f
-        for(int i = 0; i < neighbourFace.neighbourCount; i++)
+        for(size_t i = 0; i < neighbourFace.neighbourCount; i++)
         {
             if(neighbourFace.neighbours[i].faceHandle == f.indexInHull)
             {
@@ -423,12 +435,12 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
     
     assert(newFace.neighbourCount < (int)qHull.faces.size);
     
-    for(int neighbourIndex = 0; neighbourIndex < newFace.neighbourCount; neighbourIndex++)
+    for(size_t neighbourIndex = 0; neighbourIndex < newFace.neighbourCount; neighbourIndex++)
     {
         auto& neighbour = newFace.neighbours[neighbourIndex];
         auto& neighbourFace = qHull.faces[neighbour.faceHandle];
         
-        for(int n = 0; n < neighbourFace.neighbourCount; n++)
+        for(size_t n = 0; n < neighbourFace.neighbourCount; n++)
         {
             if(neighbourFace.neighbours[n].faceHandle == newFace.indexInHull)
             {
@@ -765,7 +777,7 @@ bool qhEdgeUnique(edge& input, std::vector<edge>& list)
 
 bool qhHorizonValid(std::vector<edge>& horizon)
 {
-    int currentIndex = 0;
+    size_t currentIndex = 0;
     auto currentEdge = horizon[currentIndex++];
     
     bool foundEdge = false;
@@ -783,7 +795,7 @@ bool qhHorizonValid(std::vector<edge>& horizon)
             if(currentEdge.end == cpyH[i].origin)
             {
                 foundEdge = true;
-                currentIndex = (int)i;
+                currentIndex = i;
                 currentEdge = cpyH[currentIndex];
                 break;
             }
@@ -808,7 +820,7 @@ void qhFindConvexHorizon(qh_vertex& viewPoint, std::vector<int>& faces, qh_hull&
     {
         auto& f = qHull.faces[possibleVisibleFaces[faceIndex]];
         
-        for(int neighbourIndex = 0; neighbourIndex < f.neighbourCount; neighbourIndex++)
+        for(size_t neighbourIndex = 0; neighbourIndex < f.neighbourCount; neighbourIndex++)
         {
             auto& neighbour = f.neighbours[neighbourIndex];
             auto& neighbourFace = qHull.faces[neighbour.faceHandle];
@@ -875,7 +887,7 @@ qh_hull qhInit(qh_vertex* vertices, int numVertices, std::vector<int>& faceStack
     qHull.processingState.distanceQueryCount = 0;
     qHull.processingState.sidednessQueries = 0;
     qHull.processingState.verticesInHull = 0;
-    qHull.processingState.timeSpent = 0.0;
+    qHull.processingState.timeSpent = 0;
     
     *epsilon = qhGenerateInitialSimplex(vertices, numVertices, qHull);
     if(qHull.failed)
@@ -917,7 +929,7 @@ qh_face* qhFindNextIteration(qh_hull& qHull, std::vector<int>& faceStack)
     return res;
 }
 
-void qhHorizonStep(qh_hull& qHull, qh_vertex* vertices, qh_face& f, std::vector<int>& v, int* prevIterationFaces, coord_t epsilon, std::vector<edge>& horizon)
+void qhHorizonStep(qh_hull& qHull, qh_vertex* vertices, qh_face& f, std::vector<int>& v, size_t* prevIterationFaces, coord_t epsilon, std::vector<edge>& horizon)
 { 
     v.push_back(f.indexInHull);
     
@@ -933,7 +945,7 @@ void qhHorizonStep(qh_hull& qHull, qh_vertex* vertices, qh_face& f, std::vector<
         
         fa.visitedV = true;
         
-        for(int neighbourIndex = 0; neighbourIndex < fa.neighbourCount; neighbourIndex++)
+        for(size_t neighbourIndex = 0; neighbourIndex < fa.neighbourCount; neighbourIndex++)
         {
             auto& neighbour = qHull.faces[fa.neighbours[neighbourIndex].faceHandle];
             
@@ -945,7 +957,7 @@ void qhHorizonStep(qh_hull& qHull, qh_vertex* vertices, qh_face& f, std::vector<
         }
     }
     
-    *prevIterationFaces = (int)qHull.faces.size;
+    *prevIterationFaces = qHull.faces.size;
     
     horizon.clear();
     qhFindConvexHorizon(p, v, qHull, horizon, epsilon);
@@ -959,7 +971,7 @@ bool qhCheckEdgeConvex(qh_hull &hull, qh_face leftFace, qh_face rightFace)
     return leftBelow && rightBelow;
 }
 
-void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStack, int fHandle, std::vector<int>& v, int prevIterationFaces, coord_t epsilon, std::vector<edge>& horizon)
+void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStack, int fHandle, std::vector<int>& v, size_t prevIterationFaces, coord_t epsilon, std::vector<edge>& horizon)
 {
     for(const auto& e : horizon)
     {
@@ -972,7 +984,7 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
         
         if(newF)
         {
-            for(int i = 0; i < newF->neighbourCount; i++)
+            for(size_t i = 0; i < newF->neighbourCount; i++)
             {
                 auto neighbourHandle = newF->neighbours[i].faceHandle;
                 auto edgeConvex = qhCheckEdgeConvex(qHull, *newF, qHull.faces[neighbourHandle]);
@@ -1102,7 +1114,7 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
         }
     }
     
-    for(int i = 0; i < (int)qHull.faces.size; i++)
+    for(size_t i = 0; i < qHull.faces.size; i++)
     {
         qHull.faces[i].visited = false;
     }
@@ -1155,7 +1167,7 @@ qh_hull qhFullHull(qh_vertex* vertices, int numVertices)
     
     std::vector<edge> horizon;
     
-    int previousIteration = 0;
+    size_t previousIteration = 0;
     while(faceStack.size() > 0)
     {
         currentFace = qhFindNextIteration(qHull, faceStack);

@@ -11,7 +11,7 @@ struct texture
 
 struct shader
 {
-    int programID;
+    GLuint programID;
 };
 
 enum LightType
