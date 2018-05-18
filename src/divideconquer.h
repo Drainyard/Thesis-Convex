@@ -154,6 +154,8 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B, bool lower)
 {
     dacVertex *u, *v, *mid;
     int i, j, k, l, minl;
+    //suppress warning
+    minl = -1;
 
     if (n == 1)
     {
@@ -401,19 +403,19 @@ void dacConstructFullHull(dac_context &dacContext)
                 if (dacIsPointOnPositiveSide(face, v))
                 {
                     dacVertex *u = face->vertex[0];
-                    dacVertex *v = face->vertex[1];
-                    face->vertex[0] = v;
-                    face->vertex[1] = u;
+                    dacVertex *w = face->vertex[2];
+                    face->vertex[0] = w;
+                    face->vertex[2] = u;
                     face->normal = dacComputeFaceNormal(face);
                     break;
                 }
             }
         }
     }
-    delete A;
-    delete B;
-    delete C;
-    delete D;
+    delete[] A;
+    delete[] B;
+    delete[] C;
+    delete[] D;
 }
 
 void dacHullStep(dac_context &dacContext)
