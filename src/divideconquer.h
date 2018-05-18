@@ -40,6 +40,7 @@ struct dac_context
     int numberOfPoints;
     std::vector<dacFace *> faces;
     mesh *m;
+    dacVertex *upperP;
 };
 
 const double INF = 1e99;
@@ -93,15 +94,23 @@ glm::vec3 dacComputeFaceNormal(dacFace *f)
     return glm::normalize(normal);
 }
 
-dacFace *dacCreateFaceFromPoints(dacVertex *u, dacVertex *v, dacVertex *w)
+static bool dacIsPointOnPositiveSide(dacFace *f, dacVertex *v, coord_t epsilon = 0.0f)
 {
+    auto d = glm::dot(f->normal, v->vector - f->centerPoint);
+    return d > epsilon;
+}
+
+dacFace *dacCreateFaceFromPoints(dacVertex **A, int i)
+{
+    dacVertex *u = A[i]->prev;
+    dacVertex *v = A[i];
+    dacVertex *w = A[i]->next;
     dacFace *f = (dacFace *)malloc(sizeof(dacFace));
     f->vertex[0] = u;
     f->vertex[1] = v;
     f->vertex[2] = w;
-    f->normal = dacComputeFaceNormal(f);
     f->centerPoint = (u->vector + v->vector + w->vector) / 3.0f;
-
+    f->normal = dacComputeFaceNormal(f);
     return f;
 }
 
@@ -145,6 +154,8 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B, bool lower)
 {
     dacVertex *u, *v, *mid;
     int i, j, k, l, minl;
+    //suppress warning
+    minl = -1;
 
     if (n == 1)
     {
@@ -193,7 +204,7 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B, bool lower)
             t[4] = time(u, v, v->next);
             t[5] = time(u, v->prev, v);
         }
-        else 
+        else
         {
             t[0] = -time(B[i]->prev, B[i], B[i]->next);
             t[1] = -time(B[j]->prev, B[j], B[j]->next);
@@ -308,14 +319,15 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B, bool lower)
 
 mesh &dacConvertToMesh(dac_context &context, render_context &renderContext)
 {
-    /*  This version of the code prints the facets of the 3-d lower hull. This is done by
-        processing the events in the output array A and tracking the linked list for the 2-d hull using the
-        same prev and next fields.  */
-
     if (!context.m)
     {
         context.m = &InitEmptyMesh(renderContext);
     }
+
+    context.m->faces.clear();
+    context.m->position = glm::vec3(0.0f);
+    context.m->scale = glm::vec3(globalScale);
+    context.m->dirty = true;
 
     for (const auto &f : context.faces)
     {
@@ -333,10 +345,12 @@ mesh &dacConvertToMesh(dac_context &context, render_context &renderContext)
         newFace.centerPoint = f->centerPoint;
         context.m->faces.push_back(newFace);
     }
-    context.m->position = glm::vec3(0.0f);
-    context.m->scale = glm::vec3(globalScale);
-    context.m->dirty = true;
-
+    for (dacFace *f : context.faces)
+    {
+        free(f);
+    }
+    context.faces.clear();
+    free(context.upperP);
     return *context.m;
 }
 
@@ -347,8 +361,8 @@ void dacConstructFullHull(dac_context &dacContext)
     int n = dacContext.numberOfPoints;
 
     dacVertex *P = dacContext.vertices;
-    dacVertex *upperP = (dacVertex *)malloc(sizeof(dacVertex) * n);
-    memcpy(upperP, P, sizeof(dacVertex) * n);
+    dacContext.upperP = (dacVertex *)malloc(sizeof(dacVertex) * n);
+    memcpy(dacContext.upperP, P, sizeof(dacVertex) * n);
     dacVertex *list = sort(P, n);
 
     //Each vertex is inserted at most once and deleted at most once, so at most 2n events (facets).
@@ -360,11 +374,11 @@ void dacConstructFullHull(dac_context &dacContext)
     //create faces by processing the events in event array A
     for (i = 0; A[i] != NIL; A[i++]->act())
     {
-        dacFace *newFace = dacCreateFaceFromPoints(A[i]->prev, A[i], A[i]->next);
+        dacFace *newFace = dacCreateFaceFromPoints(A, i);
         dacContext.faces.push_back(newFace);
     }
 
-    dacVertex *upperList = sort(upperP, n);
+    dacVertex *upperList = sort(dacContext.upperP, n);
     dacVertex **C = new dacVertex *[2 * n];
     //work array
     dacVertex **D = new dacVertex *[2 * n];
@@ -372,16 +386,36 @@ void dacConstructFullHull(dac_context &dacContext)
 
     for (i = 0; C[i] != NIL; C[i++]->act())
     {
-        dacFace *newFace = dacCreateFaceFromPoints(C[i]->prev, C[i], C[i]->next);
+        dacFace *newFace = dacCreateFaceFromPoints(C, i);
         dacContext.faces.push_back(newFace);
     }
 
-    /*
-    delete A;
-    delete B;
-    delete C;
-    delete D;
-    */
+    //dirty normal check
+    for (size_t j = 0; j != dacContext.faces.size(); ++j)
+    {
+        dacFace *face = dacContext.faces[j];
+        dacFace *otherFace = dacContext.faces[(j + 100) % dacContext.faces.size()];
+        for (i = 0; i < 3; ++i)
+        {
+            dacVertex *v = otherFace->vertex[i];
+            if (v != face->vertex[0] || v != face->vertex[1] || v != face->vertex[2])
+            {
+                if (dacIsPointOnPositiveSide(face, v))
+                {
+                    dacVertex *u = face->vertex[0];
+                    dacVertex *w = face->vertex[2];
+                    face->vertex[0] = w;
+                    face->vertex[2] = u;
+                    face->normal = dacComputeFaceNormal(face);
+                    break;
+                }
+            }
+        }
+    }
+    delete[] A;
+    delete[] B;
+    delete[] C;
+    delete[] D;
 }
 
 void dacHullStep(dac_context &dacContext)
@@ -391,7 +425,10 @@ void dacHullStep(dac_context &dacContext)
 
 void dacInitializeContext(dac_context &dacContext, vertex *vertices, int numberOfPoints)
 {
-    //initialize this shit
+    if (dacContext.vertices)
+    {
+        free(dacContext.vertices);
+    }
     dacContext.numberOfPoints = numberOfPoints;
     dacContext.initialized = true;
     dacCopyVertices(dacContext, vertices, numberOfPoints);
