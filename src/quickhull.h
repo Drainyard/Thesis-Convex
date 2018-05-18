@@ -78,6 +78,14 @@ static void clear(qh_list<T> &list)
     list.capacity = 0;
 }
 
+template<typename T>
+static void init(qh_list<T> &list)
+{
+    list.size = 0;
+    list.capacity = 0;
+    list.list = nullptr;
+}
+
 struct qh_vertex
 {
     qh_list<int> faceHandles;
@@ -152,7 +160,7 @@ static void qhCopyVertices(qh_context& q, vertex* vertices, int numberOfPoints)
     q.vertices = (qh_vertex*)malloc(sizeof(qh_vertex) * numberOfPoints);
     for(int i = 0; i < numberOfPoints; i++)
     {
-        q.vertices[i].faceHandles = {};
+        init(q.vertices[i].faceHandles);
         q.vertices[i].vertexIndex = i;
         q.vertices[i].position = vertices[i].position;
         q.vertices[i].normal = vertices[i].normal;
@@ -696,7 +704,7 @@ coord_t qhGenerateInitialSimplex(qh_vertex* vertices, int numVertices, qh_hull& 
         if(q.failed)
             return epsilon;
     }
-    
+    free(extremePoints);
     return epsilon;
 }
 
@@ -707,7 +715,7 @@ void qhAddToOutsideSet(qh_face& f, qh_vertex& v)
     v.assigned = true;
 }
 
-void qhAssignToOutsideSets(qh_hull& q, qh_vertex* vertices, int numVertices, qh_face* faces, int numFaces, coord_t epsilon)
+void qhAssignToOutsideSets(qh_hull& q, qh_vertex* vertices, int numVertices, qh_list<qh_face> faces, coord_t epsilon)
 {
     std::vector<qh_vertex> unassigned(vertices, vertices + numVertices);
     
@@ -720,9 +728,8 @@ void qhAssignToOutsideSets(qh_hull& q, qh_vertex* vertices, int numVertices, qh_
             continue;
         }
         
-        for(int faceIndex = 0; faceIndex < numFaces; faceIndex++)
+        for(auto &f : faces)
         {
-            auto& f = faces[faceIndex];
             coord_t currentDist = 0.0;
             int currentDistIndex = 0;
             
@@ -874,7 +881,7 @@ qh_hull qhInit(qh_vertex* vertices, int numVertices, std::vector<int>& faceStack
     if(qHull.failed)
         return qHull;
     
-    qhAssignToOutsideSets(qHull, vertices, numVertices, qHull.faces.list,  (int)qHull.faces.size, *epsilon);
+    qhAssignToOutsideSets(qHull, vertices, numVertices, qHull.faces, *epsilon);
     if(qHull.failed)
         return qHull;
     
@@ -944,6 +951,14 @@ void qhHorizonStep(qh_hull& qHull, qh_vertex* vertices, qh_face& f, std::vector<
     qhFindConvexHorizon(p, v, qHull, horizon, epsilon);
 }
 
+bool qhCheckEdgeConvex(qh_hull &hull, qh_face leftFace, qh_face rightFace)
+{
+    auto leftBelow = !IsPointOnPositiveSide(hull, leftFace, rightFace.centerPoint);
+    auto rightBelow = !IsPointOnPositiveSide(hull, rightFace, leftFace.centerPoint);
+    
+    return leftBelow && rightBelow;
+}
+
 void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStack, int fHandle, std::vector<int>& v, int prevIterationFaces, coord_t epsilon, std::vector<edge>& horizon)
 {
     for(const auto& e : horizon)
@@ -957,6 +972,17 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
         
         if(newF)
         {
+            for(int i = 0; i < newF->neighbourCount; i++)
+            {
+                auto neighbourHandle = newF->neighbours[i].faceHandle;
+                auto edgeConvex = qhCheckEdgeConvex(qHull, *newF, qHull.faces[neighbourHandle]);
+                
+                if(!edgeConvex)
+                {
+                }
+                
+            }
+            
             if(IsPointOnPositiveSide(qHull, *newF, f.centerPoint, epsilon))
             {
                 auto t = newF->vertices[0];

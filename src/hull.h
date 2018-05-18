@@ -199,7 +199,6 @@ static mesh *UpdateHull(render_context &renderContext, hull &h, HullType hullTyp
 static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
 {
     auto vertexAmounts = testSet.testSet;
-    auto iterations = testSet.count;
     auto genType = testSet.genType;
     
     vertex *vertices = nullptr;
