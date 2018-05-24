@@ -37,13 +37,10 @@ struct config_data
 {
     int numberOfPoints;
     GeneratorType genType;
-    struct
-    {
-        TestSet *testSets;
-        size_t count;
-    } testSets;
     
-    
+    List<TestSet> qhTestSets;
+    List<TestSet> incTestSets;
+    List<TestSet> dacTestSets;
 };
 
 void readTestSet(const char *filename, TestSet &testSet)
@@ -61,7 +58,7 @@ void readTestSet(const char *filename, TestSet &testSet)
             if(startsWith(buf, "gen"))
             {
                 int genType;
-                sscanf(buf, "type %d", &genType);
+                sscanf(buf, "gen %d", &genType);
                 if(genType > GeneratorType::ManyInternal || genType < 0)
                 {
                     genType = GeneratorType::InSphere;
@@ -77,14 +74,43 @@ void readTestSet(const char *filename, TestSet &testSet)
                 if(testSet.count == 0)
                 {
                     testSet.count = (size_t)countLinesFromCurrent(f) + 1;
+                    if(testSet.count == 0)
+                    {
+                        break;
+                    }
                     testSet.testSet = (int*)malloc(sizeof(int) * testSet.count);
                 }
                 
                 sscanf(buf, "%d\n", &testSet.testSet[i++]);
+                log_a("%d\n", testSet.testSet[i - 1]);
             }
         }
         fclose(f);
     }
+}
+
+void readTestSets(char *buffer, List<TestSet> &list, FILE *f)
+{
+    init(list);
+    auto prevPos = ftell(f);
+    while(fgets(buffer, 64, f))
+    {
+        if(startsWith(buffer, "set"))
+        {
+            char filename[64];
+            sscanf(buffer, "set %s", filename);
+            printf("Set: %s\n", filename);
+            TestSet newSet = {};
+            readTestSet(filename, newSet);
+            addToList(list, newSet);
+        }
+        else
+        {
+            fseek(f, prevPos, SEEK_SET);
+            break;
+        }
+    }
+    prevPos = ftell(f);
 }
 
 void loadConfig(const char* filePath, config_data &configData)
@@ -112,22 +138,17 @@ void loadConfig(const char* filePath, config_data &configData)
                 }
                 configData.genType = (GeneratorType)genType;
             }
-            else if(startsWith(buffer, "set")) // Always needs to be at the end
+            else if(startsWith(buffer, "i"))
             {
-                set = true;
-                configData.testSets.count = (size_t)countLinesFromCurrent(f) + 1;
-                configData.testSets.testSets = (TestSet*)malloc(sizeof(TestSet) * configData.testSets.count);
-                int i = 0;
-                do
-                {
-                    if(startsWith(buffer, "set"))
-                    {
-                        char filename[64];
-                        sscanf(buffer, "set %s", filename);
-                        readTestSet(filename, configData.testSets.testSets[i++]);
-                    }
-                }
-                while(fgets(buffer, 64, f));
+                readTestSets(buffer, configData.incTestSets, f);
+            }
+            else if(startsWith(buffer, "d"))
+            {
+                readTestSets(buffer, configData.dacTestSets, f);
+            }
+            else if(startsWith(buffer, "q"))
+            {
+                readTestSets(buffer, configData.qhTestSets, f);
             }
         }
         fclose(f);

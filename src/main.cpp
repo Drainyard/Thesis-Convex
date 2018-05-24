@@ -230,9 +230,9 @@ int main()
         
         if(KeyDown(Key_T))
         {
-            for(size_t i = 0; i < configData.testSets.count; i++)
+            for(size_t i = 0; i < configData.qhTestSets.size; i++)
             {
-                RunFullHullTest(configData.testSets.testSets[i], renderContext.originOffset, renderContext);
+                RunFullHullTest(configData.qhTestSets[i], renderContext.originOffset, renderContext);
             }
         }
         
