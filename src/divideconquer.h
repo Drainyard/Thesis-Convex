@@ -3,13 +3,12 @@
 
 // I think it only computes lower hull, lel
 
-struct dacVertex
+struct DacVertex
 {
-    
     glm::vec3 vector;
     int vIndex;
-    dacVertex *next;
-    dacVertex *prev;
+    DacVertex *next;
+    DacVertex *prev;
     void act()
     {
         //insert
@@ -26,30 +25,30 @@ struct dacVertex
     }
 };
 
-struct dacFace
+struct DacFace
 {
-    dacVertex *vertex[3];
+    DacVertex *vertex[3];
     glm::vec3 normal;
     glm::vec3 centerPoint;
 };
 
-struct dac_context
+struct DacContext
 {
     bool initialized;
-    dacVertex *vertices;
+    DacVertex *vertices;
     int numberOfPoints;
-    std::vector<dacFace *> faces;
-    mesh *m;
-    dacVertex *upperP;
+    std::vector<DacFace *> faces;
+    Mesh *m;
+    DacVertex *upperP;
 };
 
 const double INF = 1e99;
-static dacVertex nil = {glm::vec3(INF, INF, INF), 0, nullptr, nullptr};
-dacVertex *NIL = &nil;
+static DacVertex nil = {glm::vec3(INF, INF, INF), 0, nullptr, nullptr};
+DacVertex *NIL = &nil;
 
-dacVertex *sort(dacVertex points[], int numberOfPoints)
+DacVertex *sort(DacVertex points[], int numberOfPoints)
 {
-    dacVertex *l, *r, *c, head;
+    DacVertex *l, *r, *c, head;
     
     if (numberOfPoints == 1)
     {
@@ -75,7 +74,7 @@ dacVertex *sort(dacVertex points[], int numberOfPoints)
     return head.next;
 }
 
-glm::vec3 dacComputeFaceNormal(dacFace *f)
+glm::vec3 dacComputeFaceNormal(DacFace *f)
 {
     // Newell's Method
     // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
@@ -94,18 +93,18 @@ glm::vec3 dacComputeFaceNormal(dacFace *f)
     return glm::normalize(normal);
 }
 
-static bool dacIsPointOnPositiveSide(dacFace *f, dacVertex *v, coord_t epsilon = 0.0f)
+static bool dacIsPointOnPositiveSide(DacFace *f, DacVertex *v, coord_t epsilon = 0.0f)
 {
     auto d = glm::dot(f->normal, v->vector - f->centerPoint);
     return d > epsilon;
 }
 
-dacFace *dacCreateFaceFromPoints(dacVertex **A, int i)
+DacFace *dacCreateFaceFromPoints(DacVertex **A, int i)
 {
-    dacVertex *u = A[i]->prev;
-    dacVertex *v = A[i];
-    dacVertex *w = A[i]->next;
-    dacFace *f = (dacFace *)malloc(sizeof(dacFace));
+    DacVertex *u = A[i]->prev;
+    DacVertex *v = A[i];
+    DacVertex *w = A[i]->next;
+    DacFace *f = (DacFace *)malloc(sizeof(DacFace));
     f->vertex[0] = u;
     f->vertex[1] = v;
     f->vertex[2] = w;
@@ -114,9 +113,9 @@ dacFace *dacCreateFaceFromPoints(dacVertex **A, int i)
     return f;
 }
 
-static void dacCopyVertices(dac_context &dac, vertex *vertices, int numberOfPoints)
+static void dacCopyVertices(DacContext &dac, Vertex *vertices, int numberOfPoints)
 {
-    dac.vertices = (dacVertex *)malloc(sizeof(dacVertex) * numberOfPoints);
+    dac.vertices = (DacVertex *)malloc(sizeof(DacVertex) * numberOfPoints);
     for (int i = 0; i < numberOfPoints; i++)
     {
         dac.vertices[i].vIndex = i;
@@ -124,7 +123,7 @@ static void dacCopyVertices(dac_context &dac, vertex *vertices, int numberOfPoin
     }
 }
 
-double orient(dacVertex *p, dacVertex *q, dacVertex *r)
+double orient(DacVertex *p, DacVertex *q, DacVertex *r)
 {
     //orient(p,q,r)=det(1  p_x  p_y)
     //                 (1  q_x  q_y)
@@ -140,7 +139,7 @@ double orient(dacVertex *p, dacVertex *q, dacVertex *r)
 }
 
 //by dividing with orient, we can determine the time when three points switch from cw to ccw (or the other way)
-double time(dacVertex *p, dacVertex *q, dacVertex *r)
+double time(DacVertex *p, DacVertex *q, DacVertex *r)
 {
     if (p == NIL || q == NIL || r == NIL)
     {
@@ -150,9 +149,9 @@ double time(dacVertex *p, dacVertex *q, dacVertex *r)
     return ((q->vector.x - p->vector.x) * (r->vector.z - p->vector.z) - (r->vector.x - p->vector.x) * (q->vector.z - p->vector.z)) / orient(p, q, r);
 }
 
-void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B, bool lower)
+void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
 {
-    dacVertex *u, *v, *mid;
+    DacVertex *u, *v, *mid;
     int i, j, k, l, minl;
     //suppress warning
     minl = -1;
@@ -317,7 +316,7 @@ void dacHull(dacVertex *list, int n, dacVertex **A, dacVertex **B, bool lower)
     }
 }
 
-mesh &dacConvertToMesh(dac_context &context, render_context &renderContext)
+Mesh &dacConvertToMesh(DacContext &context, RenderContext &renderContext)
 {
     if (!context.m)
     {
@@ -331,10 +330,10 @@ mesh &dacConvertToMesh(dac_context &context, render_context &renderContext)
     
     for (const auto &f : context.faces)
     {
-        face newFace = {};
+        Face newFace = {};
         for (int i = 0; i < 3; i++)
         {
-            vertex newVertex = {};
+            Vertex newVertex = {};
             newVertex.position = f->vertex[i]->vector;
             newVertex.vertexIndex = f->vertex[i]->vIndex;
             addToList(newFace.vertices, newVertex);
@@ -345,7 +344,7 @@ mesh &dacConvertToMesh(dac_context &context, render_context &renderContext)
         newFace.centerPoint = f->centerPoint;
         context.m->faces.push_back(newFace);
     }
-    for (dacFace *f : context.faces)
+    for (DacFace *f : context.faces)
     {
         free(f);
     }
@@ -354,56 +353,56 @@ mesh &dacConvertToMesh(dac_context &context, render_context &renderContext)
     return *context.m;
 }
 
-void dacConstructFullHull(dac_context &dacContext)
+void dacConstructFullHull(DacContext &dacContext)
 {
     //do the stuff for divide and conquer
     int i;
     int n = dacContext.numberOfPoints;
     
-    dacVertex *P = dacContext.vertices;
-    dacContext.upperP = (dacVertex *)malloc(sizeof(dacVertex) * n);
-    memcpy(dacContext.upperP, P, sizeof(dacVertex) * n);
-    dacVertex *list = sort(P, n);
+    DacVertex *P = dacContext.vertices;
+    dacContext.upperP = (DacVertex *)malloc(sizeof(DacVertex) * n);
+    memcpy(dacContext.upperP, P, sizeof(DacVertex) * n);
+    DacVertex *list = sort(P, n);
     
     //Each vertex is inserted at most once and deleted at most once, so at most 2n events (facets).
-    dacVertex **A = new dacVertex *[2 * n];
+    DacVertex **A = new DacVertex *[2 * n];
     //work array
-    dacVertex **B = new dacVertex *[2 * n];
+    DacVertex **B = new DacVertex *[2 * n];
     dacHull(list, n, A, B, true);
     
     //create faces by processing the events in event array A
     for (i = 0; A[i] != NIL; A[i++]->act())
     {
-        dacFace *newFace = dacCreateFaceFromPoints(A, i);
+        DacFace *newFace = dacCreateFaceFromPoints(A, i);
         dacContext.faces.push_back(newFace);
     }
     
-    dacVertex *upperList = sort(dacContext.upperP, n);
-    dacVertex **C = new dacVertex *[2 * n];
+    DacVertex *upperList = sort(dacContext.upperP, n);
+    DacVertex **C = new DacVertex *[2 * n];
     //work array
-    dacVertex **D = new dacVertex *[2 * n];
+    DacVertex **D = new DacVertex *[2 * n];
     dacHull(upperList, n, C, D, false);
     
     for (i = 0; C[i] != NIL; C[i++]->act())
     {
-        dacFace *newFace = dacCreateFaceFromPoints(C, i);
+        DacFace *newFace = dacCreateFaceFromPoints(C, i);
         dacContext.faces.push_back(newFace);
     }
     
     //dirty normal check
     for (size_t j = 0; j != dacContext.faces.size(); ++j)
     {
-        dacFace *face = dacContext.faces[j];
-        dacFace *otherFace = dacContext.faces[(j + 100) % dacContext.faces.size()];
+        DacFace *face = dacContext.faces[j];
+        DacFace *otherFace = dacContext.faces[(j + 100) % dacContext.faces.size()];
         for (i = 0; i < 3; ++i)
         {
-            dacVertex *v = otherFace->vertex[i];
+            DacVertex *v = otherFace->vertex[i];
             if (v != face->vertex[0] || v != face->vertex[1] || v != face->vertex[2])
             {
                 if (dacIsPointOnPositiveSide(face, v))
                 {
-                    dacVertex *u = face->vertex[0];
-                    dacVertex *w = face->vertex[2];
+                    DacVertex *u = face->vertex[0];
+                    DacVertex*w = face->vertex[2];
                     face->vertex[0] = w;
                     face->vertex[2] = u;
                     face->normal = dacComputeFaceNormal(face);
@@ -418,12 +417,12 @@ void dacConstructFullHull(dac_context &dacContext)
     delete[] D;
 }
 
-void dacHullStep(dac_context &dacContext)
+void dacHullStep(DacContext &dacContext)
 {
     //do the stuff for one divide and conquer iteration
 }
 
-void dacInitializeContext(dac_context &dacContext, vertex *vertices, int numberOfPoints)
+void dacInitializeContext(DacContext &dacContext, Vertex *vertices, int numberOfPoints)
 {
     if (dacContext.vertices)
     {

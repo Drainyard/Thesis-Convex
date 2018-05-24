@@ -9,14 +9,14 @@ enum QHIteration
     doIter
 };
 
-struct qh_neighbour
+struct QhNeighbour
 {
     int faceHandle;
     int originVertex;
     int endVertex;
 };
 
-struct qh_vertex
+struct QhVertex
 {
     List<int> faceHandles;
     
@@ -30,7 +30,7 @@ struct qh_vertex
 
 #define MAX_NEIGHBOURS 16
 
-struct qh_face
+struct QhFace
 {
     List<int> vertices;
     
@@ -38,7 +38,7 @@ struct qh_face
     
     int furthestPointIndex;
     
-    qh_neighbour neighbours[MAX_NEIGHBOURS];
+    QhNeighbour neighbours[MAX_NEIGHBOURS];
     size_t neighbourCount;
     
     int indexInHull;
@@ -50,10 +50,10 @@ struct qh_face
     glm::vec4 faceColor;
 };
 
-struct qh_hull
+struct QhHull
 {
-    List<qh_face> faces;
-    mesh* m;
+    List<QhFace> faces;
+    Mesh* m;
     
     struct
     {
@@ -68,26 +68,26 @@ struct qh_hull
     bool failed;
 };
 
-struct qh_context
+struct QhContext
 {
     bool initialized;
     
-    qh_vertex* vertices;
+    QhVertex* vertices;
     int numberOfPoints;
     std::vector<int> faceStack;
     float epsilon;
     QHIteration iter;
-    qh_face* currentFace;
+    QhFace* currentFace;
     std::vector<int> v;
     size_t previousIteration;
-    qh_hull qHull;
+    QhHull qHull;
     
-    std::vector<edge> horizon;
+    std::vector<Edge> horizon;
 };
 
-static void qhCopyVertices(qh_context& q, vertex* vertices, int numberOfPoints)
+static void qhCopyVertices(QhContext& q, Vertex* vertices, int numberOfPoints)
 {
-    q.vertices = (qh_vertex*)malloc(sizeof(qh_vertex) * numberOfPoints);
+    q.vertices = (QhVertex*)malloc(sizeof(QhVertex) * numberOfPoints);
     for(int i = 0; i < numberOfPoints; i++)
     {
         init(q.vertices[i].faceHandles);
@@ -100,27 +100,27 @@ static void qhCopyVertices(qh_context& q, vertex* vertices, int numberOfPoints)
 
 // t=nn·v1−nn·p
 // p0=p+t·nn
-float DistancePointToFace(qh_hull &q, qh_face f, qh_vertex v)
+float DistancePointToFace(QhHull &q, QhFace f, QhVertex v)
 {
     q.processingState.distanceQueryCount++;
     return glm::abs((glm::dot(f.faceNormal, v.position) - glm::dot(f.faceNormal, f.centerPoint))); 
 }
 
-static bool IsPointOnPositiveSide(qh_hull &q, qh_face f, qh_vertex v, coord_t epsilon = 0.0f)
+static bool IsPointOnPositiveSide(QhHull &q, QhFace f, QhVertex v, coord_t epsilon = 0.0f)
 {
     q.processingState.sidednessQueries++;
     auto d = glm::dot(f.faceNormal, v.position - f.centerPoint);
     return d > epsilon;
 }
 
-static bool IsPointOnPositiveSide(qh_hull &q, qh_face f, glm::vec3 v, coord_t epsilon = 0.0f)
+static bool IsPointOnPositiveSide(QhHull &q, QhFace f, glm::vec3 v, coord_t epsilon = 0.0f)
 {
     q.processingState.sidednessQueries++;
     auto d = glm::dot(f.faceNormal, v - f.centerPoint);
     return d > epsilon;
 }
 
-static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull &q, qh_face& f, qh_vertex* vertices)
+static void qhFindNeighbours(int v1Handle, int v2Handle, QhHull &q, QhFace& f, QhVertex* vertices)
 {
     auto& v1 = vertices[v1Handle];
     auto& v2 = vertices[v2Handle];
@@ -218,7 +218,7 @@ static void qhFindNeighbours(int v1Handle, int v2Handle, qh_hull &q, qh_face& f,
     }
 }
 
-static glm::vec3 ComputeFaceNormal(qh_face f, qh_vertex* vertices)
+static glm::vec3 ComputeFaceNormal(QhFace f, QhVertex* vertices)
 {
     // Newell's Method
     // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
@@ -237,9 +237,9 @@ static glm::vec3 ComputeFaceNormal(qh_face f, qh_vertex* vertices)
     return glm::normalize(normal);
 }
 
-static qh_face* qhAddFace(qh_hull& q, List<int> &vertexHandles, qh_vertex* vertices)
+static QhFace* qhAddFace(QhHull& q, List<int> &vertexHandles, QhVertex* vertices)
 {
-    qh_face newFace = {};
+    QhFace newFace = {};
     
     init(newFace.vertices);
     
@@ -308,7 +308,7 @@ static qh_face* qhAddFace(qh_hull& q, List<int> &vertexHandles, qh_vertex* verti
 }
 
 // Returns index of moved mesh
-static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
+static int qhRemoveFace(QhHull& qHull, int faceId, QhVertex* vertices)
 {
     if(qHull.faces.size == 0 || faceId < 0)
     {
@@ -407,7 +407,7 @@ static int qhRemoveFace(qh_hull& qHull, int faceId, qh_vertex* vertices)
 }
 
 
-float DistanceBetweenPoints(vertex& p1, vertex& p2)
+float DistanceBetweenPoints(Vertex& p1, Vertex& p2)
 {
     return glm::distance(p1.position, p2.position);
 }
@@ -430,12 +430,12 @@ float SquareDistancePointToSegment(glm::vec3 a, glm::vec3 b, glm::vec3 c)
 
 struct vertex_pair
 {
-    qh_vertex first;
-    qh_vertex second;
+    QhVertex first;
+    QhVertex second;
 };
 
 
-int* qhFindExtremePoints(qh_vertex* points, int numPoints)
+int* qhFindExtremePoints(QhVertex* points, int numPoints)
 {
     
     if(numPoints > 0)
@@ -488,7 +488,7 @@ int* qhFindExtremePoints(qh_vertex* points, int numPoints)
 }
 
 
-coord_t qhGenerateInitialSimplex(qh_vertex* vertices, int numVertices, qh_hull& q)
+coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
 {
     // First we find all 6 extreme points in the whole point set
     auto extremePoints = qhFindExtremePoints(vertices, numVertices);
@@ -657,16 +657,16 @@ coord_t qhGenerateInitialSimplex(qh_vertex* vertices, int numVertices, qh_hull& 
     return epsilon;
 }
 
-void qhAddToOutsideSet(qh_face& f, qh_vertex& v)
+void qhAddToOutsideSet(QhFace& f, QhVertex& v)
 {
     //f.outsideSet.push_back(v.vertexIndex);
     addToList(f.outsideSet, v.vertexIndex);
     v.assigned = true;
 }
 
-void qhAssignToOutsideSets(qh_hull& q, qh_vertex* vertices, int numVertices, List<qh_face> faces, coord_t epsilon)
+void qhAssignToOutsideSets(QhHull& q, QhVertex* vertices, int numVertices, List<QhFace> faces, coord_t epsilon)
 {
-    std::vector<qh_vertex> unassigned(vertices, vertices + numVertices);
+    std::vector<QhVertex> unassigned(vertices, vertices + numVertices);
     
     for(size_t vertexIndex = 0; vertexIndex < unassigned.size(); vertexIndex++)
     {
@@ -700,7 +700,7 @@ void qhAssignToOutsideSets(qh_hull& q, qh_vertex* vertices, int numVertices, Lis
     }
 }
 
-bool qhEdgeUnique(edge& input, std::vector<edge>& list)
+bool qhEdgeUnique(Edge& input, std::vector<Edge>& list)
 {
     for(const auto& e : list)
     {
@@ -712,7 +712,7 @@ bool qhEdgeUnique(edge& input, std::vector<edge>& list)
     return true;
 }
 
-bool qhHorizonValid(std::vector<edge>& horizon)
+bool qhHorizonValid(std::vector<Edge>& horizon)
 {
     size_t currentIndex = 0;
     auto currentEdge = horizon[currentIndex++];
@@ -721,7 +721,7 @@ bool qhHorizonValid(std::vector<edge>& horizon)
     
     auto firstEdge = horizon[0];
     
-    auto cpyH = std::vector<edge>(horizon);
+    auto cpyH = std::vector<Edge>(horizon);
     
     cpyH.erase(cpyH.begin());
     
@@ -750,7 +750,7 @@ bool qhHorizonValid(std::vector<edge>& horizon)
     return true;
 }
 
-void qhFindConvexHorizon(qh_vertex& viewPoint, std::vector<int>& faces, qh_hull& qHull, std::vector<edge>& list, coord_t epsilon)
+void qhFindConvexHorizon(QhVertex& viewPoint, std::vector<int>& faces, QhHull& qHull, std::vector<Edge>& list, coord_t epsilon)
 {
     std::vector<int> possibleVisibleFaces(faces);
     for(size_t faceIndex = 0; faceIndex < possibleVisibleFaces.size(); faceIndex++)
@@ -764,7 +764,7 @@ void qhFindConvexHorizon(qh_vertex& viewPoint, std::vector<int>& faces, qh_hull&
             
             if(!IsPointOnPositiveSide(qHull, neighbourFace, viewPoint, epsilon))
             {
-                edge newEdge = {};
+                Edge newEdge = {};
                 newEdge.origin = neighbour.originVertex;
                 newEdge.end = neighbour.endVertex;
                 if(qhEdgeUnique(newEdge, list))
@@ -782,7 +782,7 @@ void qhFindConvexHorizon(qh_vertex& viewPoint, std::vector<int>& faces, qh_hull&
     }
 }
 
-mesh& qhConvertToMesh(render_context& renderContext, qh_hull& qHull, vertex* vertices)
+Mesh& qhConvertToMesh(RenderContext& renderContext, QhHull& qHull, Vertex* vertices)
 {
     if(!qHull.m)
     {
@@ -802,7 +802,7 @@ mesh& qhConvertToMesh(render_context& renderContext, qh_hull& qHull, vertex* ver
     
     for(const auto& f : qHull.faces)
     {
-        face newFace = {};
+        Face newFace = {};
         init(newFace.vertices);
         for(size_t i = 0; i < f.vertices.size; i++)
         {
@@ -819,9 +819,9 @@ mesh& qhConvertToMesh(render_context& renderContext, qh_hull& qHull, vertex* ver
     return *qHull.m;
 }
 
-qh_hull qhInit(qh_vertex* vertices, int numVertices, std::vector<int>& faceStack, coord_t* epsilon, qh_hull *oldHull = nullptr)
+QhHull qhInit(QhVertex* vertices, int numVertices, std::vector<int>& faceStack, coord_t* epsilon, QhHull *oldHull = nullptr)
 {
-    qh_hull qHull = {};
+    QhHull qHull = {};
     
     if(oldHull)
     {
@@ -853,12 +853,12 @@ qh_hull qhInit(qh_vertex* vertices, int numVertices, std::vector<int>& faceStack
     return qHull;
 }
 
-qh_face* qhFindNextIteration(qh_hull& qHull, std::vector<int>& faceStack)
+QhFace* qhFindNextIteration(QhHull& qHull, std::vector<int>& faceStack)
 {
     if(faceStack.size() == 0)
         return nullptr;
     
-    qh_face* res = nullptr;
+    QhFace* res = nullptr;
     
     auto f = &qHull.faces[faceStack[faceStack.size() - 1]];
     
@@ -875,7 +875,7 @@ qh_face* qhFindNextIteration(qh_hull& qHull, std::vector<int>& faceStack)
     return res;
 }
 
-void qhHorizonStep(qh_hull& qHull, qh_vertex* vertices, qh_face& f, std::vector<int>& v, size_t* prevIterationFaces, coord_t epsilon, std::vector<edge>& horizon)
+void qhHorizonStep(QhHull& qHull, QhVertex* vertices, QhFace& f, std::vector<int>& v, size_t* prevIterationFaces, coord_t epsilon, std::vector<Edge>& horizon)
 { 
     v.push_back(f.indexInHull);
     
@@ -909,7 +909,7 @@ void qhHorizonStep(qh_hull& qHull, qh_vertex* vertices, qh_face& f, std::vector<
     qhFindConvexHorizon(p, v, qHull, horizon, epsilon);
 }
 
-bool qhCheckEdgeConvex(qh_hull &hull, qh_face leftFace, qh_face rightFace, coord_t epsilon = 0.0f)
+bool qhCheckEdgeConvex(QhHull &hull, QhFace leftFace, QhFace rightFace, coord_t epsilon = 0.0f)
 {
     auto leftBelow = !IsPointOnPositiveSide(hull, leftFace, rightFace.centerPoint, epsilon);
     auto rightBelow = !IsPointOnPositiveSide(hull, rightFace, leftFace.centerPoint, epsilon);
@@ -917,7 +917,7 @@ bool qhCheckEdgeConvex(qh_hull &hull, qh_face leftFace, qh_face rightFace, coord
     return leftBelow && rightBelow;
 }
 
-void qhRemoveFaceAndFixLists(qh_hull &qHull, std::vector<int> &uniqueInV, std::vector<int> &faceStack, qh_vertex *vertices, int vIndex)
+void qhRemoveFaceAndFixLists(QhHull &qHull, std::vector<int> &uniqueInV, std::vector<int> &faceStack, QhVertex *vertices, int vIndex)
 {
     auto movedHandle = qHull.faces.size - 1;
     
@@ -957,7 +957,7 @@ void qhRemoveFaceAndFixLists(qh_hull &qHull, std::vector<int> &uniqueInV, std::v
     }
 }
 
-void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStack, int fHandle, std::vector<int>& v, size_t prevIterationFaces, coord_t epsilon, std::vector<edge>& horizon, render_context &renderContext)
+void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack, int fHandle, std::vector<int>& v, size_t prevIterationFaces, coord_t epsilon, std::vector<Edge>& horizon, RenderContext &renderContext)
 {
     for(const auto& e : horizon)
     {
@@ -1138,7 +1138,7 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
     }
 }
 
-void qhFullHull(qh_context& qhContext, render_context &renderContext)
+void qhFullHull(QhContext& qhContext, RenderContext &renderContext)
 {
     qhContext.currentFace = nullptr;
     qhContext.faceStack.clear();
@@ -1171,9 +1171,9 @@ void qhFullHull(qh_context& qhContext, render_context &renderContext)
     }
 }
 
-qh_hull qhFullHull(qh_vertex* vertices, int numVertices, render_context &renderContext)
+QhHull qhFullHull(QhVertex* vertices, int numVertices, RenderContext &renderContext)
 {
-    qh_face* currentFace = nullptr;
+    QhFace* currentFace = nullptr;
     std::vector<int> faceStack;
     coord_t epsilon;
     
@@ -1183,7 +1183,7 @@ qh_hull qhFullHull(qh_vertex* vertices, int numVertices, render_context &renderC
     
     std::vector<int> v;
     
-    std::vector<edge> horizon;
+    std::vector<Edge> horizon;
     
     size_t previousIteration = 0;
     while(faceStack.size() > 0)
@@ -1208,7 +1208,7 @@ qh_hull qhFullHull(qh_vertex* vertices, int numVertices, render_context &renderC
     return qHull;
 }
 
-void qhInitializeContext(qh_context& qhContext, vertex* vertices, int numberOfPoints)
+void qhInitializeContext(QhContext& qhContext, Vertex* vertices, int numberOfPoints)
 {
     if(qhContext.vertices)
     {
@@ -1240,7 +1240,7 @@ void qhInitializeContext(qh_context& qhContext, vertex* vertices, int numberOfPo
     
 }
 
-void qhStep(qh_context& context, render_context &renderContext)
+void qhStep(QhContext& context, RenderContext &renderContext)
 {
     switch(context.iter)
     {

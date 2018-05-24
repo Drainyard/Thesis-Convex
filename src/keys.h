@@ -131,7 +131,7 @@
 #define MouseRight GLFW_MOUSE_BUTTON_RIGHT
 #define MouseMiddle GLFW_MOUSE_BUTTON_MIDDLE
 
-enum Key_State
+enum KeyState
 {
     Key_NotPressed,
     Key_Pressed,
@@ -139,7 +139,7 @@ enum Key_State
     Key_Invalid
 };
 
-struct input_state
+struct InputState
 {
     float xPos;
     float yPos;
@@ -157,8 +157,8 @@ struct input_state
     
     bool firstMouse;
     
-    Key_State keys[GLFW_KEY_LAST];
-    Key_State mouseButtons[GLFW_MOUSE_BUTTON_LAST]; // For now. Add more later?
+    KeyState keys[GLFW_KEY_LAST];
+    KeyState mouseButtons[GLFW_MOUSE_BUTTON_LAST]; // For now. Add more later?
     bool keysDown[GLFW_KEY_LAST];
     bool mouseButtonsDown[GLFW_MOUSE_BUTTON_LAST];
 };

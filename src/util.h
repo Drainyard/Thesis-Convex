@@ -61,7 +61,7 @@ static glm::vec4 randomColor(std::uniform_real_distribution<coord_t>& d, std::mt
     return glm::vec4((coord_t)randomInt(d, gen, 0, 255) / 255.0, (coord_t)randomInt(d, gen, 0, 255) / 255.0, (coord_t)randomInt(d, gen, 0, 255) / 255.0, 1.0);
 }
 
-struct edge
+struct Edge
 {
     int origin;
     int end;
@@ -86,22 +86,30 @@ bool FileExists(const char *file)
 #endif
 }
 
-int countLinesFromCurrent(FILE *file)
+
+#define BUFFSIZE 1024
+int countLinesFromCurrent (FILE *file)
 {
-    auto curPos = ftell(file);
-    int ch = 0;
-    int lines = 0;
+    int  nlines  = 0;
+    char line[BUFFSIZE];
     
-    while(!feof(file))
+    while(fgets(line, BUFFSIZE, file)) 
     {
-        ch = fgetc(file);
-        if(ch == '\n')
-        {
-            lines++;
-        }
+        nlines++;
     }
-    fseek(file, curPos, SEEK_SET);
-    return lines;
+    
+    return nlines;
+}
+
+bool getData(char *buffer, int size, FILE *f) 
+{
+    auto str = fgets(buffer, size, f);
+    if (str) 
+    {
+        size_t len = strlen(buffer);
+        return feof(f) || (len != 0 && buffer[len-1] == '\n');
+    }
+    return false;
 }
 
 #endif

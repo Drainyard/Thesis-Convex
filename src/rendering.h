@@ -1,7 +1,7 @@
 #ifndef RENDERING_H
 #define RENDERING_H
 
-struct texture
+struct Texture
 {
     int textureID;
     int width;
@@ -9,7 +9,7 @@ struct texture
     unsigned char* data;
 };
 
-struct shader
+struct Shader
 {
     GLuint programID;
 };
@@ -20,7 +20,7 @@ enum LightType
     LT_SPOT
 };
 
-struct light
+struct Light
 {
     LightType lightType;
     union
@@ -44,15 +44,15 @@ struct light
     float power;
 };
 
-enum Material_Type
+enum MaterialType
 {
     MT_color,
     MT_texture
 };
 
-struct render_material
+struct RenderMaterial
 {
-    Material_Type type;
+    MaterialType type;
     union
     {
         struct
@@ -61,28 +61,28 @@ struct render_material
         } diffuse;
         struct
         {
-            texture tex;
+            Texture tex;
         } texture;
     };
     
     glm::vec3 specularColor;
     float alpha;
     
-    shader materialShader;
+    Shader materialShader;
 };
 
-struct vertex_info
+struct VertexInfo
 {
     glm::vec3 position;
     glm::vec3 normal;
     glm::vec4 color;
 };
 
-struct vertex
+struct Vertex
 {
     union
     {
-        vertex_info info;
+        VertexInfo info;
         struct
         {
             glm::vec3 position;
@@ -93,9 +93,9 @@ struct vertex
     int vertexIndex;
 };
 
-struct face
+struct Face
 {
-    List<vertex> vertices;
+    List<Vertex> vertices;
     
     glm::vec3 faceNormal;
     glm::vec4 faceColor;
@@ -103,7 +103,7 @@ struct face
     glm::vec3 centerPoint;
 };
 
-struct mesh
+struct Mesh
 {
     glm::vec3 position;
     glm::quat orientation;
@@ -111,12 +111,12 @@ struct mesh
     glm::mat4 transform;
     
     int meshIndex = -1;
-    render_material material;
+    RenderMaterial material;
     
     bool dirty;
     GLfloat* currentVBO;
     
-    std::vector<face> faces;
+    std::vector<Face> faces;
     
     GLuint VAO;
     GLuint VBO;
@@ -124,19 +124,19 @@ struct mesh
     int vertexCount;
 };
 
-struct debug_context
+struct DebugContext
 {
     int currentFaceIndex;
     int currentDistantPoint;
-    std::vector<edge> horizon;
+    std::vector<Edge> horizon;
 };
 
-struct render_context
+struct RenderContext
 {
     glm::mat4 projectionMatrix;
     glm::mat4 viewMatrix;
     
-    debug_context debugContext;
+    DebugContext debugContext;
     
     float FoV;
     
@@ -155,23 +155,23 @@ struct render_context
     
     GLFWwindow* window;
     
-    shader textureShader;
-    shader colorShader;
-    shader basicShader;
-    shader particleShader;
-    shader lineShader;
+    Shader textureShader;
+    Shader colorShader;
+    Shader basicShader;
+    Shader particleShader;
+    Shader lineShader;
     
-    mesh meshes[64];
+    Mesh meshes[64];
     int meshCount;
     
-    light lights[64];
+    Light lights[64];
     int lightCount;
     
     bool renderPoints;
     bool renderNormals;
     bool renderOutsideSets;
     
-    edge nonConvexEdge;
+    Edge nonConvexEdge;
     
     GLuint primitiveVAO;
     GLuint primitiveVBO;

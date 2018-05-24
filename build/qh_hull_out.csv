@@ -1125,3 +1125,35 @@ input vertices, faces added, faces in hull, points processed, distance queries, 
 2000, 1069, 204, 212, 5187, 37925, 104, 0, In Sphere
 2000, 1047, 216, 213, 5163, 37422, 110, 0, In Sphere
 2000, 1113, 232, 225, 5517, 38251, 118, 0, In Sphere
+2000, 1076, 228, 217, 5326, 39130, 116, 0, In Sphere
+2000, 1011, 236, 209, 4608, 36103, 120, 0, In Sphere
+2000, 918, 204, 189, 5455, 36249, 104, 0, In Sphere
+200000, 16434, 2276, 3148, 482904, 7308527, 1140, 0, In Sphere
+200000, 17989, 2354, 3421, 498291, 7429844, 1179, 0, In Sphere
+200000, 5529, 456, 1119, 479587, 5117113, 230, 0, In Cube
+2000, 227, 92, 48, 3418, 19546, 48, 0, Many internal, some on sphere
+200, 222, 92, 48, 494, 3204, 48, 0, Many internal, some on sphere
+200, 220, 92, 48, 428, 2902, 48, 0, Many internal, some on sphere
+200, 254, 92, 51, 533, 3982, 48, 0, Many internal, some on sphere
+200, 240, 92, 50, 493, 3628, 48, 0, Many internal, some on sphere
+2000, 247, 92, 56, 3848, 28538, 48, 0, Many internal, some on sphere
+2000, 218, 92, 50, 3189, 17826, 48, 0, Many internal, some on sphere
+2000, 244, 92, 52, 3485, 23460, 48, 0, Many internal, some on sphere
+2000, 228, 92, 51, 3933, 20711, 48, 0, Many internal, some on sphere
+2000, 228, 92, 50, 3167, 17950, 48, 0, Many internal, some on sphere
+2000, 245, 92, 54, 4106, 27304, 48, 0, Many internal, some on sphere
+2000, 245, 92, 53, 4216, 31865, 48, 0, Many internal, some on sphere
+2000, 255, 92, 56, 4955, 31868, 48, 0, Many internal, some on sphere
+2000, 294, 92, 61, 5014, 34437, 48, 0, Many internal, some on sphere
+2000, 224, 92, 50, 3911, 21748, 48, 0, Many internal, some on sphere
+2000, 234, 92, 49, 3114, 19423, 48, 0, Many internal, some on sphere
+2000, 233, 92, 50, 3634, 18370, 48, 0, Many internal, some on sphere
+2000, 227, 92, 50, 3878, 22800, 48, 0, Many internal, some on sphere
+2000, 232, 92, 51, 3855, 27651, 48, 0, Many internal, some on sphere
+2000, 263, 92, 57, 4308, 24933, 48, 0, Many internal, some on sphere
+2000, 227, 92, 49, 3408, 18723, 48, 0, Many internal, some on sphere
+2000, 232, 92, 49, 4183, 24354, 48, 0, Many internal, some on sphere
+2000, 232, 92, 52, 3495, 18192, 48, 0, Many internal, some on sphere
+2000, 238, 92, 51, 3161, 21637, 48, 0, Many internal, some on sphere
+2000, 226, 92, 49, 3481, 17456, 48, 0, Many internal, some on sphere
+2000, 228, 92, 48, 3244, 17025, 48, 0, Many internal, some on sphere

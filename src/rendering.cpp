@@ -36,9 +36,9 @@ static Resolution get_resolution()
     return res;
 }
 
-static vertex* LoadObj(const char* filePath, float scale = 1.0f)
+static Vertex* LoadObj(const char* filePath, float scale = 1.0f)
 {
-    vertex* vertices = nullptr;
+    Vertex* vertices = nullptr;
     auto file = fopen(filePath, "r");
     if(file)
     {
@@ -53,7 +53,7 @@ static vertex* LoadObj(const char* filePath, float scale = 1.0f)
             }
         }
         
-        vertices = (vertex*)calloc(vCount, sizeof(vertex));
+        vertices = (Vertex*)calloc(vCount, sizeof(Vertex));
         
         rewind(file);
         
@@ -103,7 +103,7 @@ static glm::mat4 ComputeTransformation(glm::vec3 scale = glm::vec3(1.0f), glm::q
     return t;
 }
 
-static void ComputeMeshTransformation(mesh& object)
+static void ComputeMeshTransformation(Mesh& object)
 {
     object.transform = ComputeTransformation(object.scale, object.orientation, object.position);
 }
@@ -148,7 +148,7 @@ static char* LoadShaderFromFile(const char* path)
     return source;
 }
 
-static shader LoadShaders(const char* vertexFilePath, const char* fragmentFilePath)
+static Shader LoadShaders(const char* vertexFilePath, const char* fragmentFilePath)
 {
     GLuint vertexShaderID = glCreateShader(GL_VERTEX_SHADER);
     GLuint fragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
@@ -216,12 +216,12 @@ static shader LoadShaders(const char* vertexFilePath, const char* fragmentFilePa
     free(vertexShaderCode);
     free(fragmentShaderCode);
     
-    shader newShader = {};
+    Shader newShader = {};
     newShader.programID = programID;
     return newShader;
 }
 
-static void InitializeOpenGL(render_context& renderContext)
+static void InitializeOpenGL(RenderContext& renderContext)
 {
     if(!glfwInit())
     {
@@ -333,7 +333,7 @@ static void InitializeOpenGL(render_context& renderContext)
     glGenBuffers(1, &renderContext.particlesColorVBO);
 }
 
-static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec3(0.0f), glm::vec3 end = glm::vec3(0.0f), glm::vec4 color = glm::vec4(1.0f), float lineWidth = 2.0f)
+static void RenderLine(RenderContext& renderContext, glm::vec3 start = glm::vec3(0.0f), glm::vec3 end = glm::vec3(0.0f), glm::vec4 color = glm::vec4(1.0f), float lineWidth = 2.0f)
 {
     glUseProgram(renderContext.lineShader.programID);
     
@@ -387,7 +387,7 @@ static void RenderLine(render_context& renderContext, glm::vec3 start = glm::vec
     
 }
 
-static void CreateDirectionalLight(render_context &renderContext, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular)
+static void CreateDirectionalLight(RenderContext &renderContext, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular)
 {
     auto &light = renderContext.lights[renderContext.lightCount++];
     light.direction = direction;
@@ -398,7 +398,7 @@ static void CreateDirectionalLight(render_context &renderContext, glm::vec3 dire
 }
 
 
-static void CreateSpotLight(render_context &renderContext, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, glm::vec3 position, float cutOff, float outerCutOff, float constant, float linear, float quadratic)
+static void CreateSpotLight(RenderContext &renderContext, glm::vec3 direction, glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular, glm::vec3 position, float cutOff, float outerCutOff, float constant, float linear, float quadratic)
 {
     auto &light = renderContext.lights[renderContext.lightCount++];
     light.direction = direction;
@@ -415,7 +415,7 @@ static void CreateSpotLight(render_context &renderContext, glm::vec3 direction, 
     light.lightType = LT_SPOT;
 }
 
-static GLfloat* BuildVertexBuffer(face* faces, int numFaces, int *vertexCount)
+static GLfloat* BuildVertexBuffer(Face* faces, int numFaces, int *vertexCount)
 {
     size_t sizeOfArray = 0;
     
@@ -426,7 +426,7 @@ static GLfloat* BuildVertexBuffer(face* faces, int numFaces, int *vertexCount)
     
     *vertexCount = sizeOfArray;
     
-    GLfloat* vertices = (GLfloat*)malloc(numFaces * sizeOfArray * sizeof(vertex_info));
+    GLfloat* vertices = (GLfloat*)malloc(numFaces * sizeOfArray * sizeof(VertexInfo));
     
     for(int i = 0; i < numFaces; i++)
     {
@@ -456,7 +456,7 @@ static GLfloat* BuildVertexBuffer(face* faces, int numFaces, int *vertexCount)
     return vertices;
 }
 
-static mesh& InitEmptyMesh(render_context& renderContext, int meshIndex = -1)
+static Mesh& InitEmptyMesh(RenderContext& renderContext, int meshIndex = -1)
 {
     if(meshIndex != -1)
     {
@@ -467,7 +467,7 @@ static mesh& InitEmptyMesh(render_context& renderContext, int meshIndex = -1)
     }
     else
     {
-        mesh& object = renderContext.meshes[renderContext.meshCount++];
+        Mesh& object = renderContext.meshes[renderContext.meshCount++];
         object.meshIndex = renderContext.meshCount - 1;
         glGenVertexArrays(1, &object.VAO);
         glBindVertexArray(object.VAO);
@@ -489,7 +489,7 @@ static mesh& InitEmptyMesh(render_context& renderContext, int meshIndex = -1)
     }
 }
 
-static void RenderPointCloud(render_context& renderContext, vertex* inputPoints, int numPoints)
+static void RenderPointCloud(RenderContext& renderContext, Vertex* inputPoints, int numPoints)
 {
     glBindVertexArray(renderContext.pointCloudVAO);
     glUseProgram(renderContext.particleShader.programID);
@@ -550,7 +550,7 @@ static void RenderPointCloud(render_context& renderContext, vertex* inputPoints,
     free(colors);
 }
 
-static glm::vec3 ComputeFaceNormal(face f)
+static glm::vec3 ComputeFaceNormal(Face f)
 {
     // Newell's Method
     // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
@@ -570,7 +570,7 @@ static glm::vec3 ComputeFaceNormal(face f)
 }
 
 
-static void RenderQuad(render_context& renderContext, glm::vec3 position = glm::vec3(0.0f), glm::quat orientation = glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3 scale = glm::vec3(1.0f), glm::vec4 color = glm::vec4(1.0f))
+static void RenderQuad(RenderContext& renderContext, glm::vec3 position = glm::vec3(0.0f), glm::quat orientation = glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3 scale = glm::vec3(1.0f), glm::vec4 color = glm::vec4(1.0f))
 {
     glBindVertexArray(renderContext.quadVAO);
     glUseProgram(renderContext.basicShader.programID);
@@ -594,7 +594,7 @@ static void RenderQuad(render_context& renderContext, glm::vec3 position = glm::
     glBindVertexArray(0);
 }
 
-static void RenderFaceEdges(render_context& renderContext, std::vector<edge>& edges, vertex v1, vertex v2, vertex v3, glm::vec4 edgeColor, float lineWidth)
+static void RenderFaceEdges(RenderContext& renderContext, std::vector<Edge>& edges, Vertex v1, Vertex v2, Vertex v3, glm::vec4 edgeColor, float lineWidth)
 {
     bool e1Drawn = false;
     bool e2Drawn = false;
@@ -621,7 +621,7 @@ static void RenderFaceEdges(render_context& renderContext, std::vector<edge>& ed
     if(!e1Drawn)
     {
         RenderLine(renderContext, v1.position, v2.position, edgeColor, lineWidth);
-        edge e = {};
+        Edge e = {};
         e.origin = v1.vertexIndex;
         e.end = v2.vertexIndex;
         edges.push_back(e);
@@ -630,7 +630,7 @@ static void RenderFaceEdges(render_context& renderContext, std::vector<edge>& ed
     if(!e2Drawn)
     {
         RenderLine(renderContext, v2.position, v3.position, edgeColor, lineWidth);
-        edge e = {};
+        Edge e = {};
         e.origin = v2.vertexIndex;
         e.end = v3.vertexIndex;
         edges.push_back(e);
@@ -639,14 +639,14 @@ static void RenderFaceEdges(render_context& renderContext, std::vector<edge>& ed
     if(!e3Drawn)
     {
         RenderLine(renderContext, v3.position, v1.position, edgeColor, lineWidth);
-        edge e = {};
+        Edge e = {};
         e.origin = v1.vertexIndex;
         e.end = v3.vertexIndex;
         edges.push_back(e);
     }
 }
 
-static glm::vec3 ComputeCenterpoint(face &f)
+static glm::vec3 ComputeCenterpoint(Face &f)
 {
     
     auto center = glm::vec3();
@@ -659,7 +659,7 @@ static glm::vec3 ComputeCenterpoint(face &f)
     return glm::vec3(center.x / f.vertices.size, center.y / f.vertices.size, center.z / f.vertices.size);
 }
 
-static void RenderMesh(render_context& renderContext, mesh& m, vertex *vertices = nullptr)
+static void RenderMesh(RenderContext& renderContext, Mesh& m, Vertex *vertices = nullptr)
 {
     if(m.faces.size() == 0)
     {
@@ -723,16 +723,16 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex *vertices 
         m.currentVBO = BuildVertexBuffer(m.faces.data(), (int)m.faces.size(), &m.vertexCount);
     }
     
-    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(sizeof(vertex_info) * m.vertexCount), &m.currentVBO[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(sizeof(VertexInfo) * m.vertexCount), &m.currentVBO[0], GL_STATIC_DRAW);
     
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_info), (void*)offsetof(vertex, position));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexInfo), (void*)offsetof(Vertex, position));
     
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_info), (void*)offsetof(vertex, normal));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VertexInfo), (void*)offsetof(Vertex, normal));
     
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(vertex_info), (void*) offsetof(vertex, color));
+    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(VertexInfo), (void*) offsetof(Vertex, color));
     
     glDrawArrays(GL_TRIANGLES, 0, m.vertexCount * 10);
     glDisableVertexAttribArray(0);
@@ -760,7 +760,7 @@ static void RenderMesh(render_context& renderContext, mesh& m, vertex *vertices 
     }
 }
 
-static void RenderGrid(render_context& renderContext, glm::vec4 color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f), float lineWidth = 2.0f)
+static void RenderGrid(RenderContext& renderContext, glm::vec4 color = glm::vec4(0.5f, 0.5f, 0.5f, 1.0f), float lineWidth = 2.0f)
 {
     float gridSize = 15.0f;
     glm::vec3 offset = renderContext.originOffset;
@@ -778,7 +778,7 @@ static void RenderGrid(render_context& renderContext, glm::vec4 color = glm::vec
 }
 
 
-static void Render(render_context& renderContext)
+static void Render(RenderContext& renderContext)
 {
     for(int meshIndex = 0; meshIndex < renderContext.meshCount; meshIndex++)
     {
@@ -787,7 +787,7 @@ static void Render(render_context& renderContext)
     //RenderGrid(renderContext, glm::vec4(0.6f, 0.6f, 0.6f, 1.0f), 1.0f);
 }
 
-static void ComputeMatrices(render_context& renderContext, double deltaTime)
+static void ComputeMatrices(RenderContext& renderContext, double deltaTime)
 {
     if(renderContext.FoV >= 1.0f && renderContext.FoV <= 45.0f)
         renderContext.FoV -= inputState.yScroll;

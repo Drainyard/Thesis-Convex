@@ -1,10 +1,10 @@
 #ifndef POINT_GENERATOR_H
 #define POINT_GENERATOR_H
 
-struct point_generator;
+struct PointGenerator;
 
-#define GENERATOR_FUNCTION(name) vertex* name(point_generator& pointGenerator, coord_t min, coord_t max, glm::vec3 offset)
-typedef GENERATOR_FUNCTION(generator_function);
+#define GENERATOR_FUNCTION(name) Vertex* name(PointGenerator& pointGenerator, coord_t min, coord_t max, glm::vec3 offset)
+typedef GENERATOR_FUNCTION(GeneratorFunction);
 
 enum GeneratorType
 {
@@ -15,15 +15,13 @@ enum GeneratorType
     ManyInternal,
 };
 
-struct point_generator
+struct PointGenerator
 {
     int numberOfPoints;
     GeneratorType type;
     std::mt19937 gen;
     std::uniform_real_distribution<coord_t> d;
 };
-
-
 
 struct TestSet
 {
@@ -33,7 +31,7 @@ struct TestSet
     GeneratorType genType;
 };
 
-struct config_data
+struct ConfigData
 {
     int numberOfPoints;
     GeneratorType genType;
@@ -53,7 +51,7 @@ void readTestSet(const char *filename, TestSet &testSet)
         
         char buf[64];
         int i = 0;
-        while(fgets(buf, 64, f))
+        while(getData(buf, sizeof(buf), f))
         {
             if(startsWith(buf, "gen"))
             {
@@ -67,7 +65,7 @@ void readTestSet(const char *filename, TestSet &testSet)
             }
             else if(startsWith(buf, "iterations"))
             {
-                sscanf(buf, "iterations %d\n", &testSet.iterations);
+                sscanf(buf, "iterations %d", &testSet.iterations);
             }
             else
             {
@@ -79,21 +77,24 @@ void readTestSet(const char *filename, TestSet &testSet)
                         break;
                     }
                     testSet.testSet = (int*)malloc(sizeof(int) * testSet.count);
+                    rewind(f);
+                    getData(buf, sizeof(buf), f);
+                    getData(buf, sizeof(buf), f);
+                    getData(buf, sizeof(buf), f);
                 }
                 
-                sscanf(buf, "%d\n", &testSet.testSet[i++]);
-                log_a("%d\n", testSet.testSet[i - 1]);
+                sscanf(buf, "%d", &testSet.testSet[i++]);
             }
         }
         fclose(f);
     }
 }
 
-void readTestSets(char *buffer, List<TestSet> &list, FILE *f)
+void readTestSets(char *buffer, size_t bufSize, List<TestSet> &list, FILE *f)
 {
     init(list);
     auto prevPos = ftell(f);
-    while(fgets(buffer, 64, f))
+    while(getData(buffer, bufSize, f))
     {
         if(startsWith(buffer, "set"))
         {
@@ -113,14 +114,14 @@ void readTestSets(char *buffer, List<TestSet> &list, FILE *f)
     prevPos = ftell(f);
 }
 
-void loadConfig(const char* filePath, config_data &configData)
+void loadConfig(const char* filePath, ConfigData &configData)
 {
     FILE* f = fopen(filePath, "r");
     if(f)
     {
         bool set = false;
         char buffer[64];
-        while(fgets(buffer, 64, f))
+        while(getData(buffer, 64, f))
         {
             if(startsWith(buffer, "points"))
             {
@@ -140,22 +141,22 @@ void loadConfig(const char* filePath, config_data &configData)
             }
             else if(startsWith(buffer, "i"))
             {
-                readTestSets(buffer, configData.incTestSets, f);
+                readTestSets(buffer, 64, configData.incTestSets, f);
             }
             else if(startsWith(buffer, "d"))
             {
-                readTestSets(buffer, configData.dacTestSets, f);
+                readTestSets(buffer, 64, configData.dacTestSets, f);
             }
             else if(startsWith(buffer, "q"))
             {
-                readTestSets(buffer, configData.qhTestSets, f);
+                readTestSets(buffer, 64, configData.qhTestSets, f);
             }
         }
         fclose(f);
     }
 }
 
-static void initPointGenerator(point_generator& pointGenerator, GeneratorType type, int numberOfPoints)
+static void initPointGenerator(PointGenerator& pointGenerator, GeneratorType type, int numberOfPoints)
 {
     pointGenerator.type = type;
     pointGenerator.numberOfPoints = numberOfPoints;
@@ -163,7 +164,7 @@ static void initPointGenerator(point_generator& pointGenerator, GeneratorType ty
 
 static GENERATOR_FUNCTION(generatePoints)
 {
-    auto res = (vertex*)malloc(sizeof(vertex) * pointGenerator.numberOfPoints);
+    auto res = (Vertex*)malloc(sizeof(Vertex) * pointGenerator.numberOfPoints);
     for(int i = 0; i < pointGenerator.numberOfPoints; i++)
     {
         coord_t x = randomCoord(pointGenerator.d, pointGenerator.gen, min, max);
@@ -180,7 +181,7 @@ static GENERATOR_FUNCTION(generatePointsOnSphere)
 {
     UNUSED(min);
     auto radius = max / 2.0f;
-    auto res = (vertex*)malloc(sizeof(vertex) * pointGenerator.numberOfPoints);
+    auto res = (Vertex*)malloc(sizeof(Vertex) * pointGenerator.numberOfPoints);
     for(int i = 0; i < pointGenerator.numberOfPoints; i++) 
     {
         coord_t theta = 2 * (coord_t)M_PI * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0, 1.0);
@@ -197,7 +198,7 @@ static GENERATOR_FUNCTION(generatePointsOnSphere)
 
 static GENERATOR_FUNCTION(generatePointsInSphere)
 {
-    auto res = (vertex*)malloc(sizeof(vertex) * pointGenerator.numberOfPoints);
+    auto res = (Vertex*)malloc(sizeof(Vertex) * pointGenerator.numberOfPoints);
     for(int i = 0; i < pointGenerator.numberOfPoints; i++) 
     {
         coord_t theta = 2 * (coord_t)M_PI * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0, 1.0);
@@ -216,7 +217,7 @@ static GENERATOR_FUNCTION(generatePointsInSphere)
 
 GENERATOR_FUNCTION(generatePointsOnNormalizedSphere)
 {
-    auto res = (vertex*)malloc(sizeof(vertex) * pointGenerator.numberOfPoints);
+    auto res = (Vertex*)malloc(sizeof(Vertex) * pointGenerator.numberOfPoints);
     for(int i = 0; i < pointGenerator.numberOfPoints; i++)
     {
         coord_t x = randomCoord(pointGenerator.d, pointGenerator.gen, min, max);
@@ -231,7 +232,7 @@ GENERATOR_FUNCTION(generatePointsOnNormalizedSphere)
 
 GENERATOR_FUNCTION(generatePointsManyInternal)
 {
-    auto res = (vertex*)malloc(sizeof(vertex) * pointGenerator.numberOfPoints);
+    auto res = (Vertex*)malloc(sizeof(Vertex) * pointGenerator.numberOfPoints);
     
     int pointsOnOutside = 50;
     

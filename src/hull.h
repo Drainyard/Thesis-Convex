@@ -8,41 +8,41 @@ enum HullType
     Dac
 };
 
-struct vertex;
+struct Vertex;
 
-struct timer
+struct Timer
 {
     double timerInit;
     double currentTime;
     bool running;
 };
 
-struct hull
+struct Hull
 {
-    vertex *vertices;
+    Vertex *vertices;
     int numberOfPoints;
     
-    qh_context qhContext;
-    qh_context stepQhContext;
-    qh_context timedStepQhContext;
+    QhContext qhContext;
+    QhContext stepQhContext;
+    QhContext timedStepQhContext;
     
-    timer qhTimer;
+    Timer qhTimer;
     
-    inc_context incContext;
-    inc_context stepIncContext;
-    inc_context timedStepIncContext;
+    IncContext incContext;
+    IncContext stepIncContext;
+    IncContext timedStepIncContext;
     
-    timer incTimer;
+    Timer incTimer;
     
-    dac_context dacContext;
-    dac_context stepDacContext;
-    dac_context timedStepDacContext;
+    DacContext dacContext;
+    DacContext stepDacContext;
+    DacContext timedStepDacContext;
     
-    timer dacTimer;
+    Timer dacTimer;
     
     HullType currentHullType;
     
-    point_generator pointGenerator;
+    PointGenerator pointGenerator;
 };
 
 const char *GetGeneratorTypeString(GeneratorType type)
@@ -99,7 +99,7 @@ void WriteHullToCSV(const char *filename, int facesAdded, int totalFaceCount, in
     }
 }
 
-static void InitializeHull(hull &h, vertex *vertices, int numberOfPoints, HullType hullType)
+static void InitializeHull(Hull &h, Vertex *vertices, int numberOfPoints, HullType hullType)
 {
     h.vertices = vertices;
     h.numberOfPoints = numberOfPoints;
@@ -120,7 +120,7 @@ static void InitializeHull(hull &h, vertex *vertices, int numberOfPoints, HullTy
     h.currentHullType = hullType;
 }
 
-static void reinitializeHull(hull &h, vertex *vertices, int numberOfPoints)
+static void reinitializeHull(Hull &h, Vertex *vertices, int numberOfPoints)
 {
     h.vertices = vertices;
     h.numberOfPoints = numberOfPoints;
@@ -132,7 +132,7 @@ static void reinitializeHull(hull &h, vertex *vertices, int numberOfPoints)
     h.incContext.initialized = false;
 }
 
-static mesh *UpdateHull(render_context &renderContext, hull &h, HullType hullType, double deltaTime)
+static Mesh *UpdateHull(RenderContext &renderContext, Hull &h, HullType hullType, double deltaTime)
 {
     h.currentHullType = hullType;
     
@@ -196,21 +196,21 @@ static mesh *UpdateHull(render_context &renderContext, hull &h, HullType hullTyp
     return nullptr;
 }
 
-static void RunFullHullTest(TestSet &testSet, glm::vec3 offset, render_context &renderContext)
+static void RunFullHullTest(TestSet &testSet, glm::vec3 offset, RenderContext &renderContext)
 {
     auto vertexAmounts = testSet.testSet;
     auto genType = testSet.genType;
     
-    vertex *vertices = nullptr;
+    Vertex *vertices = nullptr;
     
     auto seed = time(NULL);
-    point_generator generator;
+    PointGenerator generator;
     std::random_device rd{};
     std::mt19937 gen{rd()};
     gen.seed((unsigned int)seed);
     generator.gen = gen;
     
-    qh_context qhContext = {};
+    QhContext qhContext = {};
     
     log_a("Count: %zd\n", testSet.count);
     for(size_t i = 0; i < testSet.count; i++)
@@ -270,7 +270,7 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset, render_context &
     log_a("Done\n");
 }
 
-static mesh &FullHull(render_context &renderContext, hull &h)
+static Mesh &FullHull(RenderContext &renderContext, Hull &h)
 {
     switch (h.currentHullType)
     {
@@ -323,7 +323,7 @@ static mesh &FullHull(render_context &renderContext, hull &h)
     }
 }
 
-static mesh &StepHull(render_context &renderContext, hull &h)
+static Mesh &StepHull(RenderContext &renderContext, Hull &h)
 {
     switch (h.currentHullType)
     {
@@ -375,7 +375,7 @@ static mesh &StepHull(render_context &renderContext, hull &h)
     }
 }
 
-static mesh &TimedStepHull(render_context &renderContext, hull &h)
+static Mesh &TimedStepHull(RenderContext &renderContext, Hull &h)
 {
     switch (h.currentHullType)
     {

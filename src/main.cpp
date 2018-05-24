@@ -52,7 +52,7 @@
 
 const static float globalScale = 0.1f;
 
-static input_state inputState;
+static InputState inputState;
 
 #include "keys.cpp"
 
@@ -66,7 +66,7 @@ static input_state inputState;
 #include "point_generator.h"
 #include "hull.h"
 
-void reinitPoints(vertex **vertices, config_data &configData, hull &h, render_context &renderContext)
+void reinitPoints(Vertex **vertices, ConfigData &configData, Hull &h, RenderContext &renderContext)
 {
     if(*vertices)
     {
@@ -83,7 +83,7 @@ void reinitPoints(vertex **vertices, config_data &configData, hull &h, render_co
 }
 
 
-void reinitPoints(vertex **vertices, int numPoints, hull &h, render_context &renderContext)
+void reinitPoints(Vertex **vertices, int numPoints, Hull &h, RenderContext &renderContext)
 {
     if(*vertices)
     {
@@ -97,7 +97,7 @@ void reinitPoints(vertex **vertices, int numPoints, hull &h, render_context &ren
     *vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
 }
 
-void reinitHull(vertex *vertices, hull &h, vertex **currentVertices, mesh **currentMesh, mesh **fullHull, mesh **timedHull, mesh **stepHull)
+void reinitHull(Vertex *vertices, Hull &h, Vertex **currentVertices, Mesh **currentMesh, Mesh **fullHull, Mesh **timedHull, Mesh **stepHull)
 {
     reinitializeHull(h, vertices, h.pointGenerator.numberOfPoints);
     
@@ -116,7 +116,7 @@ int main()
     //seed = 1525801902;
     srand((unsigned int)seed);
     printf("Seed: %zd\n", seed);
-    render_context renderContext = {};
+    RenderContext renderContext = {};
     renderContext.FoV = 45.0f;
     renderContext.position = glm::vec3(0.0f, 50.5f, 70.0f);
     renderContext.direction = glm::vec3(0.0f, -0.75f, -1.0f);
@@ -145,7 +145,7 @@ int main()
     
     HullType hullType = HullType::QH;
     
-    config_data configData = {};
+    ConfigData configData = {};
     loadConfig("../.config", configData);
     
     //int numberOfPoints = 645932; // Man in vest numbers
@@ -154,7 +154,7 @@ int main()
     //int numberOfPoints = 3057;
     int numberOfPoints = configData.numberOfPoints;
     
-    hull h;
+    Hull h;
     h.vertices = nullptr;
     h.numberOfPoints = 0;
     h.qhContext = {};
@@ -187,17 +187,17 @@ int main()
     
     InitializeHull(h, vertices, h.pointGenerator.numberOfPoints, hullType);
     
-    mesh* currentMesh = nullptr;
-    vertex* currentVertices = vertices;
+    Mesh* currentMesh = nullptr;
+    Vertex* currentVertices = vertices;
     
     auto fps = 0.0;
     auto currentFrameCount = 0;
     
     auto totalDelta = 0.0;
     
-    mesh* fullHull = nullptr;
-    mesh* timedHull = nullptr;
-    mesh* stepHull = nullptr;
+    Mesh* fullHull = nullptr;
+    Mesh* timedHull = nullptr;
+    Mesh* stepHull = nullptr;
     
     // Check if the ESC key was pressed or the window was closed
     while(!KeyDown(Key_Escape) &&
