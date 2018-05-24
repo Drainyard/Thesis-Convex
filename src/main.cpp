@@ -45,6 +45,7 @@
 #pragma warning(pop)
 #endif
 
+#include "list.h"
 #include "timing.h"
 #include "util.h"
 #include "keys.h"
@@ -231,7 +232,7 @@ int main()
         {
             for(size_t i = 0; i < configData.testSets.count; i++)
             {
-                RunFullHullTest(configData.testSets.testSets[i], renderContext.originOffset);
+                RunFullHullTest(configData.testSets.testSets[i], renderContext.originOffset, renderContext);
             }
         }
         
@@ -318,7 +319,7 @@ int main()
         
         if(currentMesh)
         {
-            RenderMesh(renderContext, *currentMesh);
+            RenderMesh(renderContext, *currentMesh, vertices);
         }
         
         if(KeyDown(Key_9))

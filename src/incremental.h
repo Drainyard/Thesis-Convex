@@ -679,7 +679,7 @@ mesh &incConvertToMesh(inc_context &context, render_context &renderContext)
                 vertex newVertex = {};
                 newVertex.position = f->vertex[i]->vector;
                 newVertex.vertexIndex = f->vertex[i]->vIndex;
-                newFace.vertices[i] = newVertex;
+                addToList(newFace.vertices, newVertex);
             }
             newFace.faceColor = glm::vec4(0.0f, 1.0f, 1.0f, 0.7f);
             newFace.faceColor.w = 0.5f;

@@ -45,9 +45,9 @@ vec3 calcDirLight(DirLight light, vec3 normal, vec3 viewDir)
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0f);
     // combine results
-    vec3 ambient = light.ambient * diffuseColor;
-    vec3 diffuse = light.diffuse * diff * diffuseColor;
-    vec3 specular = light.specular * spec * diffuseColor;
+    vec3 ambient = light.ambient * c.xyz;
+    vec3 diffuse = light.diffuse * diff * c.xyz;
+    vec3 specular = light.specular * spec * c.xyz;
     return (ambient + diffuse);
 }
 
@@ -67,9 +67,9 @@ vec3 calcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
     float epsilon = light.cutOff - light.outerCutOff;
     float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
     // combine results
-    vec3 ambient = light.ambient * diffuseColor;
-    vec3 diffuse = light.diffuse * diff * diffuseColor;
-    vec3 specular = light.specular * spec * diffuseColor;
+    vec3 ambient = light.ambient * c.xyz;
+    vec3 diffuse = light.diffuse * diff * c.xyz;
+    vec3 specular = light.specular * spec * c.xyz;
     ambient *= attenuation * intensity;
     diffuse *= attenuation * intensity;
     specular *= attenuation * intensity;
@@ -83,7 +83,7 @@ void main()
     vec3 viewDir = normalize(viewPos - posWorld);
     
     vec3 ambient = vec3(0.3, 0.3, 0.3);
-    vec3 result = ambient * diffuseColor;
+    vec3 result = ambient * c.xyz;
     result += calcDirLight(dirLight, norm, viewDir);
     //result += calcSpotLight(spotLight, norm, posWorld, viewDir);
     

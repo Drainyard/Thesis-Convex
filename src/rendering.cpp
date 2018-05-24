@@ -103,58 +103,6 @@ static glm::mat4 ComputeTransformation(glm::vec3 scale = glm::vec3(1.0f), glm::q
     return t;
 }
 
-int* FindExtremePoints(vertex* points, int numPoints)
-{
-    
-    if(numPoints > 0)
-    {
-        auto minX = 0;
-        auto maxX = 0;
-        auto minY = 0;
-        auto maxY = 0;
-        auto minZ = 0;
-        auto maxZ = 0;
-        
-        for(int i = 0; i < numPoints; i++)
-        {
-            auto& p = points[i];
-            if(p.position.x > points[maxX].position.x)
-            {
-                maxX = i;
-            }
-            if(p.position.x < points[minX].position.x)
-            {
-                minX = i;
-            }
-            if(p.position.y > points[maxY].position.y)
-            {
-                maxY = i;
-            }
-            if(p.position.y < points[minY].position.y)
-            {
-                minY = i;
-            }
-            if(p.position.z > points[maxZ].position.z)
-            {
-                maxZ = i;
-            }
-            if(p.position.z < points[minZ].position.z)
-            {
-                minZ = i;
-            }
-        }
-        int* res = (int*)malloc(sizeof(int) * 6);
-        res[0] = minX;
-        res[1] = maxX;
-        res[2] = minY;
-        res[3] = maxY;
-        res[4] = minZ;
-        res[5] = maxZ;
-        return res;
-    }
-    return nullptr;
-}
-
 static void ComputeMeshTransformation(mesh& object)
 {
     object.transform = ComputeTransformation(object.scale, object.orientation, object.position);
@@ -467,66 +415,43 @@ static void CreateSpotLight(render_context &renderContext, glm::vec3 direction, 
     light.lightType = LT_SPOT;
 }
 
-static GLfloat* BuildVertexBuffer(face* faces, int numFaces)
+static GLfloat* BuildVertexBuffer(face* faces, int numFaces, int *vertexCount)
 {
-    GLfloat* vertices = (GLfloat*)malloc(numFaces * 3 * sizeof(vertex_info));
+    size_t sizeOfArray = 0;
     
-    log("Num faces in renderer: %d\n", numFaces);
+    for(int i = 0; i < numFaces; i++)
+    {
+        sizeOfArray += faces[i].vertices.size;
+    }
+    
+    *vertexCount = sizeOfArray;
+    
+    GLfloat* vertices = (GLfloat*)malloc(numFaces * sizeOfArray * sizeof(vertex_info));
     
     for(int i = 0; i < numFaces; i++)
     {
         auto currentColor = faces[i].faceColor;
         
-        auto v1 = faces[i].vertices[0];
-        auto v2 = faces[i].vertices[1];
-        auto v3 = faces[i].vertices[2];
-        // First vertex
-        vertices[i * 30] = v1.position.x;
-        vertices[i * 30 + 1] = v1.position.y;
-        vertices[i * 30 + 2] = v1.position.z;
-        
-        // First normal
-        vertices[i * 30 + 3] = faces[i].faceNormal.x;
-        vertices[i * 30 + 4] = faces[i].faceNormal.y;
-        vertices[i * 30 + 5] = faces[i].faceNormal.z;
-        
-        // First color
-        vertices[i * 30 + 6] = currentColor.x;//v1.color.x;
-        vertices[i * 30 + 7] = currentColor.y;//v1.color.y;
-        vertices[i * 30 + 8] = currentColor.z;//v1.color.z;
-        vertices[i * 30 + 9] = currentColor.w;//v1.color.w;
-        
-        // Second vertex
-        vertices[i * 30 + 10] = v2.position.x;
-        vertices[i * 30 + 11] = v2.position.y;
-        vertices[i * 30 + 12] = v2.position.z;
-        
-        // Second normal
-        vertices[i * 30 + 13] = faces[i].faceNormal.x;
-        vertices[i * 30 + 14] = faces[i].faceNormal.y;
-        vertices[i * 30 + 15] = faces[i].faceNormal.z;
-        
-        // Second color
-        vertices[i * 30 + 16] = currentColor.x;//v2.color.x;
-        vertices[i * 30 + 17] = currentColor.y;//v2.color.y;
-        vertices[i * 30 + 18] = currentColor.z;//v2.color.z;
-        vertices[i * 30 + 19] = currentColor.w;//v2.color.w;
-        
-        // Third vertex
-        vertices[i * 30 + 20] = v3.position.x;
-        vertices[i * 30 + 21] = v3.position.y;
-        vertices[i * 30 + 22] = v3.position.z;
-        
-        // Third normal
-        vertices[i * 30 + 23] = faces[i].faceNormal.x;
-        vertices[i * 30 + 24] = faces[i].faceNormal.y;
-        vertices[i * 30 + 25] = faces[i].faceNormal.z;
-        
-        // Third color
-        vertices[i * 30 + 26] = currentColor.x;//v3.color.x;
-        vertices[i * 30 + 27] = currentColor.y;//v3.color.y;
-        vertices[i * 30 + 28] = currentColor.z;//v3.color.z;
-        vertices[i * 30 + 29] = currentColor.w;//v3.color.w;
+        for(size_t j = 0; j < faces[i].vertices.size; j++)
+        {
+            auto attributes = 10;
+            auto baseIndex = i * faces[i].vertices.size * attributes;
+            
+            auto jNumIndices = j * attributes;
+            
+            vertices[baseIndex + jNumIndices] = faces[i].vertices[j].position.x;
+            vertices[baseIndex + 1 + jNumIndices] = faces[i].vertices[j].position.y;
+            vertices[baseIndex + 2 + jNumIndices] = faces[i].vertices[j].position.z;
+            
+            vertices[baseIndex + 3 + jNumIndices] = faces[i].faceNormal.x;
+            vertices[baseIndex + 4 + jNumIndices] = faces[i].faceNormal.y;
+            vertices[baseIndex + 5 + jNumIndices] = faces[i].faceNormal.z;
+            
+            vertices[baseIndex + 6 + jNumIndices] = currentColor.x;
+            vertices[baseIndex + 7 + jNumIndices] = currentColor.y;
+            vertices[baseIndex + 8 + jNumIndices] = currentColor.z;
+            vertices[baseIndex + 9 + jNumIndices] = currentColor.w;
+        }
     }
     return vertices;
 }
@@ -625,6 +550,26 @@ static void RenderPointCloud(render_context& renderContext, vertex* inputPoints,
     free(colors);
 }
 
+static glm::vec3 ComputeFaceNormal(face f)
+{
+    // Newell's Method
+    // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
+    glm::vec3 normal = glm::vec3(0.0f);
+    
+    for(int i = 0; i < f.vertices.size; i++)
+    {
+        auto& current = f.vertices[i].position;
+        auto& next = f.vertices[(i + 1) % 3].position;
+        
+        normal.x = normal.x + (current.y - next.y) * (current.z + next.z);
+        normal.y = normal.y + (current.z - next.z) * (current.x + next.x);
+        normal.z = normal.z + (current.x - next.x) * (current.y + next.y);
+    }
+    
+    return glm::normalize(normal);
+}
+
+
 static void RenderQuad(render_context& renderContext, glm::vec3 position = glm::vec3(0.0f), glm::quat orientation = glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3 scale = glm::vec3(1.0f), glm::vec4 color = glm::vec4(1.0f))
 {
     glBindVertexArray(renderContext.quadVAO);
@@ -701,7 +646,20 @@ static void RenderFaceEdges(render_context& renderContext, std::vector<edge>& ed
     }
 }
 
-static void RenderMesh(render_context& renderContext, mesh& m)
+static glm::vec3 ComputeCenterpoint(face &f)
+{
+    
+    auto center = glm::vec3();
+    
+    for(size_t i = 0; i < f.vertices.size; i++)
+    {
+        center += f.vertices[i].position;
+    }
+    
+    return glm::vec3(center.x / f.vertices.size, center.y / f.vertices.size, center.z / f.vertices.size);
+}
+
+static void RenderMesh(render_context& renderContext, mesh& m, vertex *vertices = nullptr)
 {
     if(m.faces.size() == 0)
     {
@@ -757,15 +715,15 @@ static void RenderMesh(render_context& renderContext, mesh& m)
     glBindVertexArray(m.VAO);
     
     glBindBuffer(GL_ARRAY_BUFFER, m.VBO);
+    
     if(m.dirty)
     {
         free(m.currentVBO);
         m.dirty = false;
-        m.currentVBO = BuildVertexBuffer(m.faces.data(), (int)m.faces.size());
+        m.currentVBO = BuildVertexBuffer(m.faces.data(), (int)m.faces.size(), &m.vertexCount);
     }
     
-    auto vertexCount = (int)m.faces.size() * 3;
-    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(sizeof(vertex_info) * vertexCount), &m.currentVBO[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(sizeof(vertex_info) * m.vertexCount), &m.currentVBO[0], GL_STATIC_DRAW);
     
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_info), (void*)offsetof(vertex, position));
@@ -776,8 +734,7 @@ static void RenderMesh(render_context& renderContext, mesh& m)
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(vertex_info), (void*) offsetof(vertex, color));
     
-    
-    glDrawArrays(GL_TRIANGLES, 0, vertexCount * 10);
+    glDrawArrays(GL_TRIANGLES, 0, m.vertexCount * 10);
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
@@ -795,6 +752,11 @@ static void RenderMesh(render_context& renderContext, mesh& m)
             
             RenderLine(renderContext, f.centerPoint, f.centerPoint + normalLength * f.faceNormal, normalColor, 2.0f);
         }
+    }
+    
+    if(vertices)
+    {
+        RenderLine(renderContext, vertices[renderContext.nonConvexEdge.origin].position, vertices[renderContext.nonConvexEdge.end].position, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f), 5.0f);
     }
 }
 

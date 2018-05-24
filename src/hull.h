@@ -145,7 +145,7 @@ static mesh *UpdateHull(render_context &renderContext, hull &h, HullType hullTyp
             {
                 if (h.qhTimer.currentTime <= 0.0)
                 {
-                    qhStep(qhContext);
+                    qhStep(qhContext, renderContext);
                     h.qhTimer.currentTime = h.qhTimer.timerInit;
                     return &qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
                 }
@@ -196,7 +196,7 @@ static mesh *UpdateHull(render_context &renderContext, hull &h, HullType hullTyp
     return nullptr;
 }
 
-static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
+static void RunFullHullTest(TestSet &testSet, glm::vec3 offset, render_context &renderContext)
 {
     auto vertexAmounts = testSet.testSet;
     auto genType = testSet.genType;
@@ -237,7 +237,7 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
             
             qhInitializeContext(qhContext, vertices, n);
             auto timerIndex = startTimer();
-            qhFullHull(qhContext);
+            qhFullHull(qhContext, renderContext);
             qhContext.qHull.processingState.timeSpent = endTimer(timerIndex);
             
             qhContext.initialized = false;
@@ -283,7 +283,7 @@ static mesh &FullHull(render_context &renderContext, hull &h)
             }
             
             auto timerIndex = startTimer();
-            qhFullHull(qhContext);
+            qhFullHull(qhContext, renderContext);
             TIME_END(timerIndex, "Full quick hull");
             
             WriteHullToCSV("qh_hull_out", qhContext.qHull.processingState.addedFaces, (int)qhContext.qHull.faces.size, h.numberOfPoints, qhContext.qHull.processingState.pointsProcessed, qhContext.qHull.processingState.distanceQueryCount,
@@ -334,7 +334,7 @@ static mesh &StepHull(render_context &renderContext, hull &h)
             {
                 qhInitializeContext(qhContext, h.vertices, h.numberOfPoints);
             }
-            qhStep(qhContext);
+            qhStep(qhContext, renderContext);
             return qhConvertToMesh(renderContext, qhContext.qHull, h.vertices);
         }
         break;

@@ -95,7 +95,8 @@ struct vertex
 
 struct face
 {
-    vertex vertices[3];
+    List<vertex> vertices;
+    
     glm::vec3 faceNormal;
     glm::vec4 faceColor;
     
@@ -119,6 +120,8 @@ struct mesh
     
     GLuint VAO;
     GLuint VBO;
+    
+    int vertexCount;
 };
 
 struct debug_context
@@ -167,6 +170,8 @@ struct render_context
     bool renderPoints;
     bool renderNormals;
     bool renderOutsideSets;
+    
+    edge nonConvexEdge;
     
     GLuint primitiveVAO;
     GLuint primitiveVBO;
