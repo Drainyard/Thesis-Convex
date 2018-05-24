@@ -977,9 +977,15 @@ void qhIteration(qh_hull& qHull, qh_vertex* vertices, std::vector<int>& faceStac
         
         if(newF)
         {
+            auto otherFace = qHull.faces[(newF->indexInHull + 100) % qHull.faces.size];
+            
+            if(otherFace.indexInHull == newF->indexInHull)
+            {
+                otherFace = qHull.faces[(newF->indexInHull + 23) % qHull.faces.size];
+            }
             
             
-            if(IsPointOnPositiveSide(qHull, *newF, f.centerPoint, epsilon))
+            if(IsPointOnPositiveSide(qHull, *newF, otherFace.centerPoint, epsilon))
             {
                 auto t = newF->vertices[0];
                 newF->vertices[0] = newF->vertices[1];
