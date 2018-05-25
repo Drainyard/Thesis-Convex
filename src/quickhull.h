@@ -59,8 +59,8 @@ struct QhHull
     {
         int addedFaces;
         int pointsProcessed;
-        int distanceQueryCount;
-        int sidednessQueries;
+        unsigned long long distanceQueryCount;
+        unsigned long long sidednessQueries;
         int verticesInHull;
         unsigned long long timeSpent;
     } processingState;
@@ -356,9 +356,13 @@ static int qhRemoveFace(QhHull& qHull, int faceId, QhVertex* vertices)
         
         if(v1.faceHandles.size == 0)
         {
+            clear(v1.faceHandles);
             qHull.processingState.verticesInHull--;
         }
     }
+    
+    clear(f.vertices);
+    clear(f.outsideSet);
     
     assert(qHull.faces[indexInHull].neighbourCount < (int)qHull.faces.size);
     // Invalidates the f pointer
@@ -427,17 +431,14 @@ float SquareDistancePointToSegment(glm::vec3 a, glm::vec3 b, glm::vec3 c)
     return glm::dot(ac, ac) - (e * e) / f;
 }
 
-
 struct vertex_pair
 {
     QhVertex first;
     QhVertex second;
 };
 
-
 int* qhFindExtremePoints(QhVertex* points, int numPoints)
 {
-    
     if(numPoints > 0)
     {
         auto minX = 0;
@@ -816,6 +817,14 @@ Mesh& qhConvertToMesh(RenderContext& renderContext, QhHull& qHull, Vertex* verti
         qHull.m->faces.push_back(newFace);
     }
     
+    
+    for(auto &f : qHull.faces)
+    {
+        clear(f.vertices);
+        clear(f.outsideSet);
+    }
+    clear(qHull.faces);
+    
     return *qHull.m;
 }
 
@@ -915,46 +924,6 @@ bool qhCheckEdgeConvex(QhHull &hull, QhFace leftFace, QhFace rightFace, coord_t 
     auto rightBelow = !IsPointOnPositiveSide(hull, rightFace, leftFace.centerPoint, epsilon);
     
     return leftBelow && rightBelow;
-}
-
-void qhRemoveFaceAndFixLists(QhHull &qHull, std::vector<int> &uniqueInV, std::vector<int> &faceStack, QhVertex *vertices, int vIndex)
-{
-    auto movedHandle = qHull.faces.size - 1;
-    
-    auto newHandle = qhRemoveFace(qHull, vIndex, vertices);
-    if(newHandle == -1)
-        return;
-    
-    for(size_t j = 0; j < uniqueInV.size(); j++)
-    {
-        if(uniqueInV[j] == (int)movedHandle)
-        {
-            uniqueInV[j] = newHandle;
-        }
-    }
-    
-    auto iToRemove = -1;
-    
-    for(size_t i = 0; i < faceStack.size(); i++)
-    {
-        if(newHandle == faceStack[i])
-        {
-            iToRemove = (int)i;
-        }
-    }
-    
-    if(iToRemove != -1)
-    {
-        faceStack.erase(faceStack.begin() + iToRemove);
-    }
-    
-    for(size_t i = 0; i < faceStack.size(); i++)
-    {
-        if((int)movedHandle == faceStack[i])
-        {
-            faceStack[i] = newHandle;
-        }
-    }
 }
 
 void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack, int fHandle, std::vector<int>& v, size_t prevIterationFaces, coord_t epsilon, std::vector<Edge>& horizon)
@@ -1063,34 +1032,6 @@ void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack,
             uniqueInV.push_back(v[i]);
         }
     }
-    
-    /*
-    for(size_t i = prevIterationFaces; i < qHull.faces.size; i++)
-    {
-        auto &newF = qHull.faces[i];
-        for(size_t j = 0; j < newF.neighbourCount; j++)
-        {
-            auto neighbourHandle = newF.neighbours[j].faceHandle;
-            auto neighbour = qHull.faces[neighbourHandle];
-            auto edgeConvex = qhCheckEdgeConvex(qHull, newF, neighbour);
-            
-            if(!edgeConvex)
-            {
-                auto &n = newF.neighbours[j];
-                edge e = {};
-                e.origin = n.originVertex;
-                e.end = n.endVertex;
-                renderContext.nonConvexEdge = e;
-                auto f1Verts = newF.vertices;
-                auto f2Verts = neighbour.vertices;
-                qhRemoveFaceAndFixLists(qHull, uniqueInV, faceStack, vertices, neighbour.indexInHull);
-                qhRemoveFaceAndFixLists(qHull, uniqueInV, faceStack, vertices, newF.indexInHull);
-                
-                break;
-            }
-        }
-    }
-    */
     
     for(size_t vIndex = 0; vIndex < uniqueInV.size(); vIndex++)
     {
@@ -1212,16 +1153,13 @@ void qhInitializeContext(QhContext& qhContext, Vertex* vertices, int numberOfPoi
 {
     if(qhContext.vertices)
     {
-        for(int i = 0; i < qhContext.numberOfPoints; i++)
-        {
-            free(qhContext.vertices[i].faceHandles.list);
-        }
         free(qhContext.vertices);
     }
     
-    for(const auto &f : qhContext.qHull.faces)
+    for(auto &f : qhContext.qHull.faces)
     {
-        free(f.outsideSet.list);
+        clear(f.outsideSet);
+        clear(f.vertices);
     }
     
     clear(qhContext.qHull.faces);

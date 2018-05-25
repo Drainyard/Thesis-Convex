@@ -179,9 +179,10 @@ static Shader LoadShaders(const char* vertexFilePath, const char* fragmentFilePa
     glGetShaderiv(vertexShaderID, GL_INFO_LOG_LENGTH, &infoLogLength);
     if(infoLogLength > 0)
     {
-        char* Buffer = (char*)malloc((infoLogLength + 1) * sizeof(char));
-        glGetShaderInfoLog(vertexShaderID, infoLogLength, NULL, &Buffer[0]);
-        printf("%s\n", &Buffer[0]);
+        char* buffer = (char*)malloc((infoLogLength + 1) * sizeof(char));
+        glGetShaderInfoLog(vertexShaderID, infoLogLength, NULL, &buffer[0]);
+        printf("%s\n", &buffer[0]);
+        free(buffer);
     }
     
     
@@ -195,6 +196,7 @@ static Shader LoadShaders(const char* vertexFilePath, const char* fragmentFilePa
         char* buffer = (char*)malloc((infoLogLength + 1) * sizeof(char));
         glGetShaderInfoLog(fragmentShaderID, infoLogLength, NULL, &buffer[0]);
         printf("%s\n", &buffer[0]);
+        free(buffer);
     }
     
     printf("Linking program: %s\n", vertexFilePath);
@@ -211,6 +213,7 @@ static Shader LoadShaders(const char* vertexFilePath, const char* fragmentFilePa
         glGetShaderInfoLog(programID, infoLogLength, NULL, &buffer[0]);
         printf("%s\n", &buffer[0]);
         printf("%d\n", result);
+        free(buffer);
     }
     
     glDetachShader(programID, vertexShaderID);
@@ -727,8 +730,6 @@ static void RenderMesh(RenderContext& renderContext, Mesh& m, Vertex *vertices =
         m.dirty = false;
         m.currentVBO = BuildVertexBuffer(m.faces.data(), m.faces.size(), &m.vertexCount);
     }
-    
-    printf("Faces in renderer: %zd\n", m.faces.size());
     
     glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(sizeof(VertexInfo) * m.vertexCount), &m.currentVBO[0], GL_STATIC_DRAW);
     

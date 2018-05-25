@@ -73,6 +73,22 @@ void reinitPoints(Vertex **vertices, ConfigData &configData, Hull &h, RenderCont
         free(*vertices);
     }
     
+    for(auto &t : configData.qhTestSets)
+    {
+        free(t.testSet);
+    }
+    for(auto &t : configData.incTestSets)
+    {
+        free(t.testSet);
+    }
+    for(auto &t : configData.dacTestSets)
+    {
+        free(t.testSet);
+    }
+    clear(configData.qhTestSets);
+    clear(configData.incTestSets);
+    clear(configData.dacTestSets);
+    
     loadConfig("../.config", configData);
     
     if(h.numberOfPoints != configData.numberOfPoints || h.pointGenerator.type != configData.genType)
@@ -102,6 +118,31 @@ void reinitHull(Vertex *vertices, Hull &h, Vertex **currentVertices, Mesh **curr
     reinitializeHull(h, vertices, h.pointGenerator.numberOfPoints);
     
     *currentVertices = vertices;
+    
+    if(*fullHull)
+    {
+        for(auto &f : (*fullHull)->faces)
+        {
+            clear(f.vertices);
+        }
+    }
+    
+    if(*stepHull)
+    {
+        for(auto &f : (*stepHull)->faces)
+        {
+            clear(f.vertices);
+        }
+    }
+    
+    if(*timedHull)
+    {
+        for(auto &f : (*timedHull)->faces)
+        {
+            clear(f.vertices);
+        }
+    }
+    
     *currentMesh = nullptr;
     *fullHull = nullptr;
     *timedHull = nullptr;
@@ -275,17 +316,6 @@ int main()
             reinitHull(vertices, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
         }
         
-        if(KeyDown(Key_U))
-        {
-            reinitPoints(&vertices, configData, h, renderContext);
-            reinitHull(vertices, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
-            FullHull(renderContext, h);
-            
-            reinitPoints(&vertices, 200000, h, renderContext);
-            reinitHull(vertices, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
-            FullHull(renderContext, h);
-        }
-        
         if(KeyDown(Key_C))
         {
             reinitHull(vertices, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
@@ -296,6 +326,7 @@ int main()
             if(!fullHull || previousHullType != hullType)
             {
                 fullHull = &FullHull(renderContext, h);
+                printf("Num faces in mesh: %zd\n", fullHull->faces.size());
             }
             currentMesh = fullHull;
         }
