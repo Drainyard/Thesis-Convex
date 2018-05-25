@@ -393,7 +393,7 @@ void dacConstructFullHull(DacContext &dacContext)
     for (size_t j = 0; j != dacContext.faces.size(); ++j)
     {
         DacFace *face = dacContext.faces[j];
-        DacFace *otherFace = dacContext.faces[(j + 100) % dacContext.faces.size()];
+        DacFace *otherFace = dacContext.faces[(j + 2671) % dacContext.faces.size()];
         for (i = 0; i < 3; ++i)
         {
             DacVertex *v = otherFace->vertex[i];
@@ -402,7 +402,7 @@ void dacConstructFullHull(DacContext &dacContext)
                 if (dacIsPointOnPositiveSide(face, v))
                 {
                     DacVertex *u = face->vertex[0];
-                    DacVertex*w = face->vertex[2];
+                    DacVertex *w = face->vertex[2];
                     face->vertex[0] = w;
                     face->vertex[2] = u;
                     face->normal = dacComputeFaceNormal(face);
