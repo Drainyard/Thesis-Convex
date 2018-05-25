@@ -977,11 +977,11 @@ void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack,
         
         if(newF)
         {
-            auto otherFace = qHull.faces[(newF->indexInHull + 100) % qHull.faces.size];
+            auto otherFace = qHull.faces[(newF->indexInHull + 5) % qHull.faces.size];
             
             if(otherFace.indexInHull == newF->indexInHull)
             {
-                otherFace = qHull.faces[(newF->indexInHull + 23) % qHull.faces.size];
+                otherFace = qHull.faces[(newF->indexInHull + 8) % qHull.faces.size];
             }
             
             

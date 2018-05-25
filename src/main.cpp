@@ -110,6 +110,7 @@ void reinitHull(Vertex *vertices, Hull &h, Vertex **currentVertices, Mesh **curr
 
 int main()
 {
+    printf("Verts: %zd\n", sizeof(VertexInfo));
     // Degenerate: 1520515408
     //auto seed = 1521294278;
     auto seed = time(NULL);
