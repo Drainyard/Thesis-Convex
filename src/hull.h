@@ -268,7 +268,7 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
         timeSpent = 0;
     }
     log_a("Done QH\n");
-    
+
     IncContext incContext = {};
     
     log_a("Count: %zd\n", testSet.count);
@@ -314,7 +314,7 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
             timeSpent +=  incContext.processingState.timeSpent;
         }
         
-        WriteHullToCSV("../data/inc_hull_out", addedFaces / numForAvg, numFaces / numForAvg, n, pointsProcessed / numForAvg, 0, sidednessQueries / numForAvg,  verticesOnHull / numForAvg, timeSpent / numForAvg, genType);
+        WriteHullToCSV("../data/qh_hull_out", addedFaces / numForAvg, numFaces / numForAvg, n, pointsProcessed / numForAvg, 0, sidednessQueries / numForAvg,  verticesOnHull / numForAvg, timeSpent / numForAvg, genType);
         
         addedFaces = 0;
         numFaces = 0;

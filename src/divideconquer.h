@@ -1,8 +1,6 @@
 #ifndef DIVIDE_H
 #define DIVIDE_H
 
-// I think it only computes lower hull, lel
-
 struct DacVertex
 {
     glm::vec3 vector;
@@ -32,6 +30,12 @@ struct DacFace
     glm::vec3 centerPoint;
 };
 
+struct DacEvent
+{
+    int eIndex;
+    double timeValue;
+};
+
 struct DacContext
 {
     bool initialized;
@@ -49,7 +53,7 @@ DacVertex *NIL = &nil;
 DacVertex *sort(DacVertex points[], int numberOfPoints)
 {
     DacVertex *l, *r, *c, head;
-    
+
     if (numberOfPoints == 1)
     {
         points[0].next = NIL;
@@ -79,17 +83,17 @@ glm::vec3 dacComputeFaceNormal(DacFace *f)
     // Newell's Method
     // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
     glm::vec3 normal = glm::vec3(0.0f);
-    
+
     for (int i = 0; i < 3; i++)
     {
         glm::vec3 current = f->vertex[i]->vector;
         glm::vec3 next = f->vertex[(i + 1) % 3]->vector;
-        
+
         normal.x = normal.x + (current.y - next.y) * (current.z + next.z);
         normal.y = normal.y + (current.z - next.z) * (current.x + next.x);
         normal.z = normal.z + (current.x - next.x) * (current.y + next.y);
     }
-    
+
     return glm::normalize(normal);
 }
 
@@ -130,7 +134,7 @@ double orient(DacVertex *p, DacVertex *q, DacVertex *r)
     //                 (1  r_x  r_y)
     //the determinant gives twice the signed area of the triangle formed by p, q and r
     //SO, this tests if three points do a ccw turn at time -INF
-    
+
     if (p == NIL || q == NIL || r == NIL)
     {
         return 1.0;
@@ -145,7 +149,7 @@ double time(DacVertex *p, DacVertex *q, DacVertex *r)
     {
         return INF;
     }
-    
+
     return ((q->vector.x - p->vector.x) * (r->vector.z - p->vector.z) - (r->vector.x - p->vector.x) * (q->vector.z - p->vector.z)) / orient(p, q, r);
 }
 
@@ -155,20 +159,21 @@ void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
     int i, j, k, l, minl;
     //suppress warning
     minl = -1;
-    
+
     if (n == 1)
     {
         A[0] = list->prev = list->next = NIL;
         return;
     }
-    
+
     //find middle
     for (u = list, i = 0; i < n / 2 - 1; u = u->next, i++)
         ;
     mid = v = u->next;
-    dacHull(list, n / 2, B, A, lower); // recurse on left and right sides
+    // recurse
+    dacHull(list, n / 2, B, A, lower);     
     dacHull(mid, n - n / 2, B + n / 2 * 2, A + n / 2 * 2, lower);
-    
+
     // find initial bridge
     for (;;)
     {
@@ -184,54 +189,76 @@ void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
         }
         break;
     }
-    
+
     i = k = 0;
     j = n / 2 * 2;
+
+    // possible to overflow this
+    int eIndex = -1;
+
+    DacEvent *events = (DacEvent *)malloc(sizeof(DacEvent) * 6);
+    DacEvent *oldTime = (DacEvent *)malloc(sizeof(DacEvent));
+    DacEvent *newTime = (DacEvent *)malloc(sizeof(DacEvent));
     
-    double t[6], oldTime, newTime;
-    oldTime = -INF;
+    oldTime->timeValue = -INF;
+    oldTime->eIndex = eIndex++;
+
+    if (lower)
+    {
+        events[0].timeValue = time(B[i]->prev, B[i], B[i]->next);
+        events[0].eIndex = eIndex++;
+        events[1].timeValue = time(B[j]->prev, B[j], B[j]->next);
+        events[1].eIndex = eIndex++;
+        events[2].timeValue = time(u->prev, u, v);
+        events[2].eIndex = eIndex++;
+        events[3].timeValue = time(u, u->next, v);
+        events[3].eIndex = eIndex++;
+        events[4].timeValue = time(u, v, v->next);
+        events[4].eIndex = eIndex++;
+        events[5].timeValue = time(u, v->prev, v);
+        events[5].eIndex = eIndex++;
+    }
+    else
+    {
+        events[0].timeValue = -time(B[i]->prev, B[i], B[i]->next);
+        events[0].eIndex = eIndex++;
+        events[1].timeValue = -time(B[j]->prev, B[j], B[j]->next);
+        events[1].eIndex = eIndex++;
+        events[2].timeValue = -time(u->prev, u, v);
+        events[2].eIndex = eIndex++;
+        events[3].timeValue = -time(u, u->next, v);
+        events[3].eIndex = eIndex++;
+        events[4].timeValue = -time(u, v, v->next);
+        events[4].eIndex = eIndex++;
+        events[5].timeValue = -time(u, v->prev, v);
+        events[5].eIndex = eIndex++;
+    }
+
     // merge by tracking bridge uv over time
     // infinite loop until no insertion/deletion events occur
     for (;;)
     {
-        if (lower)
-        {
-            t[0] = time(B[i]->prev, B[i], B[i]->next);
-            t[1] = time(B[j]->prev, B[j], B[j]->next);
-            t[2] = time(u->prev, u, v);
-            t[3] = time(u, u->next, v);
-            t[4] = time(u, v, v->next);
-            t[5] = time(u, v->prev, v);
-        }
-        else
-        {
-            t[0] = -time(B[i]->prev, B[i], B[i]->next);
-            t[1] = -time(B[j]->prev, B[j], B[j]->next);
-            t[2] = -time(u->prev, u, v);
-            t[3] = -time(u, u->next, v);
-            t[4] = -time(u, v, v->next);
-            t[5] = -time(u, v->prev, v);
-        }
-        
         //we find the movies in chronological time
-        newTime = INF;
+        newTime->timeValue = INF;
         for (l = 0; l < 6; l++)
         {
-            if (t[l] > oldTime && t[l] < newTime)
+            if (events[l].eIndex != oldTime->eIndex && events[l].timeValue > oldTime->timeValue && events[l].timeValue < newTime->timeValue)
             {
                 minl = l;
-                newTime = t[l];
+                // how do you say pointer = object???
+                newTime->timeValue = events[l].timeValue;
+                newTime->eIndex = events[l].eIndex;
             }
         }
         //if newTime==INF, no insertion/deletion events occured, and we break for loop
-        if (newTime == INF)
+        if (newTime->timeValue == INF)
         {
             break;
         }
         //act on the smallest time value
         switch (minl)
         {
-            case 0:
+        case 0:
             //insert or delete of w in L. If w is to the left of u, insert or delete w in A.
             if (B[i]->vector.x < u->vector.x)
             {
@@ -240,8 +267,17 @@ void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
             }
             B[i]->act();
             i++;
+            if (lower)
+            {
+                events[0].timeValue = time(B[i]->prev, B[i], B[i]->next);
+            }
+            else
+            {
+                events[0].timeValue = -time(B[i]->prev, B[i], B[i]->next);
+            }
+            events[0].eIndex = eIndex++;
             break;
-            case 1:
+        case 1:
             //insert or delete of w in R. If w is to the right of v, insert or delete w in A.
             if (B[j]->vector.x > v->vector.x)
             {
@@ -250,38 +286,98 @@ void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
             }
             B[j]->act();
             j++;
+            if (lower)
+            {
+                events[1].timeValue = time(B[j]->prev, B[j], B[j]->next);
+            }
+            else
+            {
+                events[1].timeValue = -time(B[j]->prev, B[j], B[j]->next);
+            }
+            events[1].eIndex = eIndex++;
             break;
-            case 2:
+        case 2:
             //u->prev, u, v was ccw and has turned cw, so u->prev and v is the new bridge, and we delete u in A.
             A[k] = u;
             k++;
             u = u->prev;
+            if (lower)
+            {
+                events[2].timeValue = time(u->prev, u, v);
+            }
+            else
+            {
+                events[2].timeValue = -time(u->prev, u, v);
+            }
+            events[2].eIndex = eIndex++;
             break;
-            case 3:
+        case 3:
             //u, u->next, v, was cw and turned ccw, so u->next and v is the new bridge, and we insert u->next between u and v.
             A[k] = u = u->next;
             k++;
+            if (lower)
+            {
+                events[3].timeValue = time(u, u->next, v);
+            }
+            else
+            {
+                events[3].timeValue = -time(u, u->next, v);
+            }
+            events[3].eIndex = eIndex++;
             break;
-            case 4:
+        case 4:
             //u, v, v->next was ccw and turned cw, so u and v->next is the new bridge, and we delete v in A.
             A[k] = v;
             v = v->next;
             k++;
+            if (lower)
+            {
+                events[4].timeValue = time(u, v, v->next);
+            }
+            else
+            {
+                events[4].timeValue = -time(u, v, v->next);
+            }
+            events[4].eIndex = eIndex++;
             break;
-            case 5:
+        case 5:
             //u, v->prev, v, was cw and turned ccw, so u and v->prev is the new bridge, and we insert v->prev between u and v.
             A[k] = v = v->prev;
             k++;
+            if (lower)
+            {
+                events[5].timeValue = time(u, v->prev, v);
+            }
+            else
+            {
+                events[5].timeValue = -time(u, v->prev, v);
+            }
+            events[5].eIndex = eIndex++;
             break;
         }
         oldTime = newTime;
     }
     A[k] = NIL;
-    
+
+    if (oldTime)
+    {
+        free(oldTime);
+    }
+    /*
+    if (newTime)
+    {
+        free(newTime);
+    }
+    */
+    if (events)
+    {
+        free(events);
+    }
+
     //connect the bridge uv
     u->next = v;
     v->prev = u;
-    
+
     // now go back in time to update pointers
     // during insertion of q between p and r, we cannot store p and r in the prev and next fields, as they are still in use in L and R
     for (k--; k >= 0; k--)
@@ -322,12 +418,12 @@ Mesh &dacConvertToMesh(DacContext &context, RenderContext &renderContext)
     {
         context.m = &InitEmptyMesh(renderContext);
     }
-    
+
     context.m->faces.clear();
     context.m->position = glm::vec3(0.0f);
     context.m->scale = glm::vec3(globalScale);
     context.m->dirty = true;
-    
+
     for (const auto &f : context.faces)
     {
         Face newFace = {};
@@ -358,37 +454,37 @@ void dacConstructFullHull(DacContext &dacContext)
     //do the stuff for divide and conquer
     int i;
     int n = dacContext.numberOfPoints;
-    
+
     DacVertex *P = dacContext.vertices;
     dacContext.upperP = (DacVertex *)malloc(sizeof(DacVertex) * n);
     memcpy(dacContext.upperP, P, sizeof(DacVertex) * n);
     DacVertex *list = sort(P, n);
-    
+
     //Each vertex is inserted at most once and deleted at most once, so at most 2n events (facets).
     DacVertex **A = new DacVertex *[2 * n];
     //work array
     DacVertex **B = new DacVertex *[2 * n];
     dacHull(list, n, A, B, true);
-    
+
     //create faces by processing the events in event array A
     for (i = 0; A[i] != NIL; A[i++]->act())
     {
         DacFace *newFace = dacCreateFaceFromPoints(A, i);
         dacContext.faces.push_back(newFace);
     }
-    
+
     DacVertex *upperList = sort(dacContext.upperP, n);
     DacVertex **C = new DacVertex *[2 * n];
     //work array
     DacVertex **D = new DacVertex *[2 * n];
     dacHull(upperList, n, C, D, false);
-    
+
     for (i = 0; C[i] != NIL; C[i++]->act())
     {
         DacFace *newFace = dacCreateFaceFromPoints(C, i);
         dacContext.faces.push_back(newFace);
     }
-    
+
     //dirty normal check
     for (size_t j = 0; j != dacContext.faces.size(); ++j)
     {
