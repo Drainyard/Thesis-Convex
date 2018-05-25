@@ -65,7 +65,7 @@ IncVertex *currentStepVertex = nullptr;
 //counters
 static int incCreatedFaces = 0;
 static int incProcessedVertices = 3;
-static int incSidednessQueries = 0;
+static unsigned long long  incSidednessQueries = 0;
 static int incVerticesOnHull = 0;
 static int incFacesOnHull = 0;
 
@@ -79,7 +79,7 @@ struct IncContext
     {
         int createdFaces;
         int processedVertices;
-        int sidednessQueries;
+        unsigned long long sidednessQueries;
         int facesOnHull;
         int verticesOnHull;
         unsigned long long timeSpent;
@@ -714,7 +714,7 @@ void incConstructFullHull(IncContext &incContext)
         }
         v = nextVertex;
     } while (v != incVertices);
-
+    
     // add counters to context
     incContext.processingState.createdFaces = incCreatedFaces;
     incContext.processingState.processedVertices = incProcessedVertices;
@@ -750,9 +750,9 @@ void incHullStep(IncContext &incContext)
     {
         std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> cleaningBundle = incAddToHull(currentStepVertex, incContext);
         if (incContext.failed)
-            {
-                return;
-            }
+        {
+            return;
+        }
         currentStepVertex->isProcessed = true;
         incCleanStuff(cleaningBundle);
     }

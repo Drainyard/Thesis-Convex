@@ -78,7 +78,7 @@ const char *GetGeneratorTypeString(GeneratorType type)
     }
 }
 
-void WriteHullToCSV(const char *filename, int facesAdded, int totalFaceCount, int vertexCount, int pointsProcessed, int distanceQueryCount, int sidednessQueries, int verticesInHull, unsigned long long nstimeSpent, GeneratorType generateType)
+void WriteHullToCSV(const char *filename, int facesAdded, int totalFaceCount, int vertexCount, int pointsProcessed, unsigned long long  distanceQueryCount, unsigned long long  sidednessQueries, int verticesInHull, unsigned long long nstimeSpent, GeneratorType generateType)
 {
     char *fullFilename = concat(filename, ".csv");
     
@@ -94,7 +94,7 @@ void WriteHullToCSV(const char *filename, int facesAdded, int totalFaceCount, in
             fprintf(f, "input vertices, faces added, faces in hull, points processed, distance queries, sidednessQueries, vertices in hull, time spent, point distribution\n");
         }
         
-        fprintf(f, "%d, %d, %d, %d, %d, %d, %d, %lld, %s\n", vertexCount, facesAdded, totalFaceCount, pointsProcessed, distanceQueryCount, sidednessQueries, verticesInHull, nstimeSpent, GetGeneratorTypeString(generateType));
+        fprintf(f, "%d, %d, %d, %d, %lld, %lld, %d, %lld, %s\n", vertexCount, facesAdded, totalFaceCount, pointsProcessed, distanceQueryCount, sidednessQueries, verticesInHull, nstimeSpent, GetGeneratorTypeString(generateType));
         fclose(f);
     }
 }
@@ -218,12 +218,12 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
         int addedFaces = 0;
         int numFaces = 0;
         int pointsProcessed = 0;
-        int distanceQueries = 0;
-        int sidednessQueries = 0;
+        unsigned long long distanceQueries = 0;
+        unsigned long long sidednessQueries = 0;
         int verticesOnHull = 0;
         unsigned long long timeSpent = 0;
         
-        int numForAvg = 1;//Max(1, testSet.iterations);
+        int numForAvg = Max(1, testSet.iterations);
         auto n = vertexAmounts[i];
         
         log_a("Num: %d\n", n);
@@ -281,7 +281,7 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
         int verticesOnHull = 0;
         unsigned long long timeSpent = 0;
         
-        int numForAvg = 1;//Max(1, testSet.iterations);
+        int numForAvg = Max(1, testSet.iterations);
         auto n = vertexAmounts[i];
         
         log_a("Num: %d\n", n);

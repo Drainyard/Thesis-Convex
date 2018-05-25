@@ -69,6 +69,7 @@ static void clear(List<T> &list)
     if(list.size > 0)
     {
         free(list.list);
+        list.list = nullptr;
     }
     
     list.size = 0;
