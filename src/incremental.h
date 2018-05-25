@@ -67,6 +67,7 @@ static int incCreatedFaces = 0;
 static int incProcessedVertices = 3;
 static int incSidednessQueries = 0;
 static int incVerticesOnHull = 0;
+static int incFacesOnHull = 0;
 
 struct IncContext
 {
@@ -74,10 +75,16 @@ struct IncContext
     IncVertex *vertices;
     int numberOfPoints;
     Mesh *m;
-    int createdFaces;
-    int processedVertices;
-    int sidednessQueries;
-    int verticesOnHull;
+    struct
+    {
+        int createdFaces;
+        int processedVertices;
+        int sidednessQueries;
+        int facesOnHull;
+        int verticesOnHull;
+        unsigned long long timeSpent;
+    } processingState;
+    bool failed;
 };
 
 template <typename T>
@@ -120,9 +127,6 @@ void incRemoveFromHead(T *head, T *pointer)
 static void incCopyVertices(Vertex *vertices, int numberOfPoints)
 {
     Vertex *shuffledVertices = (Vertex *)malloc(sizeof(Vertex) * numberOfPoints);
-    printf("Vertex: %zd\n", sizeof(IncVertex));
-    printf("Edge: %zd\n", sizeof(IncEdge));
-    printf("Face: %zd\n", sizeof(IncFace));
     memcpy(shuffledVertices, vertices, sizeof(Vertex) * numberOfPoints);
     Vertex temp;
     int j;
@@ -491,7 +495,7 @@ IncFace *incMakeConeFace(IncEdge *e, IncVertex *v)
     return newFace;
 }
 
-std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> incAddToHull(IncVertex *v)
+std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> incAddToHull(IncVertex *v, IncContext &incContext)
 {
     std::vector<IncFace *> facesToRemove;
     std::vector<IncEdge *> horizonEdges;
@@ -527,6 +531,13 @@ std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> incAddToHull(IncVertex
             //horizon edges will always only be processed once
             if (!e->shouldBeRemoved)
             {
+                if(!e->adjFace[0] || !e->adjFace[1])
+                {
+                    incContext.failed = true;
+                    printf("FAILED INC\n");        
+                    std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> cleaningBundle(facesToRemove, horizonEdges);
+                    return cleaningBundle;
+                }
                 if (e->adjFace[0]->isVisible && e->adjFace[1]->isVisible)
                 {
                     //both are visible: inside cone and should be removed
@@ -616,17 +627,6 @@ void incCleanStuff(std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> &cl
 
 Mesh &incConvertToMesh(IncContext &context, RenderContext &renderContext)
 {
-    context.createdFaces = incCreatedFaces;
-    context.processedVertices = incProcessedVertices;
-    context.sidednessQueries = incSidednessQueries;
-    IncVertex *v = incVertices;
-    do
-    {
-        incVerticesOnHull++;
-        v = v->next;
-    } while (v != incVertices);
-    context.verticesOnHull = incVerticesOnHull;
-    
     if (!context.m)
     {
         context.m = &InitEmptyMesh(renderContext);
@@ -692,7 +692,7 @@ void incInitConflictLists()
     } while (v != incVertices);
 }
 
-void incConstructFullHull()
+void incConstructFullHull(IncContext &incContext)
 {
     incCreateBihedron();
     incInitConflictLists();
@@ -703,13 +703,36 @@ void incConstructFullHull()
         nextVertex = v->next;
         if (!v->isProcessed)
         {
-            std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> cleaningBundle = incAddToHull(v);
+            std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> cleaningBundle = incAddToHull(v, incContext);
+            if (incContext.failed)
+            {
+                return;
+            }
             v->isProcessed = true;
             incProcessedVertices++;
             incCleanStuff(cleaningBundle);
         }
         v = nextVertex;
     } while (v != incVertices);
+
+    // add counters to context
+    incContext.processingState.createdFaces = incCreatedFaces;
+    incContext.processingState.processedVertices = incProcessedVertices;
+    incContext.processingState.sidednessQueries = incSidednessQueries;
+    v = incVertices;
+    do
+    {
+        incVerticesOnHull++;
+        v = v->next;
+    } while (v != incVertices);
+    incContext.processingState.verticesOnHull = incVerticesOnHull;
+    IncFace *f = incFaces;
+    do
+    {
+        incFacesOnHull++;
+        f = f->next;
+    } while (f != incFaces);
+    incContext.processingState.facesOnHull = incFacesOnHull;
 }
 
 void incInitStepHull()
@@ -719,13 +742,17 @@ void incInitStepHull()
     currentStepVertex = incVertices;
 }
 
-void incHullStep()
+void incHullStep(IncContext &incContext)
 {
     IncVertex *nextVertex;
     nextVertex = currentStepVertex->next;
     if (!currentStepVertex->isProcessed)
     {
-        std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> cleaningBundle = incAddToHull(currentStepVertex);
+        std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> cleaningBundle = incAddToHull(currentStepVertex, incContext);
+        if (incContext.failed)
+            {
+                return;
+            }
         currentStepVertex->isProcessed = true;
         incCleanStuff(cleaningBundle);
     }
@@ -739,6 +766,7 @@ void incInitializeContext(IncContext &incContext, Vertex *vertices, int numberOf
     incProcessedVertices = 3;
     incSidednessQueries = 0;
     incVerticesOnHull = 0;
+    incFacesOnHull = 0;
     
     if (incVertices)
     {
