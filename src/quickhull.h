@@ -33,7 +33,6 @@ struct QhVertex
 struct QhFace
 {
     List<int> vertices;
-    
     List<int> outsideSet;
     
     int furthestPointIndex;
@@ -488,7 +487,6 @@ int* qhFindExtremePoints(QhVertex* points, int numPoints)
     return nullptr;
 }
 
-
 coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
 {
     // First we find all 6 extreme points in the whole point set
@@ -604,25 +602,26 @@ coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
         addToList(list, currentIndex);
         addToList(list, extremePointCurrentIndex);
         qhAddFace(q, list, vertices);
+        clear(list);
         if(q.failed)
             return epsilon;
         
-        clear(list);
         addToList(list, currentIndex);
         addToList(list, mostDist2);
         addToList(list, extremePointCurrentIndex);
         qhAddFace(q, list, vertices);
+        clear(list);
+        
         if(q.failed)
             return epsilon;
         
-        clear(list);
         addToList(list, mostDist1);
         addToList(list, mostDist2);
         addToList(list, currentIndex);
         qhAddFace(q, list, vertices);
+        clear(list);
         if(q.failed)
             return epsilon;
-        clear(list);
     }
     else
     {
@@ -633,26 +632,28 @@ coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
         addToList(list, mostDist1);
         addToList(list, extremePointCurrentIndex);
         qhAddFace(q, list, vertices);
+        clear(list);
         if(q.failed)
             return epsilon;
         
-        clear(list);
         addToList(list, mostDist2);
         addToList(list, currentIndex);
         addToList(list, extremePointCurrentIndex);
         qhAddFace(q, list, vertices);
+        clear(list);
+        
         if(q.failed)
             return epsilon;
         
-        clear(list);
         addToList(list, mostDist2);
         addToList(list, mostDist1);
         addToList(list, currentIndex);
         qhAddFace(q, list, vertices);
+        clear(list);
+        
         if(q.failed)
             return epsilon;
         
-        clear(list);
     }
     free(extremePoints);
     return epsilon;
@@ -817,7 +818,6 @@ Mesh& qhConvertToMesh(RenderContext& renderContext, QhHull& qHull, Vertex* verti
         qHull.m->faces.push_back(newFace);
     }
     
-    
     for(auto &f : qHull.faces)
     {
         clear(f.vertices);
@@ -940,6 +940,7 @@ void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack,
         addToList(list, f.furthestPointIndex);
         
         auto* newF = qhAddFace(qHull, list, vertices);
+        clear(list);
         
         if(qHull.failed)
             return;
