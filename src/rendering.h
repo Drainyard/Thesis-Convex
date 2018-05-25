@@ -121,7 +121,7 @@ struct Mesh
     GLuint VAO;
     GLuint VBO;
     
-    int vertexCount;
+    size_t vertexCount;
 };
 
 struct DebugContext

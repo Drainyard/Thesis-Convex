@@ -20,6 +20,11 @@ static void SetFloatUniform(GLuint programID, const char* name, float value)
     glUniform1f(glGetUniformLocation(programID, name), value);
 }
 
+static void SetBoolUniform(GLuint programID, const char* name, bool val)
+{
+    glUniform1i(glGetUniformLocation(programID, name), val);
+}
+
 struct Resolution
 {
     int window_width;
@@ -415,11 +420,11 @@ static void CreateSpotLight(RenderContext &renderContext, glm::vec3 direction, g
     light.lightType = LT_SPOT;
 }
 
-static GLfloat* BuildVertexBuffer(Face* faces, int numFaces, int *vertexCount)
+static GLfloat* BuildVertexBuffer(Face* faces, size_t numFaces, size_t *vertexCount)
 {
     size_t sizeOfArray = 0;
     
-    for(int i = 0; i < numFaces; i++)
+    for(size_t i = 0; i < numFaces; i++)
     {
         sizeOfArray += faces[i].vertices.size;
     }
@@ -428,7 +433,7 @@ static GLfloat* BuildVertexBuffer(Face* faces, int numFaces, int *vertexCount)
     
     GLfloat* vertices = (GLfloat*)malloc(sizeOfArray * sizeof(VertexInfo));
     
-    for(int i = 0; i < numFaces; i++)
+    for(size_t i = 0; i < numFaces; i++)
     {
         auto currentColor = faces[i].faceColor;
         
@@ -556,7 +561,7 @@ static glm::vec3 ComputeFaceNormal(Face f)
     // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
     glm::vec3 normal = glm::vec3(0.0f);
     
-    for(int i = 0; i < f.vertices.size; i++)
+    for(size_t i = 0; i < f.vertices.size; i++)
     {
         auto& current = f.vertices[i].position;
         auto& next = f.vertices[(i + 1) % 3].position;
@@ -570,7 +575,7 @@ static glm::vec3 ComputeFaceNormal(Face f)
 }
 
 
-static void RenderQuad(RenderContext& renderContext, glm::vec3 position = glm::vec3(0.0f), glm::quat orientation = glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3 scale = glm::vec3(1.0f), glm::vec4 color = glm::vec4(1.0f))
+static void RenderQuad(RenderContext& renderContext, glm::vec3 position = glm::vec3(0.0f), glm::quat orientation = glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3 scale = glm::vec3(1.0f), glm::vec4 color = glm::vec4(1.0f), bool isUI = false)
 {
     glBindVertexArray(renderContext.quadVAO);
     glUseProgram(renderContext.basicShader.programID);
@@ -587,7 +592,7 @@ static void RenderQuad(RenderContext& renderContext, glm::vec3 position = glm::v
     SetMatrixUniform(renderContext.basicShader.programID, "V", renderContext.viewMatrix);
     SetMatrixUniform(renderContext.basicShader.programID, "P", renderContext.projectionMatrix);
     SetVec4Uniform(renderContext.basicShader.programID, "c", color);
-    
+    SetBoolUniform(renderContext.basicShader.programID, "isUI", isUI);
     
     glDrawElements(GL_TRIANGLES, sizeof(renderContext.quadIndices), GL_UNSIGNED_INT, (void*)0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -720,8 +725,10 @@ static void RenderMesh(RenderContext& renderContext, Mesh& m, Vertex *vertices =
     {
         free(m.currentVBO);
         m.dirty = false;
-        m.currentVBO = BuildVertexBuffer(m.faces.data(), (int)m.faces.size(), &m.vertexCount);
+        m.currentVBO = BuildVertexBuffer(m.faces.data(), m.faces.size(), &m.vertexCount);
     }
+    
+    printf("Faces in renderer: %zd\n", m.faces.size());
     
     glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(sizeof(VertexInfo) * m.vertexCount), &m.currentVBO[0], GL_STATIC_DRAW);
     
@@ -734,7 +741,7 @@ static void RenderMesh(RenderContext& renderContext, Mesh& m, Vertex *vertices =
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(VertexInfo), (void*) offsetof(Vertex, color));
     
-    glDrawArrays(GL_TRIANGLES, 0, m.vertexCount * 10);
+    glDrawArrays(GL_TRIANGLES, 0, (GLsizei)m.vertexCount * 10);
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);

@@ -101,10 +101,9 @@ int countLinesFromCurrent (FILE *file)
     return nlines;
 }
 
-bool getData(char *buffer, int size, FILE *f) 
+bool getData(char *buffer, size_t size, FILE *f) 
 {
-    auto str = fgets(buffer, size, f);
-    if (str) 
+    if (fgets(buffer, (int)size, f)) 
     {
         size_t len = strlen(buffer);
         return feof(f) || (len != 0 && buffer[len-1] == '\n');

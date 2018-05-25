@@ -119,18 +119,15 @@ void loadConfig(const char* filePath, ConfigData &configData)
     FILE* f = fopen(filePath, "r");
     if(f)
     {
-        bool set = false;
         char buffer[64];
         while(getData(buffer, 64, f))
         {
             if(startsWith(buffer, "points"))
             {
-                assert(!set);
                 sscanf(buffer, "points %d", &configData.numberOfPoints);
             }
             else if(startsWith(buffer, "type"))
             {
-                assert(!set);
                 int genType;
                 sscanf(buffer, "type %d", &genType);
                 if(genType > GeneratorType::ManyInternal)

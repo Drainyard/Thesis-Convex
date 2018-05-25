@@ -108,6 +108,38 @@ void reinitHull(Vertex *vertices, Hull &h, Vertex **currentVertices, Mesh **curr
     *stepHull = nullptr;
 }
 
+void renderGenAndHullType(RenderContext &renderContext, Hull &h)
+{
+    switch(h.pointGenerator.type)
+    {
+        case GeneratorType::InSphere:
+        {
+            RenderQuad(renderContext, glm::vec3(500.0f, 500.0f, 0.0f), glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(100.0f, 100.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), false);
+        }
+        break;
+        case GeneratorType::OnSphere:
+        {
+            RenderQuad(renderContext, glm::vec3(500.0f, 500.0f, 0.0f), glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(100.0f, 100.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), false);
+        }
+        break;
+        case GeneratorType::InCube:
+        {
+            RenderQuad(renderContext, glm::vec3(500.0f, 500.0f, 0.0f), glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(100.0f, 100.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), false);
+        }
+        break;
+        case GeneratorType::NormalizedSphere:
+        {
+            RenderQuad(renderContext, glm::vec3(500.0f, 500.0f, 0.0f), glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(100.0f, 100.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), false);
+        }
+        break;
+        case GeneratorType::ManyInternal:
+        {
+            RenderQuad(renderContext, glm::vec3(500.0f, 500.0f, 0.0f), glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(100.0f, 100.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), false);
+        }
+        break;
+    }
+}
+
 int main()
 {
     printf("Verts: %zd\n", sizeof(VertexInfo));
@@ -142,7 +174,7 @@ int main()
     auto disableMouse = false;
     
     CreateDirectionalLight(renderContext, glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.05f), glm::vec3(0.4f), glm::vec3(0.5f));
-    CreateSpotLight(renderContext, glm::vec3(0.0f, -1.0f, 1.0f), glm::vec3(0.0f), glm::vec3(1.0f), glm::vec3(1.0f), glm::vec3(0.0f, 80.0f, 80.0f), glm::cos(glm::radians(120.5f)), glm::cos(glm::radians(170.5f)), 1.0f, 0.0014f, 0.000007f);
+    CreateSpotLight(renderContext, glm::vec3(0.0f, -1.0f, 1.0f), glm::vec3(0.0f), glm::vec3(1.0f), glm::vec3(1.0f), glm::vec3(0.0f, 80.0f, 80.0f), glm::cos(glm::radians(12.5f)), glm::cos(glm::radians(17.5f)), 1.0f, 0.0014f, 0.000007f);
     
     HullType hullType = HullType::QH;
     
@@ -233,7 +265,7 @@ int main()
         {
             for(size_t i = 0; i < configData.qhTestSets.size; i++)
             {
-                RunFullHullTest(configData.qhTestSets[i], renderContext.originOffset, renderContext);
+                RunFullHullTest(configData.qhTestSets[i], renderContext.originOffset);
             }
         }
         
@@ -335,6 +367,7 @@ int main()
                 glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
             }
         }
+        renderGenAndHullType(renderContext, h);
         
         // Swap buffers
         glfwSwapBuffers(renderContext.window);

@@ -224,7 +224,7 @@ static glm::vec3 ComputeFaceNormal(QhFace f, QhVertex* vertices)
     // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
     glm::vec3 normal = glm::vec3(0.0f);
     
-    for(int i = 0; i < f.vertices.size; i++)
+    for(size_t i = 0; i < f.vertices.size; i++)
     {
         auto& current = vertices[f.vertices[i]].position;
         auto& next = vertices[f.vertices[(i + 1) % 3]].position;
@@ -957,7 +957,7 @@ void qhRemoveFaceAndFixLists(QhHull &qHull, std::vector<int> &uniqueInV, std::ve
     }
 }
 
-void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack, int fHandle, std::vector<int>& v, size_t prevIterationFaces, coord_t epsilon, std::vector<Edge>& horizon, RenderContext &renderContext)
+void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack, int fHandle, std::vector<int>& v, size_t prevIterationFaces, coord_t epsilon, std::vector<Edge>& horizon)
 {
     for(const auto& e : horizon)
     {
@@ -1138,7 +1138,7 @@ void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack,
     }
 }
 
-void qhFullHull(QhContext& qhContext, RenderContext &renderContext)
+void qhFullHull(QhContext& qhContext)
 {
     qhContext.currentFace = nullptr;
     qhContext.faceStack.clear();
@@ -1162,7 +1162,7 @@ void qhFullHull(QhContext& qhContext, RenderContext &renderContext)
                 return;
             
             qhIteration(qhContext.qHull, qhContext.vertices, qhContext.faceStack, qhContext.currentFace->indexInHull, qhContext.v, 
-                        qhContext.previousIteration, qhContext.epsilon, qhContext.horizon, renderContext);
+                        qhContext.previousIteration, qhContext.epsilon, qhContext.horizon);
             if(qhContext.qHull.failed)
                 return;
             
@@ -1171,7 +1171,7 @@ void qhFullHull(QhContext& qhContext, RenderContext &renderContext)
     }
 }
 
-QhHull qhFullHull(QhVertex* vertices, int numVertices, RenderContext &renderContext)
+QhHull qhFullHull(QhVertex* vertices, int numVertices)
 {
     QhFace* currentFace = nullptr;
     std::vector<int> faceStack;
@@ -1198,7 +1198,7 @@ QhHull qhFullHull(QhVertex* vertices, int numVertices, RenderContext &renderCont
             if(qHull.failed)
                 return qHull;
             qhIteration(qHull, vertices, faceStack, currentFace->indexInHull, v,
-                        previousIteration, epsilon, horizon, renderContext);
+                        previousIteration, epsilon, horizon);
             if(qHull.failed)
                 return qHull;
             v.clear();
@@ -1240,7 +1240,7 @@ void qhInitializeContext(QhContext& qhContext, Vertex* vertices, int numberOfPoi
     
 }
 
-void qhStep(QhContext& context, RenderContext &renderContext)
+void qhStep(QhContext& context)
 {
     switch(context.iter)
     {
@@ -1275,7 +1275,7 @@ void qhStep(QhContext& context, RenderContext &renderContext)
         {
             if(context.currentFace)
             {
-                qhIteration(context.qHull, context.vertices, context.faceStack, context.currentFace->indexInHull, context.v, context.previousIteration, context.epsilon, context.horizon, renderContext);
+                qhIteration(context.qHull, context.vertices, context.faceStack, context.currentFace->indexInHull, context.v, context.previousIteration, context.epsilon, context.horizon);
                 context.iter = QHIteration::findNextIter;
                 context.v.clear();
             }
