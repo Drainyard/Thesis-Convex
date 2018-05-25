@@ -159,6 +159,7 @@ static Mesh *UpdateHull(RenderContext &renderContext, Hull &h, HullType hullType
         case Inc:
         {
             static bool init = true;
+            auto &incContext = h.timedStepIncContext;
             
             if (h.incTimer.running)
             {
@@ -171,9 +172,8 @@ static Mesh *UpdateHull(RenderContext &renderContext, Hull &h, HullType hullType
                     }
                     else
                     {
-                        incHullStep();
+                        incHullStep(incContext);
                     }
-                    auto &incContext = h.timedStepIncContext;
                     h.incTimer.currentTime = h.incTimer.timerInit;
                     return &incConvertToMesh(incContext, renderContext);
                 }
@@ -267,7 +267,63 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset, RenderContext &r
         verticesOnHull = 0;
         timeSpent = 0;
     }
-    log_a("Done\n");
+    log_a("Done QH\n");
+
+    IncContext incContext = {};
+    
+    log_a("Count: %zd\n", testSet.count);
+    for(size_t i = 0; i < testSet.count; i++)
+    {
+        int addedFaces = 0;
+        int numFaces = 0;
+        int pointsProcessed = 0;
+        int sidednessQueries = 0;
+        int verticesOnHull = 0;
+        unsigned long long timeSpent = 0;
+        
+        int numForAvg = Max(1, testSet.iterations);
+        auto n = vertexAmounts[i];
+        
+        log_a("Num: %d\n", n);
+        initPointGenerator(generator, genType, n);
+        
+        for (int j = 0; j < numForAvg; j++)
+        {
+            log_a("%d \n", j);
+            
+            vertices = generate(generator, 0.0f, 5000.0f, offset);
+            
+            incInitializeContext(incContext, vertices, n);
+            auto timerIndex = startTimer();
+            incConstructFullHull(incContext);
+            incContext.processingState.timeSpent = endTimer(timerIndex);
+            
+            incContext.initialized = false;
+            if(incContext.failed)
+            {
+                free(vertices);
+                j--;
+                continue;
+            }
+            
+            addedFaces += incContext.processingState.createdFaces;
+            pointsProcessed +=  incContext.processingState.processedVertices;
+            sidednessQueries +=  incContext.processingState.sidednessQueries;
+            verticesOnHull +=  incContext.processingState.verticesOnHull;
+            numFaces += incContext.processingState.facesOnHull;
+            timeSpent +=  incContext.processingState.timeSpent;
+        }
+        
+        WriteHullToCSV("../data/qh_hull_out", addedFaces / numForAvg, numFaces / numForAvg, n, pointsProcessed / numForAvg, 0, sidednessQueries / numForAvg,  verticesOnHull / numForAvg, timeSpent / numForAvg, genType);
+        
+        addedFaces = 0;
+        numFaces = 0;
+        pointsProcessed = 0;
+        sidednessQueries = 0;
+        verticesOnHull = 0;
+        timeSpent = 0;
+    }
+    log_a("Done inc\n");
 }
 
 static Mesh &FullHull(RenderContext &renderContext, Hull &h)
@@ -300,7 +356,7 @@ static Mesh &FullHull(RenderContext &renderContext, Hull &h)
                 incInitializeContext(incContext, h.vertices, h.numberOfPoints);
             }
             auto timerIndex = startTimer();
-            incConstructFullHull();
+            incConstructFullHull(incContext);
             TIME_END(timerIndex, "Full inc hull");
             return incConvertToMesh(incContext, renderContext);
         }
@@ -353,7 +409,7 @@ static Mesh &StepHull(RenderContext &renderContext, Hull &h)
             }
             else
             {
-                incHullStep();
+                incHullStep(incContext);
             }
             return incConvertToMesh(incContext, renderContext);
         }
