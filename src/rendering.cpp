@@ -426,7 +426,7 @@ static GLfloat* BuildVertexBuffer(Face* faces, int numFaces, int *vertexCount)
     
     *vertexCount = sizeOfArray;
     
-    GLfloat* vertices = (GLfloat*)malloc(numFaces * sizeOfArray * sizeof(VertexInfo));
+    GLfloat* vertices = (GLfloat*)malloc(sizeOfArray * sizeof(VertexInfo));
     
     for(int i = 0; i < numFaces; i++)
     {
