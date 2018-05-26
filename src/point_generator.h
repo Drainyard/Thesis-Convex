@@ -105,7 +105,7 @@ void readTestSets(char *buffer, size_t bufSize, List<TestSet> &list, FILE *f)
             readTestSet(filename, newSet);
             addToList(list, newSet);
         }
-        else
+        else if(!startsWith(buffer, "#"))
         {
             fseek(f, prevPos, SEEK_SET);
             break;

@@ -332,6 +332,9 @@ void incCleanConflictGraph(std::vector<IncFace *> &facesToRemove)
             //But since every arc knows the index of its duplicate arc, we also have to update the endPoint arcs we swap with
             IncVertex *v = arc.vertexEndpoint;
             
+            if(v->arcs.size == 0)
+                continue;
+            
             IncArc lastArcInV = v->arcs[v->arcs.size - 1];
             lastArcInV.faceEndpoint->arcs[lastArcInV.indexInEndpoint].indexInEndpoint = arc.indexInEndpoint;
             v->arcs[arc.indexInEndpoint] = v->arcs[v->arcs.size - 1];
@@ -512,8 +515,7 @@ std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> incAddToHull(IncVertex
         //No faces are visible and we are inside hull. No arcs to update
         v->isOnHull = false;
         v->isRemoved = true;
-        // free(v->arcs.list);
-        // v->arcs.list = nullptr;
+        clear(v->arcs);
         incRemoveFromHead(&incVertices, &v);
         std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> cleaningBundle(facesToRemove, horizonEdges);
         return cleaningBundle;
@@ -601,13 +603,11 @@ void incCleanEdgesAndFaces(std::vector<IncFace *> &facesToRemove, std::vector<In
             if (v && !v->isRemoved && !v->isOnHull)
             {
                 v->isRemoved = true;
-                // free(v->arcs.list);
-                // v->arcs.list = nullptr;
+                clear(v->arcs);
                 incRemoveFromHead(&incVertices, &v);
             }
         }
-        // free(face->arcs.list);
-        // face->arcs.list = nullptr;
+        clear(face->arcs);
         incRemoveFromHead(&incFaces, &face);
     }
     //reset vertex flags
@@ -775,7 +775,7 @@ void incInitializeContext(IncContext &incContext, Vertex *vertices, int numberOf
         while (incVertices)
         {
             nextVertex = v->next;
-            free(v->arcs.list);
+            clear(v->arcs);
             incRemoveFromHead(&incVertices, &v);
             v = nextVertex;
         };
@@ -788,7 +788,7 @@ void incInitializeContext(IncContext &incContext, Vertex *vertices, int numberOf
         while (incFaces)
         {
             nextFace = f->next;
-            free(f->arcs.list);
+            clear(f->arcs);
             incRemoveFromHead(&incFaces, &f);
             f = nextFace;
         };
@@ -807,6 +807,11 @@ void incInitializeContext(IncContext &incContext, Vertex *vertices, int numberOf
     
     if (incContext.vertices)
     {
+        for(int i = 0; i < incContext.numberOfPoints; i++)
+        {
+            auto &v = incContext.vertices[i];
+            clear(v.arcs);
+        }
         free(incContext.vertices);
     }
     

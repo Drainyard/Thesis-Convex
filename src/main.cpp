@@ -306,7 +306,12 @@ int main()
         {
             for(size_t i = 0; i < configData.qhTestSets.size; i++)
             {
-                RunFullHullTest(configData.qhTestSets[i], renderContext.originOffset);
+                RunFullHullTestQh(configData.qhTestSets[i], renderContext.originOffset);
+            }
+            
+            for(size_t i = 0; i < configData.incTestSets.size; i++)
+            {
+                RunFullHullTestInc(configData.incTestSets[i], renderContext.originOffset);
             }
         }
         

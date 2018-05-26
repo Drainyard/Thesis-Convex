@@ -196,7 +196,7 @@ static Mesh *UpdateHull(RenderContext &renderContext, Hull &h, HullType hullType
     return nullptr;
 }
 
-static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
+static void RunFullHullTestQh(TestSet &testSet, glm::vec3 offset)
 {
     auto vertexAmounts = testSet.testSet;
     auto genType = testSet.genType;
@@ -209,6 +209,7 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
     std::mt19937 gen{rd()};
     gen.seed((unsigned int)seed);
     generator.gen = gen;
+    
     
     QhContext qhContext = {};
     
@@ -268,7 +269,23 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
         timeSpent = 0;
     }
     log_a("Done QH\n");
+    
+}
 
+static void RunFullHullTestInc(TestSet &testSet, glm::vec3 offset)
+{
+    auto vertexAmounts = testSet.testSet;
+    auto genType = testSet.genType;
+    
+    Vertex *vertices = nullptr;
+    
+    auto seed = time(NULL);
+    PointGenerator generator;
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    gen.seed((unsigned int)seed);
+    generator.gen = gen;
+    
     IncContext incContext = {};
     
     log_a("Count: %zd\n", testSet.count);
@@ -314,7 +331,7 @@ static void RunFullHullTest(TestSet &testSet, glm::vec3 offset)
             timeSpent +=  incContext.processingState.timeSpent;
         }
         
-        WriteHullToCSV("../data/qh_hull_out", addedFaces / numForAvg, numFaces / numForAvg, n, pointsProcessed / numForAvg, 0, sidednessQueries / numForAvg,  verticesOnHull / numForAvg, timeSpent / numForAvg, genType);
+        WriteHullToCSV("../data/inc_hull_out", addedFaces / numForAvg, numFaces / numForAvg, n, pointsProcessed / numForAvg, 0, sidednessQueries / numForAvg,  verticesOnHull / numForAvg, timeSpent / numForAvg, genType);
         
         addedFaces = 0;
         numFaces = 0;
