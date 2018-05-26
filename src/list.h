@@ -11,7 +11,7 @@ struct List
     T &operator[](size_t index)
     {
 #if DEBUG
-        if(index > this->size)
+        if(index >= this->size)
         {
             assert(false);
         }
@@ -23,7 +23,7 @@ struct List
     T &operator[](int index)
     {
 #if DEBUG
-        if(index > (int)this->size)
+        if(index >= (int)this->size)
         {
             assert(false);
         }
@@ -43,7 +43,12 @@ static void addToList(List<T> &list, T element)
     {
         list.capacity = 2;
         list.list = (T*)malloc(sizeof(T) * list.capacity);
+        for(size_t i = list.size; i < list.capacity; i++)
+        {
+            list.list[i] = {};
+        }
     }
+    
     if (list.size + 1 > list.capacity)
     {
         list.capacity *= 2;
@@ -61,12 +66,7 @@ static void addToList(List<T> &list, T element)
 template<typename T>
 static void clear(List<T> &list)
 {
-    for(size_t i = 0; i < list.size; i++)
-    {
-        list[i] = {};
-    }
-    
-    if(list.size > 0)
+    if(list.list)
     {
         free(list.list);
         list.list = nullptr;

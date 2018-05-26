@@ -95,7 +95,7 @@ void reinitPoints(Vertex **vertices, ConfigData &configData, Hull &h, RenderCont
     {
         initPointGenerator(h.pointGenerator, configData.genType, configData.numberOfPoints);
     }
-    *vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
+    *vertices = generate(h.pointGenerator, 0.0f, 5000.0f, renderContext.originOffset);
 }
 
 
@@ -110,7 +110,7 @@ void reinitPoints(Vertex **vertices, int numPoints, Hull &h, RenderContext &rend
     {
         initPointGenerator(h.pointGenerator, GeneratorType::InSphere, numPoints);
     }
-    *vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
+    *vertices = generate(h.pointGenerator, 0.0f, 5000.0f, renderContext.originOffset);
 }
 
 void reinitHull(Vertex *vertices, Hull &h, Vertex **currentVertices, Mesh **currentMesh, Mesh **fullHull, Mesh **timedHull, Mesh **stepHull)
@@ -253,7 +253,7 @@ int main()
     
     initPointGenerator(h.pointGenerator, configData.genType, numberOfPoints);
     
-    auto vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
+    auto vertices = generate(h.pointGenerator, 0.0f, 5000.0f, renderContext.originOffset);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ", 200.0f);
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
     //auto vertices = LoadObj("../assets/obj/CarpetBit.obj");

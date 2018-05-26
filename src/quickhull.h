@@ -347,8 +347,8 @@ static int qhRemoveFace(QhHull& qHull, int faceId, QhVertex* vertices)
             if(v1.faceHandles[fIndex] == indexInHull)
             {
                 v1.faceHandles[fIndex] = v1.faceHandles[v1.faceHandles.size - 1];
+                v1.faceHandles[v1.faceHandles.size - 1] = 0;
                 v1.faceHandles.size = v1.faceHandles.size - 1;
-                v1.faceHandles[v1.faceHandles.size] = 0;
                 break;
             }
         }
@@ -363,15 +363,12 @@ static int qhRemoveFace(QhHull& qHull, int faceId, QhVertex* vertices)
     clear(f.vertices);
     clear(f.outsideSet);
     
-    assert(qHull.faces[indexInHull].neighbourCount < (int)qHull.faces.size);
     // Invalidates the f pointer
     // But we only need to swap two faces to make this work
     qHull.faces[indexInHull] = qHull.faces[qHull.faces.size - 1];
-    qHull.faces.size = qHull.faces.size - 1;
-    
-    assert(qHull.faces[indexInHull].neighbourCount < (int)qHull.faces.size);
-    
     auto &newFace = qHull.faces[indexInHull];
+    
+    qHull.faces.size = qHull.faces.size - 1;
     
     assert(newFace.neighbourCount < (int)qHull.faces.size);
     
