@@ -46,7 +46,8 @@ struct DacContext
     DacVertex *upperP;
 };
 
-const double INF = 1e99;
+//no need for such a big inf
+const double INF = 1e20;
 static DacVertex nil = {glm::vec3(INF, INF, INF), 0, nullptr, nullptr};
 DacVertex *NIL = &nil;
 
@@ -171,7 +172,7 @@ void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
         ;
     mid = v = u->next;
     // recurse
-    dacHull(list, n / 2, B, A, lower);     
+    dacHull(list, n / 2, B, A, lower);
     dacHull(mid, n - n / 2, B + n / 2 * 2, A + n / 2 * 2, lower);
 
     // find initial bridge
@@ -196,62 +197,57 @@ void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
     // possible to overflow this
     int eIndex = -1;
 
-    DacEvent *events = (DacEvent *)malloc(sizeof(DacEvent) * 6);
-    DacEvent *oldTime = (DacEvent *)malloc(sizeof(DacEvent));
-    DacEvent *newTime = (DacEvent *)malloc(sizeof(DacEvent));
-    
-    oldTime->timeValue = -INF;
-    oldTime->eIndex = eIndex++;
+    DacEvent oldTime = {};
+    DacEvent newTime = {};
+    DacEvent events[6];
 
-    if (lower)
-    {
-        events[0].timeValue = time(B[i]->prev, B[i], B[i]->next);
-        events[0].eIndex = eIndex++;
-        events[1].timeValue = time(B[j]->prev, B[j], B[j]->next);
-        events[1].eIndex = eIndex++;
-        events[2].timeValue = time(u->prev, u, v);
-        events[2].eIndex = eIndex++;
-        events[3].timeValue = time(u, u->next, v);
-        events[3].eIndex = eIndex++;
-        events[4].timeValue = time(u, v, v->next);
-        events[4].eIndex = eIndex++;
-        events[5].timeValue = time(u, v->prev, v);
-        events[5].eIndex = eIndex++;
-    }
-    else
-    {
-        events[0].timeValue = -time(B[i]->prev, B[i], B[i]->next);
-        events[0].eIndex = eIndex++;
-        events[1].timeValue = -time(B[j]->prev, B[j], B[j]->next);
-        events[1].eIndex = eIndex++;
-        events[2].timeValue = -time(u->prev, u, v);
-        events[2].eIndex = eIndex++;
-        events[3].timeValue = -time(u, u->next, v);
-        events[3].eIndex = eIndex++;
-        events[4].timeValue = -time(u, v, v->next);
-        events[4].eIndex = eIndex++;
-        events[5].timeValue = -time(u, v->prev, v);
-        events[5].eIndex = eIndex++;
-    }
+    oldTime.timeValue = -INF;
+    oldTime.eIndex = eIndex++;
+
+    events[0].eIndex = eIndex++;
+    events[1].eIndex = eIndex++;
+    events[2].eIndex = eIndex++;
+    events[3].eIndex = eIndex++;
+    events[4].eIndex = eIndex++;
+    events[5].eIndex = eIndex++;
 
     // merge by tracking bridge uv over time
     // infinite loop until no insertion/deletion events occur
     for (;;)
     {
+        if (lower)
+        {
+            events[0].timeValue = time(B[i]->prev, B[i], B[i]->next);
+            events[1].timeValue = time(B[j]->prev, B[j], B[j]->next);
+            events[2].timeValue = time(u->prev, u, v);
+            events[3].timeValue = time(u, u->next, v);
+            events[4].timeValue = time(u, v, v->next);
+            events[5].timeValue = time(u, v->prev, v);
+        }
+        else
+        {
+            events[0].timeValue = -time(B[i]->prev, B[i], B[i]->next);
+            events[1].timeValue = -time(B[j]->prev, B[j], B[j]->next);
+            events[2].timeValue = -time(u->prev, u, v);
+            events[3].timeValue = -time(u, u->next, v);
+            events[4].timeValue = -time(u, v, v->next);
+            events[5].timeValue = -time(u, v->prev, v);
+        }
         //we find the movies in chronological time
-        newTime->timeValue = INF;
+        newTime.timeValue = INF;
         for (l = 0; l < 6; l++)
         {
-            if (events[l].eIndex != oldTime->eIndex && events[l].timeValue > oldTime->timeValue && events[l].timeValue < newTime->timeValue)
+
+            if (events[l].eIndex != oldTime.eIndex &&
+                events[l].timeValue > oldTime.timeValue &&
+                events[l].timeValue < newTime.timeValue)
             {
                 minl = l;
-                // how do you say pointer = object???
-                newTime->timeValue = events[l].timeValue;
-                newTime->eIndex = events[l].eIndex;
+                newTime = events[l];
             }
         }
         //if newTime==INF, no insertion/deletion events occured, and we break for loop
-        if (newTime->timeValue == INF)
+        if (newTime.timeValue == INF)
         {
             break;
         }
@@ -267,14 +263,6 @@ void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
             }
             B[i]->act();
             i++;
-            if (lower)
-            {
-                events[0].timeValue = time(B[i]->prev, B[i], B[i]->next);
-            }
-            else
-            {
-                events[0].timeValue = -time(B[i]->prev, B[i], B[i]->next);
-            }
             events[0].eIndex = eIndex++;
             break;
         case 1:
@@ -286,14 +274,6 @@ void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
             }
             B[j]->act();
             j++;
-            if (lower)
-            {
-                events[1].timeValue = time(B[j]->prev, B[j], B[j]->next);
-            }
-            else
-            {
-                events[1].timeValue = -time(B[j]->prev, B[j], B[j]->next);
-            }
             events[1].eIndex = eIndex++;
             break;
         case 2:
@@ -301,28 +281,12 @@ void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
             A[k] = u;
             k++;
             u = u->prev;
-            if (lower)
-            {
-                events[2].timeValue = time(u->prev, u, v);
-            }
-            else
-            {
-                events[2].timeValue = -time(u->prev, u, v);
-            }
             events[2].eIndex = eIndex++;
             break;
         case 3:
             //u, u->next, v, was cw and turned ccw, so u->next and v is the new bridge, and we insert u->next between u and v.
             A[k] = u = u->next;
             k++;
-            if (lower)
-            {
-                events[3].timeValue = time(u, u->next, v);
-            }
-            else
-            {
-                events[3].timeValue = -time(u, u->next, v);
-            }
             events[3].eIndex = eIndex++;
             break;
         case 4:
@@ -330,49 +294,18 @@ void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
             A[k] = v;
             v = v->next;
             k++;
-            if (lower)
-            {
-                events[4].timeValue = time(u, v, v->next);
-            }
-            else
-            {
-                events[4].timeValue = -time(u, v, v->next);
-            }
             events[4].eIndex = eIndex++;
             break;
         case 5:
             //u, v->prev, v, was cw and turned ccw, so u and v->prev is the new bridge, and we insert v->prev between u and v.
             A[k] = v = v->prev;
             k++;
-            if (lower)
-            {
-                events[5].timeValue = time(u, v->prev, v);
-            }
-            else
-            {
-                events[5].timeValue = -time(u, v->prev, v);
-            }
             events[5].eIndex = eIndex++;
             break;
         }
         oldTime = newTime;
     }
     A[k] = NIL;
-
-    if (oldTime)
-    {
-        free(oldTime);
-    }
-    /*
-    if (newTime)
-    {
-        free(newTime);
-    }
-    */
-    if (events)
-    {
-        free(events);
-    }
 
     //connect the bridge uv
     u->next = v;
