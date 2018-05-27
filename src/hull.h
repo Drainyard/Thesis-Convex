@@ -294,7 +294,7 @@ static void RunFullHullTestInc(TestSet &testSet, glm::vec3 offset)
         int addedFaces = 0;
         int numFaces = 0;
         int pointsProcessed = 0;
-        int sidednessQueries = 0;
+        unsigned long long sidednessQueries = 0;
         int verticesOnHull = 0;
         unsigned long long timeSpent = 0;
         

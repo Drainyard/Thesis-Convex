@@ -9,7 +9,8 @@ struct IncArc;
 
 struct IncArc
 {
-    union {
+    union 
+    {
         IncVertex *vertexEndpoint;
         IncFace *faceEndpoint;
     };
@@ -72,7 +73,7 @@ static int incFacesOnHull = 0;
 struct IncContext
 {
     bool initialized;
-    IncVertex *vertices;
+    
     int numberOfPoints;
     Mesh *m;
     struct
@@ -150,7 +151,7 @@ static void incCopyVertices(Vertex *vertices, int numberOfPoints)
         v->isAlreadyInConflicts = false;
         v->vIndex = i;
         v->vector = shuffledVertices[i].position;
-        v->arcs = {};
+        init(v->arcs);
         incAddToHead(&incVertices, v);
     }
     free(shuffledVertices);
@@ -178,10 +179,10 @@ IncFace *incCreateNullFace()
     f->vertex[0] = f->vertex[1] = f->vertex[2] = nullptr;
     f->isVisible = false;
     f->isRemoved = false;
-    f->arcs = {};
     f->next = nullptr;
     f->prev = nullptr;
     incAddToHead(&incFaces, f);
+    init(f->arcs);
     
     incCreatedFaces++;
     
@@ -339,16 +340,7 @@ void incCleanConflictGraph(std::vector<IncFace *> &facesToRemove)
             lastArcInV.faceEndpoint->arcs[lastArcInV.indexInEndpoint].indexInEndpoint = arc.indexInEndpoint;
             v->arcs[arc.indexInEndpoint] = v->arcs[v->arcs.size - 1];
             v->arcs.size = v->arcs.size - 1;
-            v->arcs[v->arcs.size] = {};
-            // v->arcs.size--;
-            
-            // This was wrong because the vertices are not there anymore?
-            /*IncArc lastArcInF = face->arcs[face->arcs.size - 1];
-            lastArcInF.vertexEndpoint->arcs[lastArcInF.indexInEndpoint].indexInEndpoint = dupArcEndPoint;
-            face->arcs[dupArcEndPoint] = face->arcs[face->arcs.size - 1];
-            face->arcs.size--;*/
         }
-        face->arcs.size = 0;
     }
 }
 
@@ -515,7 +507,7 @@ std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> incAddToHull(IncVertex
         //No faces are visible and we are inside hull. No arcs to update
         v->isOnHull = false;
         v->isRemoved = true;
-        clear(v->arcs);
+        //clear(v->arcs);
         incRemoveFromHead(&incVertices, &v);
         std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> cleaningBundle(facesToRemove, horizonEdges);
         return cleaningBundle;
@@ -536,7 +528,7 @@ std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> incAddToHull(IncVertex
                 if(!e->adjFace[0] || !e->adjFace[1])
                 {
                     incContext.failed = true;
-                    printf("FAILED INC\n");        
+                    printf("FAILED INC\n");
                     std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> cleaningBundle(facesToRemove, horizonEdges);
                     return cleaningBundle;
                 }
@@ -621,7 +613,6 @@ void incCleanStuff(std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> &cl
     //    auto timerCleanEdgesAndFaces = startTimer();
     incCleanConflictGraph(cleaningBundle.first);
     incCleanEdgesAndFaces(cleaningBundle.first, cleaningBundle.second);
-    //    TIME_END(timerCleanEdgesAndFaces, "incCleanEdgesAndFaces");
 }
 
 Mesh &incConvertToMesh(IncContext &context, RenderContext &renderContext)
@@ -802,16 +793,6 @@ void incInitializeContext(IncContext &incContext, Vertex *vertices, int numberOf
             incRemoveFromHead(&incEdges, &e);
             e = nextEdge;
         }
-    }
-    
-    if (incContext.vertices)
-    {
-        for(int i = 0; i < incContext.numberOfPoints; i++)
-        {
-            auto &v = incContext.vertices[i];
-            clear(v.arcs);
-        }
-        free(incContext.vertices);
     }
     
     incCopyVertices(vertices, numberOfPoints);
