@@ -43,20 +43,12 @@ static void addToList(List<T> &list, T element)
     {
         list.capacity = 2;
         list.list = (T*)malloc(sizeof(T) * list.capacity);
-        for(size_t i = list.size; i < list.capacity; i++)
-        {
-            list.list[i] = {};
-        }
     }
     
     if (list.size + 1 > list.capacity)
     {
         list.capacity *= 2;
         list.list = (T*)realloc(list.list, sizeof(T) * list.capacity);
-        for(size_t i = list.size; i < list.capacity; i++)
-        {
-            list.list[i] = {};
-        }
     }
     
     list.list[list.size++] = element;
@@ -69,9 +61,9 @@ static void clear(List<T> &list)
     if(list.list)
     {
         free(list.list);
-        list.list = nullptr;
     }
     
+    list.list = nullptr;
     list.size = 0;
     list.capacity = 0;
 }

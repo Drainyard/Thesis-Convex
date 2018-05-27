@@ -339,10 +339,8 @@ void incCleanConflictGraph(std::vector<IncFace *> &facesToRemove)
             IncArc lastArcInV = v->arcs[v->arcs.size - 1];
             lastArcInV.faceEndpoint->arcs[lastArcInV.indexInEndpoint].indexInEndpoint = arc.indexInEndpoint;
             v->arcs[arc.indexInEndpoint] = v->arcs[v->arcs.size - 1];
-            v->arcs[v->arcs.size - 1] = {};
             v->arcs.size = v->arcs.size - 1;
         }
-        clear(face->arcs);
     }
 }
 
@@ -509,7 +507,7 @@ std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> incAddToHull(IncVertex
         //No faces are visible and we are inside hull. No arcs to update
         v->isOnHull = false;
         v->isRemoved = true;
-        clear(v->arcs);
+        //clear(v->arcs);
         incRemoveFromHead(&incVertices, &v);
         std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> cleaningBundle(facesToRemove, horizonEdges);
         return cleaningBundle;

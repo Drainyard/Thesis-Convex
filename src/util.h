@@ -95,7 +95,8 @@ int countLinesFromCurrent (FILE *file)
     
     while(fgets(line, BUFFSIZE, file)) 
     {
-        nlines++;
+        if(!startsWith(line, "#"))
+            nlines++;
     }
     
     return nlines;

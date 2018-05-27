@@ -67,7 +67,7 @@ void readTestSet(const char *filename, TestSet &testSet)
             {
                 sscanf(buf, "iterations %d", &testSet.iterations);
             }
-            else
+            else if(!startsWith(buf, "#"))
             {
                 if(testSet.count == 0)
                 {
