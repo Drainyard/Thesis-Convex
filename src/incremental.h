@@ -552,8 +552,6 @@ std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> incAddToHull(IncVertex
         facesToRemove.push_back(face);
     }
     
-    incCleanConflictGraph(facesToRemove);
-    
     std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> cleaningBundle(facesToRemove, horizonEdges);
     return cleaningBundle;
 }
@@ -612,6 +610,8 @@ void incCleanEdgesAndFaces(std::vector<IncFace *> &facesToRemove, std::vector<In
 
 void incCleanStuff(std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> &cleaningBundle)
 {
+    //    auto timerCleanEdgesAndFaces = startTimer();
+    incCleanConflictGraph(cleaningBundle.first);
     incCleanEdgesAndFaces(cleaningBundle.first, cleaningBundle.second);
 }
 
