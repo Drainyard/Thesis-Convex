@@ -169,7 +169,7 @@ static GENERATOR_FUNCTION(generatePoints)
         coord_t z = randomCoord(pointGenerator.d, pointGenerator.gen, min, max);
         
         res[i].position = glm::vec3(x, y, z) - offset;
-        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
+        res[i].color = glm::vec4(0.0L, 1.0L, 1.0L, 1.0L);
     }
     return res;
 }
@@ -177,7 +177,7 @@ static GENERATOR_FUNCTION(generatePoints)
 static GENERATOR_FUNCTION(generatePointsOnSphere)
 {
     UNUSED(min);
-    auto radius = max / 2.0f;
+    auto radius = max / 2.0L;
     auto res = (Vertex*)malloc(sizeof(Vertex) * pointGenerator.numberOfPoints);
     for(int i = 0; i < pointGenerator.numberOfPoints; i++) 
     {
@@ -188,7 +188,7 @@ static GENERATOR_FUNCTION(generatePointsOnSphere)
         coord_t z = (coord_t)cos(phi) * radius;
         
         res[i].position = glm::vec3(x, y, z) - offset;
-        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
+        res[i].color = glm::vec4(0.0L, 1.0L, 1.0L, 1.0L);
     }
     return res;
 }
@@ -207,7 +207,7 @@ static GENERATOR_FUNCTION(generatePointsInSphere)
         coord_t z = r * (coord_t)cos(phi);
         
         res[i].position = glm::vec3(x, y, z) - offset;
-        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
+        res[i].color = glm::vec4(0.0L, 1.0L, 1.0L, 1.0L);
     }
     return res;
 }
@@ -221,8 +221,11 @@ GENERATOR_FUNCTION(generatePointsOnNormalizedSphere)
         coord_t y = randomCoord(pointGenerator.d, pointGenerator.gen, min, max);
         coord_t z = randomCoord(pointGenerator.d, pointGenerator.gen, min, max);
         
-        res[i].position = glm::normalize(glm::vec3(x, y, z) - offset) * max;
-        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
+        auto o = glm::vec3((coord_t)offset.x, (coord_t)offset.y, (coord_t)offset.z);
+        
+        auto v = glm::normalize(glm::vec3((float)x, (float)y, (float)z) - offset) * (float)max;
+        res[i].position = glm::vec3((coord_t)v.x, (coord_t)v.y, (coord_t)v.z);
+        res[i].color = glm::vec4(0.0L, 1.0L, 1.0L, 1.0L);
     }
     return res;
 }
@@ -233,22 +236,22 @@ GENERATOR_FUNCTION(generatePointsManyInternal)
     
     int pointsOnOutside = 50;
     
-    glm::vec3 total = glm::vec3(0.0f);
+    glm::vec3 total = glm::vec3(0.0L);
     
     for(int i = 0; i < pointGenerator.numberOfPoints- (Min(pointsOnOutside - 1, pointGenerator.numberOfPoints) - 1); i++)
     {
-        coord_t x = randomCoord(pointGenerator.d, pointGenerator.gen, max / 5.0f - min, max / 5.0f);
-        coord_t y = randomCoord(pointGenerator.d, pointGenerator.gen, max / 5.0f - min, max / 5.0f);
-        coord_t z = randomCoord(pointGenerator.d, pointGenerator.gen, max / 5.0f - min, max / 5.0f);
+        coord_t x = randomCoord(pointGenerator.d, pointGenerator.gen, max / 5.0L - min, max / 5.0L);
+        coord_t y = randomCoord(pointGenerator.d, pointGenerator.gen, max / 5.0L - min, max / 5.0L);
+        coord_t z = randomCoord(pointGenerator.d, pointGenerator.gen, max / 5.0L - min, max / 5.0L);
         
         res[i].position = glm::vec3(x, y, z) - offset;
-        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
+        res[i].color = glm::vec4(0.0L, 1.0L, 1.0L, 1.0L);
         total += res[i].position;
     }
     
     total = glm::vec3(total.x / (pointGenerator.numberOfPoints - pointsOnOutside), total.y / (pointGenerator.numberOfPoints - pointsOnOutside), total.z / (pointGenerator.numberOfPoints - pointsOnOutside));
     
-    auto radius = max / 2.0f;
+    auto radius = max / 2.0L;
     for(int i = pointGenerator.numberOfPoints- (Min(pointsOnOutside - 1, pointGenerator.numberOfPoints) - 1); i < pointGenerator.numberOfPoints; i++)
     {
         coord_t theta = 2 * (coord_t)M_PI * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0, 1.0);
@@ -258,7 +261,7 @@ GENERATOR_FUNCTION(generatePointsManyInternal)
         coord_t z = (coord_t)cos(phi) * radius;
         
         res[i].position = glm::vec3(x, y, z) + total - offset;
-        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
+        res[i].color = glm::vec4(0.0L, 1.0L, 1.0L, 1.0L);
     }
     
     return res;

@@ -149,3 +149,4 @@ input vertices, faces added, faces in hull, points processed, distance queries, 
 8000000, 336, 92, 74, 14071236, 80395176, 48, 7812509, Many internal, some on sphere
 9000000, 363, 92, 80, 15543599, 94168515, 48, 9136729, Many internal, some on sphere
 10000000, 349, 92, 77, 17316897, 104333156, 48, 10041078, Many internal, some on sphere
+150000, 911609, 299581, 149800, 1285816, 14075667, 149792, 181022240, On Sphere

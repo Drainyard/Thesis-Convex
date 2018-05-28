@@ -320,6 +320,7 @@ static void RunFullHullTestInc(TestSet &testSet, glm::vec3 offset)
             {
                 free(vertices);
                 j--;
+                incContext.failed = false;
                 continue;
             }
             

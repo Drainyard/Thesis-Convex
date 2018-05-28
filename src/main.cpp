@@ -197,7 +197,7 @@ int main()
     renderContext.up = glm::vec3(0.0f, 1.0f, 0.0f);
     renderContext.nearPlane = 0.1f;
     renderContext.farPlane =  10000.0f;
-    renderContext.originOffset = glm::vec3(5.0f, 0.0f, 5.0f);
+    renderContext.originOffset = glm::vec3(5.0L, 0.0L, 5.0L);
     renderContext.renderPoints = false;
     renderContext.renderNormals = false;
     renderContext.renderOutsideSets = false;
@@ -205,6 +205,8 @@ int main()
     InitializeOpenGL(renderContext);
     
     glClearColor(41.0f / 255.0f, 54.0f / 255.0f, 69.0f / 255.0f, 1.0f);
+    
+    printf("Sizeof: %zd\n", sizeof(coord_t));
     
     double lastFrame = glfwGetTime();
     double currentFrame = 0.0;

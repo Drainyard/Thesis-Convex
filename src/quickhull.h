@@ -74,7 +74,7 @@ struct QhContext
     QhVertex* vertices;
     int numberOfPoints;
     std::vector<int> faceStack;
-    float epsilon;
+    coord_t epsilon;
     QHIteration iter;
     QhFace* currentFace;
     std::vector<int> v;
@@ -99,7 +99,7 @@ static void qhCopyVertices(QhContext& q, Vertex* vertices, int numberOfPoints)
 
 // t=nn·v1−nn·p
 // p0=p+t·nn
-float DistancePointToFace(QhHull &q, QhFace f, QhVertex v)
+coord_t DistancePointToFace(QhHull &q, QhFace f, QhVertex v)
 {
     q.processingState.distanceQueryCount++;
     return glm::abs((glm::dot(f.faceNormal, v.position) - glm::dot(f.faceNormal, f.centerPoint))); 
@@ -407,21 +407,21 @@ static int qhRemoveFace(QhHull& qHull, int faceId, QhVertex* vertices)
 }
 
 
-float DistanceBetweenPoints(Vertex& p1, Vertex& p2)
+coord_t DistanceBetweenPoints(Vertex& p1, Vertex& p2)
 {
     return glm::distance(p1.position, p2.position);
 }
 
-float SquareDistancePointToSegment(glm::vec3 a, glm::vec3 b, glm::vec3 c)
+coord_t SquareDistancePointToSegment(glm::vec3 a, glm::vec3 b, glm::vec3 c)
 {
     glm::vec3 ab = b - a;
     glm::vec3 ac = c - a;
     glm::vec3 bc = c - b;
     
-    float e = glm::dot(ac, ab);
+    coord_t e = glm::dot(ac, ab);
     
     if(e <= 0.0f) return glm::dot(ac, ac);
-    float f = glm::dot(ab, ab);
+    coord_t f = glm::dot(ab, ab);
     if( e >= f) return glm::dot(bc, bc);
     
     return glm::dot(ac, ac) - (e * e) / f;
@@ -514,7 +514,7 @@ coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
         }
     }
     
-    auto extremePointCurrentFurthest = 0.0f;
+    auto extremePointCurrentFurthest = 0.0L;
     auto extremePointCurrentIndex = 0;
     
     // Find the point that is furthest away from the segment 
@@ -567,7 +567,7 @@ coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
         return epsilon;
     }
     
-    auto currentFurthest = 0.0f;
+    auto currentFurthest = 0.0L;
     auto currentIndex = 0;
     
     // Now find the points furthest away from the face
@@ -1081,7 +1081,7 @@ void qhFullHull(QhContext& qhContext)
 {
     qhContext.currentFace = nullptr;
     qhContext.faceStack.clear();
-    qhContext.epsilon = 0.0;
+    qhContext.epsilon = 0.0L;
     qhContext.qHull = qhInit(qhContext.vertices, qhContext.numberOfPoints, qhContext.faceStack, &qhContext.epsilon, &qhContext.qHull);
     if(qhContext.qHull.failed)
         return;

@@ -508,6 +508,7 @@ std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> incAddToHull(IncVertex
         v->isOnHull = false;
         v->isRemoved = true;
         //clear(v->arcs);
+        v->isProcessed = true;
         incRemoveFromHead(&incVertices, &v);
         std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> cleaningBundle(facesToRemove, horizonEdges);
         return cleaningBundle;
@@ -552,6 +553,7 @@ std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> incAddToHull(IncVertex
         facesToRemove.push_back(face);
     }
     
+    v->isProcessed = true;
     std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> cleaningBundle(facesToRemove, horizonEdges);
     return cleaningBundle;
 }
@@ -593,11 +595,11 @@ void incCleanEdgesAndFaces(std::vector<IncFace *> &facesToRemove, std::vector<In
             if (v && !v->isRemoved && !v->isOnHull)
             {
                 v->isRemoved = true;
-                clear(v->arcs);
+                //clear(v->arcs);
                 incRemoveFromHead(&incVertices, &v);
             }
         }
-        clear(face->arcs);
+        //clear(face->arcs);
         incRemoveFromHead(&incFaces, &face);
     }
     //reset vertex flags
@@ -698,7 +700,7 @@ void incConstructFullHull(IncContext &incContext)
             {
                 return;
             }
-            v->isProcessed = true;
+            //v->isProcessed = true;
             incProcessedVertices++;
             incCleanStuff(cleaningBundle);
         }
@@ -765,7 +767,7 @@ void incInitializeContext(IncContext &incContext, Vertex *vertices, int numberOf
         while (incVertices)
         {
             nextVertex = v->next;
-            clear(v->arcs);
+            //clear(v->arcs);
             incRemoveFromHead(&incVertices, &v);
             v = nextVertex;
         };
@@ -778,7 +780,7 @@ void incInitializeContext(IncContext &incContext, Vertex *vertices, int numberOf
         while (incFaces)
         {
             nextFace = f->next;
-            clear(f->arcs);
+            //clear(f->arcs);
             incRemoveFromHead(&incFaces, &f);
             f = nextFace;
         };
