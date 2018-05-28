@@ -514,7 +514,8 @@ static void RenderPointCloud(RenderContext& renderContext, Vertex* inputPoints, 
         positions[4 * i + 1] = inputPoints[i].position.y;
         positions[4 * i + 2] = inputPoints[i].position.z;
         positions[4 * i + 3] = 50.0f;
-        auto c = inputPoints[i].color;
+        //auto c = inputPoints[i].color;
+        auto c = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
         colors[4 * i + 0] = c.x;
         colors[4 * i + 1] = c.y;
         colors[4 * i + 2] = c.z;
