@@ -177,12 +177,12 @@ static GENERATOR_FUNCTION(generatePoints)
 static GENERATOR_FUNCTION(generatePointsOnSphere)
 {
     UNUSED(min);
-    auto radius = max / 2.0L;
+    auto radius = (coord_t)max / 2.0L;
     auto res = (Vertex*)malloc(sizeof(Vertex) * pointGenerator.numberOfPoints);
     for(int i = 0; i < pointGenerator.numberOfPoints; i++) 
     {
-        coord_t theta = 2 * (coord_t)M_PI * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0, 1.0);
-        coord_t phi = (coord_t)acos(1 - 2 * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0, 1.0));
+        coord_t theta = 2.0L * (coord_t)M_PI * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0L, 1.0L);
+        coord_t phi = (coord_t)acos(1.0L - 2.0L * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0L, 1.0L));
         coord_t x = (coord_t)sin(phi) * (coord_t)cos(theta) * radius;
         coord_t y = (coord_t)sin(phi) * (coord_t)sin(theta) * radius;
         coord_t z = (coord_t)cos(phi) * radius;
@@ -199,7 +199,7 @@ static GENERATOR_FUNCTION(generatePointsInSphere)
     for(int i = 0; i < pointGenerator.numberOfPoints; i++) 
     {
         coord_t theta = 2 * (coord_t)M_PI * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0, 1.0);
-        coord_t phi = (coord_t)acos(1 - 2 * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0, 1.0));
+        coord_t phi = (coord_t)acos(1.0L - 2.0L * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0, 1.0));
         
         auto r = randomCoord(pointGenerator.d, pointGenerator.gen, min, max);
         coord_t x = r * (coord_t)sin(phi) * (coord_t)cos(theta);
