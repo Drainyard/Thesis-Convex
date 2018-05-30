@@ -41,47 +41,6 @@ static Resolution get_resolution()
     return res;
 }
 
-static Vertex* LoadObj(const char* filePath, float scale = 1.0f)
-{
-    Vertex* vertices = nullptr;
-    auto file = fopen(filePath, "r");
-    if(file)
-    {
-        size_t vCount = 0;
-        char buffer[64];
-        
-        while(fgets(buffer, 64, file))
-        {
-            if(startsWith(buffer, "v"))
-            {
-                vCount++;
-            }
-        }
-        
-        vertices = (Vertex*)calloc(vCount, sizeof(Vertex));
-        
-        rewind(file);
-        
-        int i = 0;
-        
-        while(fgets(buffer, 64, file))
-        {
-            if(startsWith(buffer, "v"))
-            {
-                sscanf(buffer, "v %f %f %f", &vertices[i].position.x, &vertices[i].position.y, &vertices[i].position.z);
-                
-                vertices[i].position = vertices[i].position * scale;
-                vertices[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
-                i++;
-            }
-        }
-        
-        fclose(file);
-    }
-    
-    return vertices;
-}
-
 void MessageCallback(GLenum source,
                      GLenum type,
                      GLuint id,
@@ -497,6 +456,130 @@ static Mesh& InitEmptyMesh(RenderContext& renderContext, int meshIndex = -1)
     }
 }
 
+
+
+static glm::vec3 ComputeFaceNormal(Face f)
+{
+    // Newell's Method
+    // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
+    glm::vec3 normal = glm::vec3(0.0f);
+    
+    for(size_t i = 0; i < f.vertices.size; i++)
+    {
+        auto& current = f.vertices[i].position;
+        auto& next = f.vertices[(i + 1) % 3].position;
+        
+        normal.x = normal.x + (current.y - next.y) * (current.z + next.z);
+        normal.y = normal.y + (current.z - next.z) * (current.x + next.x);
+        normal.z = normal.z + (current.x - next.x) * (current.y + next.y);
+    }
+    
+    return glm::normalize(normal);
+}
+
+static Vertex* LoadObj(const char* filePath, float scale = 1.0f)
+{
+    Vertex* vertices = nullptr;
+    auto file = fopen(filePath, "r");
+    if(file)
+    {
+        size_t vCount = 0;
+        char buffer[64];
+        
+        while(fgets(buffer, 64, file))
+        {
+            if(startsWith(buffer, "v"))
+            {
+                vCount++;
+            }
+        }
+        
+        vertices = (Vertex*)calloc(vCount, sizeof(Vertex));
+        
+        rewind(file);
+        
+        int i = 0;
+        
+        while(fgets(buffer, 64, file))
+        {
+            if(startsWith(buffer, "v"))
+            {
+                sscanf(buffer, "v %f %f %f", &vertices[i].position.x, &vertices[i].position.y, &vertices[i].position.z);
+                
+                vertices[i].position = vertices[i].position * scale;
+                vertices[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
+                i++;
+            }
+        }
+        
+        fclose(file);
+    }
+    
+    return vertices;
+}
+
+
+static Mesh LoadObjWithFaces(RenderContext &renderContext, const char* filePath, float scale = 1.0f)
+{
+    Mesh m = InitEmptyMesh(renderContext);
+    m.dirty = true;
+    
+    Vertex *vertices = nullptr;
+    auto file = fopen(filePath, "r");
+    if(file)
+    {
+        size_t vCount = 0;
+        char buffer[64];
+        
+        while(fgets(buffer, 64, file))
+        {
+            if(startsWith(buffer, "v"))
+            {
+                vCount++;
+            }
+        }
+        
+        vertices = (Vertex*)calloc(vCount, sizeof(Vertex));
+        
+        rewind(file);
+        
+        int i = 0;
+        
+        while(fgets(buffer, 64, file))
+        {
+            if(startsWith(buffer, "v"))
+            {
+                sscanf(buffer, "v %f %f %f", &vertices[i].position.x, &vertices[i].position.y, &vertices[i].position.z);
+                
+                vertices[i].position = vertices[i].position * scale;
+                vertices[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
+                i++;
+            }
+            if(startsWith(buffer, "f"))
+            {
+                Face f = {};
+                
+                int v1 = {};
+                int v2 = {};
+                int v3 = {};
+                
+                sscanf(buffer, "f %d %d %d", &v1, &v2, &v3);
+                addToList(f.vertices, vertices[v1]);
+                addToList(f.vertices, vertices[v1]);
+                addToList(f.vertices, vertices[v1]);
+                
+                f.faceNormal = ComputeFaceNormal(f);
+                f.faceColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+            }
+        }
+        
+        fclose(file);
+    }
+    
+    return m;
+}
+
+
 static void RenderPointCloud(RenderContext& renderContext, Vertex* inputPoints, int numPoints)
 {
     glBindVertexArray(renderContext.pointCloudVAO);
@@ -514,8 +597,7 @@ static void RenderPointCloud(RenderContext& renderContext, Vertex* inputPoints, 
         positions[4 * i + 1] = inputPoints[i].position.y;
         positions[4 * i + 2] = inputPoints[i].position.z;
         positions[4 * i + 3] = 50.0f;
-        //auto c = inputPoints[i].color;
-        auto c = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
+        auto c = inputPoints[i].color;
         colors[4 * i + 0] = c.x;
         colors[4 * i + 1] = c.y;
         colors[4 * i + 2] = c.z;
@@ -557,25 +639,6 @@ static void RenderPointCloud(RenderContext& renderContext, Vertex* inputPoints, 
     glBindVertexArray(0);
     free(positions);
     free(colors);
-}
-
-static glm::vec3 ComputeFaceNormal(Face f)
-{
-    // Newell's Method
-    // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
-    glm::vec3 normal = glm::vec3(0.0f);
-    
-    for(size_t i = 0; i < f.vertices.size; i++)
-    {
-        auto& current = f.vertices[i].position;
-        auto& next = f.vertices[(i + 1) % 3].position;
-        
-        normal.x = normal.x + (current.y - next.y) * (current.z + next.z);
-        normal.y = normal.y + (current.z - next.z) * (current.x + next.x);
-        normal.z = normal.z + (current.x - next.x) * (current.y + next.y);
-    }
-    
-    return glm::normalize(normal);
 }
 
 

@@ -224,12 +224,6 @@ int main()
     ConfigData configData = {};
     loadConfig("../.config", configData);
     
-    //int numberOfPoints = 645932; // Man in vest numbers
-    //int numberOfPoints = 17536; // Arnold
-    //int numberOfPoints = 27948;
-    //int numberOfPoints = 3057;
-    int numberOfPoints = configData.numberOfPoints;
-    
     Hull h;
     h.vertices = nullptr;
     h.numberOfPoints = 0;
@@ -253,6 +247,14 @@ int main()
     //gen.seed(1526208347);
     h.pointGenerator.gen = gen;
     
+    
+    //int numberOfPoints = 645932; // Man in vest numbers
+    //int numberOfPoints = 17536; // Arnold
+    //int numberOfPoints = 27948;
+    //int numberOfPoints = 3057;
+    //int numberOfPoints = configData.numberOfPoints;
+    int numberOfPoints = 2503;
+    
     initPointGenerator(h.pointGenerator, configData.genType, numberOfPoints);
     
     auto vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
@@ -260,6 +262,10 @@ int main()
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
     //auto vertices = LoadObj("../assets/obj/CarpetBit.obj");
     //auto vertices = LoadObj("../assets/obj/globaglwhat.obj");
+    auto bunnyMesh = LoadObjWithFaces(renderContext, "../assets/obj/stanford_bunny.obj", 1500.0f);
+    bunnyMesh.position = glm::vec3(0.0f);
+    bunnyMesh.scale = glm::vec3(1500.0f, 1500.0f, 1500.0f);
+    
     
     InitializeHull(h, vertices, h.pointGenerator.numberOfPoints, hullType);
     
@@ -337,6 +343,8 @@ int main()
             }
             currentMesh = fullHull;
         }
+        
+        RenderMesh(renderContext, bunnyMesh);
         
         if(KeyDown(Key_J))
         {

@@ -17,6 +17,7 @@ def plot_single(path, title, outfile, label, ylabel):
     (
         matplotlib.ticker.FuncFormatter(lambda x, p: format(round(float(x)/1000000.0,2)))
     )
+    ax.legend()
 
     plt.xlabel('Number of vertices')
     plt.ylabel(ylabel)
@@ -38,6 +39,7 @@ def plot_comparison(path, title, outfile, ylabel):
     (
         matplotlib.ticker.FuncFormatter(lambda x, p: format(round(float(x)/1000000.0,2)))
     )
+    ax.legend()
 
     plt.xlabel('Number of vertices')
     plt.ylabel(ylabel)
@@ -124,14 +126,14 @@ def savefig(path):
 
 if __name__ == '__main__':
     basedir = 'c:\\Users\\Niels\\projects\\Thesis-Convex\\data\\'
-    # plot_comparison(path.join(basedir, 'in_sphere_10m.csv'), 'Time for points in a sphere', 'time_qh_inc_in_sphere', 'Time spent')
-    # plot_nlogn(os.path.join(basedir, 'in_sphere_10m.csv'), 'Time for points in a sphere over nlogn', 'time_qh_inc_in_sphere_nlogn', minrange=8)
-    # plot_comparison(os.path.join(basedir, 'on_sphere_100k.csv'), 'Time for points on a sphere', 'time_qh_inc_on_sphere', 'Time spent')
-    # plot_nlogn(os.path.join(basedir, 'on_sphere_100k.csv'), 'Time for points on a sphere over nlogn', 'time_qh_inc_on_sphere_nlogn', [0.0,10.5])
-    # plot_nsquared(os.path.join(basedir, 'on_sphere_100k.csv'), 'Time for points on a sphere over nsquared', 'time_qh_inc_on_sphere_squard', [0.0,0.01], 5)
-    # plot_comparison(os.path.join(basedir, 'in_cube_1_2m.csv'), 'Time for points in a cube', 'time_qh_inc_in_cube', 'Time spent')
-    # plot_comparison(os.path.join(basedir, 'normalized_sphere.csv'), 'Time for points on a normalized sphere', 'time_qh_inc_normalized_sphere', 'Time spent')
-    # plot_nsquared(os.path.join(basedir, 'normalized_sphere.csv'), 'Time for points on a normalized sphere over nsquared', 'time_qh_inc_normalized_squared', [0.0,0.02], 5)
-    # plot_comparison(os.path.join(basedir, 'many_internal.csv'), 'Time for points on a distribution with many internal points', 'time_qh_inc_many_internal', 'Time spent')
-    # plot_single(os.path.join(basedir, 'qh_many_internal.csv'), 'Time for points on a distribution with many internal points', 'time_qh_many_internal', 'QuickHull', 'Time spent')
+    plot_comparison(os.path.join(basedir, 'in_sphere_10m.csv'), 'Time for points in a sphere', 'time_qh_inc_in_sphere', 'Time spent')
+    plot_nlogn(os.path.join(basedir, 'in_sphere_10m.csv'), 'Time for points in a sphere over nlogn', 'time_qh_inc_in_sphere_nlogn', minrange=8)
+    plot_comparison(os.path.join(basedir, 'on_sphere_100k.csv'), 'Time for points on a sphere', 'time_qh_inc_on_sphere', 'Time spent')
+    plot_nlogn(os.path.join(basedir, 'on_sphere_100k.csv'), 'Time for points on a sphere over nlogn', 'time_qh_inc_on_sphere_nlogn', [0.0,10.5])
+    plot_nsquared(os.path.join(basedir, 'on_sphere_100k.csv'), 'Time for points on a sphere over nsquared', 'time_qh_inc_on_sphere_squard', [0.0,0.01], 5)
+    plot_comparison(os.path.join(basedir, 'in_cube_1_2m.csv'), 'Time for points in a cube', 'time_qh_inc_in_cube', 'Time spent')
+    plot_comparison(os.path.join(basedir, 'normalized_sphere.csv'), 'Time for points on a normalized sphere', 'time_qh_inc_normalized_sphere', 'Time spent')
+    plot_nsquared(os.path.join(basedir, 'normalized_sphere.csv'), 'Time for points on a normalized sphere over nsquared', 'time_qh_inc_normalized_squared', [0.0,0.02], 5)
+    plot_comparison(os.path.join(basedir, 'many_internal.csv'), 'Time for points on a distribution with many internal points', 'time_qh_inc_many_internal', 'Time spent')
+    plot_single(os.path.join(basedir, 'qh_many_internal.csv'), 'Time for points on a distribution with many internal points', 'time_qh_many_internal', 'QuickHull', 'Time spent')
     plot_single_nlogn(os.path.join(basedir, 'qh_many_internal.csv'), 'Time for points on a distribution with many internal points', 'time_qh_many_internal', 'QuickHull', [0.0, 0.15], 5)
