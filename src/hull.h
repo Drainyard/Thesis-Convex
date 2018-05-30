@@ -359,6 +359,7 @@ static Mesh &FullHull(RenderContext &renderContext, Hull &h)
             auto timerIndex = startTimer();
             qhFullHull(qhContext);
             TIME_END(timerIndex, "Full quick hull");
+            qhContext.qHull.finished = true;
             
             WriteHullToCSV("qh_hull_out", qhContext.qHull.processingState.addedFaces, (int)qhContext.qHull.faces.size, h.numberOfPoints, qhContext.qHull.processingState.pointsProcessed, qhContext.qHull.processingState.distanceQueryCount,
                            qhContext.qHull.processingState.sidednessQueries, qhContext.qHull.processingState.verticesInHull, qhContext.qHull.processingState.timeSpent, h.pointGenerator.type);

@@ -64,6 +64,7 @@ struct QhHull
         unsigned long long timeSpent;
     } processingState;
     
+    bool finished;
     bool failed;
 };
 
@@ -815,12 +816,15 @@ Mesh& qhConvertToMesh(RenderContext& renderContext, QhHull& qHull, Vertex* verti
         qHull.m->faces.push_back(newFace);
     }
     
-    for(auto &f : qHull.faces)
+    if(qHull.finished)
     {
-        clear(f.vertices);
-        clear(f.outsideSet);
+        for(auto &f : qHull.faces)
+        {
+            clear(f.vertices);
+            clear(f.outsideSet);
+        }
+        clear(qHull.faces);
     }
-    clear(qHull.faces);
     
     return *qHull.m;
 }
@@ -901,10 +905,12 @@ void qhHorizonStep(QhHull& qHull, QhVertex* vertices, QhFace& f, std::vector<int
         {
             auto& neighbour = qHull.faces[fa.neighbours[neighbourIndex].faceHandle];
             
-            auto& newF = qHull.faces[fa.neighbours[neighbourIndex].faceHandle];
-            if(!newF.visitedV && IsPointOnPositiveSide(qHull, neighbour, p, epsilon))
-            {
-                v.push_back(newF.indexInHull);
+            if(fa.neighbours[neighbourIndex].faceHandle <= qHull.faces.size){
+                auto& newF = qHull.faces[fa.neighbours[neighbourIndex].faceHandle];
+                if(!newF.visitedV && IsPointOnPositiveSide(qHull, neighbour, p, epsilon))
+                {
+                    v.push_back(newF.indexInHull);
+                }
             }
         }
     }
@@ -1182,7 +1188,9 @@ void qhStep(QhContext& context)
     {
         case QHIteration::initQH:
         {
-            context.qHull = qhInit(context.vertices, context.numberOfPoints, context.faceStack, &context.epsilon);
+            context.qHull = qhInit(context.vertices, context.numberOfPoints, context.faceStack, &context.epsilon, &context.qHull);
+            if(context.qHull.failed)
+                return;
             context.iter = QHIteration::findNextIter;
         }
         break;
@@ -1191,6 +1199,8 @@ void qhStep(QhContext& context)
             if(context.faceStack.size() > 0)
             {
                 context.currentFace = qhFindNextIteration(context.qHull, context.faceStack);
+                if(context.qHull.failed)
+                    return;
                 if(context.currentFace)
                 {
                     context.iter = QHIteration::findHorizon;
@@ -1203,6 +1213,8 @@ void qhStep(QhContext& context)
             if(context.currentFace)
             {
                 qhHorizonStep(context.qHull, context.vertices, *context.currentFace, context.v, &context.previousIteration, context.epsilon, context.horizon);
+                if(context.qHull.failed)
+                    return;
                 context.iter = QHIteration::doIter;
             }
         }
@@ -1212,6 +1224,8 @@ void qhStep(QhContext& context)
             if(context.currentFace)
             {
                 qhIteration(context.qHull, context.vertices, context.faceStack, context.currentFace->indexInHull, context.v, context.previousIteration, context.epsilon, context.horizon);
+                if(context.qHull.failed)
+                    return;
                 context.iter = QHIteration::findNextIter;
                 context.v.clear();
             }
