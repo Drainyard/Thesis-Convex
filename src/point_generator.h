@@ -169,7 +169,7 @@ static GENERATOR_FUNCTION(generatePoints)
         coord_t z = randomCoord(pointGenerator.d, pointGenerator.gen, min, max);
         
         res[i].position = glm::vec3(x, y, z) - offset;
-        res[i].color = glm::vec4(0.0L, 1.0L, 1.0L, 1.0L);
+        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
     }
     return res;
 }
@@ -177,18 +177,18 @@ static GENERATOR_FUNCTION(generatePoints)
 static GENERATOR_FUNCTION(generatePointsOnSphere)
 {
     UNUSED(min);
-    auto radius = (coord_t)max / 2.0L;
+    auto radius = (coord_t)max / 2.0f;
     auto res = (Vertex*)malloc(sizeof(Vertex) * pointGenerator.numberOfPoints);
     for(int i = 0; i < pointGenerator.numberOfPoints; i++) 
     {
-        coord_t theta = 2.0L * (coord_t)M_PI * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0L, 1.0L);
-        coord_t phi = (coord_t)acos(1.0L - 2.0L * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0L, 1.0L));
+        coord_t theta = 2.0f * (coord_t)M_PI * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0f, 1.0f);
+        coord_t phi = (coord_t)acos(1.0f - 2.0f * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0f, 1.0f));
         coord_t x = (coord_t)sin(phi) * (coord_t)cos(theta) * radius;
         coord_t y = (coord_t)sin(phi) * (coord_t)sin(theta) * radius;
         coord_t z = (coord_t)cos(phi) * radius;
         
         res[i].position = glm::vec3(x, y, z) - offset;
-        res[i].color = glm::vec4(0.0L, 1.0L, 1.0L, 1.0L);
+        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
     }
     return res;
 }
@@ -199,7 +199,7 @@ static GENERATOR_FUNCTION(generatePointsInSphere)
     for(int i = 0; i < pointGenerator.numberOfPoints; i++) 
     {
         coord_t theta = 2 * (coord_t)M_PI * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0, 1.0);
-        coord_t phi = (coord_t)acos(1.0L - 2.0L * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0, 1.0));
+        coord_t phi = (coord_t)acos(1.0f - 2.0f * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0, 1.0));
         
         auto r = randomCoord(pointGenerator.d, pointGenerator.gen, min, max);
         coord_t x = r * (coord_t)sin(phi) * (coord_t)cos(theta);
@@ -207,7 +207,7 @@ static GENERATOR_FUNCTION(generatePointsInSphere)
         coord_t z = r * (coord_t)cos(phi);
         
         res[i].position = glm::vec3(x, y, z) - offset;
-        res[i].color = glm::vec4(0.0L, 1.0L, 1.0L, 1.0L);
+        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
     }
     return res;
 }
@@ -223,9 +223,9 @@ GENERATOR_FUNCTION(generatePointsOnNormalizedSphere)
         
         auto o = glm::vec3((coord_t)offset.x, (coord_t)offset.y, (coord_t)offset.z);
         
-        auto v = glm::normalize(glm::vec3((float)x, (float)y, (float)z) - offset) * (float)max;
+        auto v = glm::normalize(glm::vec3((float)x, (float)y, (float)z)) * (float)max - offset;
         res[i].position = glm::vec3((coord_t)v.x, (coord_t)v.y, (coord_t)v.z);
-        res[i].color = glm::vec4(0.0L, 1.0L, 1.0L, 1.0L);
+        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
     }
     return res;
 }
@@ -236,22 +236,22 @@ GENERATOR_FUNCTION(generatePointsManyInternal)
     
     int pointsOnOutside = 50;
     
-    glm::vec3 total = glm::vec3(0.0L);
+    glm::vec3 total = glm::vec3(0.0f);
     
     for(int i = 0; i < pointGenerator.numberOfPoints- (Min(pointsOnOutside - 1, pointGenerator.numberOfPoints) - 1); i++)
     {
-        coord_t x = randomCoord(pointGenerator.d, pointGenerator.gen, max / 5.0L - min, max / 5.0L);
-        coord_t y = randomCoord(pointGenerator.d, pointGenerator.gen, max / 5.0L - min, max / 5.0L);
-        coord_t z = randomCoord(pointGenerator.d, pointGenerator.gen, max / 5.0L - min, max / 5.0L);
+        coord_t x = randomCoord(pointGenerator.d, pointGenerator.gen, max / 5.0f - min, max / 5.0f);
+        coord_t y = randomCoord(pointGenerator.d, pointGenerator.gen, max / 5.0f - min, max / 5.0f);
+        coord_t z = randomCoord(pointGenerator.d, pointGenerator.gen, max / 5.0f - min, max / 5.0f);
         
         res[i].position = glm::vec3(x, y, z) - offset;
-        res[i].color = glm::vec4(0.0L, 1.0L, 1.0L, 1.0L);
+        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
         total += res[i].position;
     }
     
     total = glm::vec3(total.x / (pointGenerator.numberOfPoints - pointsOnOutside), total.y / (pointGenerator.numberOfPoints - pointsOnOutside), total.z / (pointGenerator.numberOfPoints - pointsOnOutside));
     
-    auto radius = max / 2.0L;
+    auto radius = max / 2.0f;
     for(int i = pointGenerator.numberOfPoints- (Min(pointsOnOutside - 1, pointGenerator.numberOfPoints) - 1); i < pointGenerator.numberOfPoints; i++)
     {
         coord_t theta = 2 * (coord_t)M_PI * randomCoord(pointGenerator.d, pointGenerator.gen, 0.0, 1.0);
@@ -261,7 +261,7 @@ GENERATOR_FUNCTION(generatePointsManyInternal)
         coord_t z = (coord_t)cos(phi) * radius;
         
         res[i].position = glm::vec3(x, y, z) + total - offset;
-        res[i].color = glm::vec4(0.0L, 1.0L, 1.0L, 1.0L);
+        res[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
     }
     
     return res;

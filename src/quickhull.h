@@ -957,7 +957,6 @@ void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack,
                 otherFace = qHull.faces[(newF->indexInHull + 8) % qHull.faces.size];
             }
             
-            
             if(IsPointOnPositiveSide(qHull, *newF, otherFace.centerPoint, epsilon))
             {
                 auto t = newF->vertices[0];
@@ -970,7 +969,28 @@ void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack,
         }
     }
     
-    for(const auto& handle : v)
+    
+    std::vector<int> uniqueInV;
+    uniqueInV.reserve(v.size());
+    for(size_t i = 0; i < v.size(); i++)
+    {
+        bool alreadyAdded = false;
+        for(size_t j = 0; j < uniqueInV.size(); j++)
+        {
+            if(uniqueInV[j] == v[i])
+            {
+                alreadyAdded = true;
+                break;
+            }
+        }
+        
+        if(!alreadyAdded)
+        {
+            uniqueInV.push_back(v[i]);
+        }
+    }
+
+    for(const auto& handle : uniqueInV)
     {
         auto &fInV = qHull.faces[handle];
         
@@ -981,7 +1001,8 @@ void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack,
             q.assigned = false;
         }
     }
-    
+
+
     // The way we understand this, is that unassigned now means any point that was
     // assigned in the first round, but is part of a face that is about to be
     // removed. Thus about to be unassigned.
@@ -994,7 +1015,7 @@ void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack,
         int currentDistIndex = 0;
         auto& newFace = qHull.faces[newFaceIndex];
         
-        for(const auto& handle : v)
+        for(const auto& handle : uniqueInV)
         {
             auto& fInV = qHull.faces[handle];
             for(size_t osIndex = 0; osIndex < fInV.outsideSet.size; osIndex++)
@@ -1014,26 +1035,6 @@ void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack,
                     qhAddToOutsideSet(newFace, q);
                 }
             }
-        }
-    }
-    
-    std::vector<int> uniqueInV;
-    uniqueInV.reserve(v.size());
-    for(size_t i = 0; i < v.size(); i++)
-    {
-        bool alreadyAdded = false;
-        for(size_t j = 0; j < uniqueInV.size(); j++)
-        {
-            if(uniqueInV[j] == v[i])
-            {
-                alreadyAdded = true;
-                break;
-            }
-        }
-        
-        if(!alreadyAdded)
-        {
-            uniqueInV.push_back(v[i]);
         }
     }
     

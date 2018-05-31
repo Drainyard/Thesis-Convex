@@ -47,7 +47,7 @@ struct DacContext
 };
 
 //no need for such a big inf
-const coord_t INF = 1e20;
+const coord_t INF = 1e20f;
 static DacVertex nil = {glm::vec3(INF, INF, INF), 0, nullptr, nullptr};
 DacVertex *NIL = &nil;
 

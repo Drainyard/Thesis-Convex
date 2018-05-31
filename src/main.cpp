@@ -197,14 +197,15 @@ int main()
     renderContext.up = glm::vec3(0.0f, 1.0f, 0.0f);
     renderContext.nearPlane = 0.1f;
     renderContext.farPlane =  10000.0f;
-    renderContext.originOffset = glm::vec3(5.0L, 0.0L, 5.0L);
+    renderContext.originOffset = glm::vec3(5.0f, 0.0f, 5.0f);
     renderContext.renderPoints = false;
     renderContext.renderNormals = false;
     renderContext.renderOutsideSets = false;
     
     InitializeOpenGL(renderContext);
     
-    glClearColor(41.0f / 255.0f, 54.0f / 255.0f, 69.0f / 255.0f, 1.0f);
+    //glClearColor(41.0f / 255.0f, 54.0f / 255.0f, 69.0f / 255.0f, 1.0f);
+    glClearColor(0.15f, 0.15f, 0.2f, 1.0f);
     
     printf("Sizeof: %zd\n", sizeof(coord_t));
     
@@ -249,23 +250,22 @@ int main()
     
     
     //int numberOfPoints = 645932; // Man in vest numbers
-    //int numberOfPoints = 17536; // Arnold
+    int numberOfPoints = 17536; // Arnold
     //int numberOfPoints = 27948;
     //int numberOfPoints = 3057;
     //int numberOfPoints = configData.numberOfPoints;
-    int numberOfPoints = 2503;
+    //int numberOfPoints = 2503;
     
     initPointGenerator(h.pointGenerator, configData.genType, numberOfPoints);
     
-    auto vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
-    //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ", 200.0f);
+    //auto vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
+    auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ", 200.0f);
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
     //auto vertices = LoadObj("../assets/obj/CarpetBit.obj");
     //auto vertices = LoadObj("../assets/obj/globaglwhat.obj");
     auto bunnyMesh = LoadObjWithFaces(renderContext, "../assets/obj/stanford_bunny.obj", 1500.0f);
     bunnyMesh.position = glm::vec3(0.0f);
     bunnyMesh.scale = glm::vec3(1500.0f, 1500.0f, 1500.0f);
-    
     
     InitializeHull(h, vertices, h.pointGenerator.numberOfPoints, hullType);
     

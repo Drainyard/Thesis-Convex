@@ -324,6 +324,7 @@ static void RunFullHullTestInc(TestSet &testSet, glm::vec3 offset)
                 continue;
             }
             
+            printf("Processed: %d\n", incContext.processingState.processedVertices);
             addedFaces += incContext.processingState.createdFaces;
             pointsProcessed +=  incContext.processingState.processedVertices;
             sidednessQueries +=  incContext.processingState.sidednessQueries;

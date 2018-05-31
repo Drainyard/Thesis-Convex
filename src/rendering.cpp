@@ -397,7 +397,8 @@ static GLfloat* BuildVertexBuffer(Face* faces, size_t numFaces, size_t *vertexCo
     
     for(size_t i = 0; i < numFaces; i++)
     {
-        auto currentColor = faces[i].faceColor;
+        //auto currentColor = faces[i].faceColor;
+        auto currentColor = glm::vec4(1.0f, 0.5f, 0.0f, 1.0f);
         
         for(size_t j = 0; j < faces[i].vertices.size; j++)
         {
@@ -428,7 +429,6 @@ static Mesh& InitEmptyMesh(RenderContext& renderContext, int meshIndex = -1)
     if(meshIndex != -1)
     {
         auto& m = renderContext.meshes[meshIndex];
-        //free(m.faces);
         m.dirty = true;
         return m;
     }
@@ -445,7 +445,7 @@ static Mesh& InitEmptyMesh(RenderContext& renderContext, int meshIndex = -1)
         mat.specularColor = glm::vec3(1.0f);
         mat.alpha = 1.0f;
         mat.type = MT_color;
-        mat.diffuse.color = glm::vec3(0.0f, 1.0f, 1.0f);
+        mat.diffuse.color = glm::vec3(1.0f, 1.0f, 1.0f);
         mat.materialShader = renderContext.colorShader;
         
         object.dirty = true;

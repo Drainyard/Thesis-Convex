@@ -34,7 +34,7 @@ inline bool startsWith(const char *a, const char *b)
     return 0;
 }
 
-using coord_t = long double;
+using coord_t = float;
 
 static float randomFloat(std::uniform_real_distribution<coord_t>& d, std::mt19937& gen, float start, float end)
 {
