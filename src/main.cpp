@@ -250,22 +250,27 @@ int main()
     
     
     //int numberOfPoints = 645932; // Man in vest numbers
-    int numberOfPoints = 17536; // Arnold
+    //int numberOfPoints = 17536; // Arnold
     //int numberOfPoints = 27948;
     //int numberOfPoints = 3057;
     //int numberOfPoints = configData.numberOfPoints;
     //int numberOfPoints = 2503;
+    int numberOfPoints;
+    
+    Mesh bunnyMesh = {};
+    auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/stanford_bunny.obj", bunnyMesh, &numberOfPoints, 750.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
+    bunnyMesh.position = glm::vec3(0.0f);
+    bunnyMesh.scale = glm::vec3(globalScale);
+    
     
     initPointGenerator(h.pointGenerator, configData.genType, numberOfPoints);
     
+    
     //auto vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
-    auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ", 200.0f);
+    //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ", 200.0f);
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
     //auto vertices = LoadObj("../assets/obj/CarpetBit.obj");
     //auto vertices = LoadObj("../assets/obj/globaglwhat.obj");
-    auto bunnyMesh = LoadObjWithFaces(renderContext, "../assets/obj/stanford_bunny.obj", 1500.0f);
-    bunnyMesh.position = glm::vec3(0.0f);
-    bunnyMesh.scale = glm::vec3(1500.0f, 1500.0f, 1500.0f);
     
     InitializeHull(h, vertices, h.pointGenerator.numberOfPoints, hullType);
     

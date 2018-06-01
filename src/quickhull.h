@@ -299,7 +299,7 @@ static QhFace* qhAddFace(QhHull& q, List<int> &vertexHandles, QhVertex* vertices
     
     newFace.faceNormal = ComputeFaceNormal(newFace, vertices);
     
-    newFace.faceColor = glm::vec4(0.0f, 1.0f, 1.0f, 0.7f);
+    newFace.faceColor = glm::vec4(1.0f, 0.5f, 0.0f, 1.0f);
     newFace.faceColor.w = 0.5f;
     
     addToList(q.faces, newFace);
@@ -989,7 +989,7 @@ void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack,
             uniqueInV.push_back(v[i]);
         }
     }
-
+    
     for(const auto& handle : uniqueInV)
     {
         auto &fInV = qHull.faces[handle];
@@ -1001,8 +1001,8 @@ void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack,
             q.assigned = false;
         }
     }
-
-
+    
+    
     // The way we understand this, is that unassigned now means any point that was
     // assigned in the first round, but is part of a face that is about to be
     // removed. Thus about to be unassigned.

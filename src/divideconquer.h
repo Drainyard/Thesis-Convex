@@ -367,7 +367,7 @@ Mesh &dacConvertToMesh(DacContext &context, RenderContext &renderContext)
             newVertex.vertexIndex = f->vertex[i]->vIndex;
             addToList(newFace.vertices, newVertex);
         }
-        newFace.faceColor = glm::vec4(0.0f, 1.0f, 1.0f, 0.7f);
+        newFace.faceColor = glm::vec4(1.0f, 0.5f, 0.0f, 1.0f);
         newFace.faceColor.w = 0.5f;
         newFace.faceNormal = f->normal;
         newFace.centerPoint = f->centerPoint;

@@ -397,8 +397,7 @@ static GLfloat* BuildVertexBuffer(Face* faces, size_t numFaces, size_t *vertexCo
     
     for(size_t i = 0; i < numFaces; i++)
     {
-        //auto currentColor = faces[i].faceColor;
-        auto currentColor = glm::vec4(1.0f, 0.5f, 0.0f, 1.0f);
+        auto currentColor = faces[i].faceColor;
         
         for(size_t j = 0; j < faces[i].vertices.size; j++)
         {
@@ -519,9 +518,9 @@ static Vertex* LoadObj(const char* filePath, float scale = 1.0f)
 }
 
 
-static Mesh LoadObjWithFaces(RenderContext &renderContext, const char* filePath, float scale = 1.0f)
+static Vertex* LoadObjWithFaces(RenderContext &renderContext, const char* filePath, Mesh &m, int *numberOfPoints, float scale = 1.0f, glm::vec4 color = glm::vec4(1.0f, 0.5f, 0.0f, 1.0f))
 {
-    Mesh m = InitEmptyMesh(renderContext);
+    m = InitEmptyMesh(renderContext);
     m.dirty = true;
     
     Vertex *vertices = nullptr;
@@ -539,6 +538,7 @@ static Mesh LoadObjWithFaces(RenderContext &renderContext, const char* filePath,
             }
         }
         
+        *numberOfPoints = vCount;
         vertices = (Vertex*)calloc(vCount, sizeof(Vertex));
         
         rewind(file);
@@ -564,19 +564,20 @@ static Mesh LoadObjWithFaces(RenderContext &renderContext, const char* filePath,
                 int v3 = {};
                 
                 sscanf(buffer, "f %d %d %d", &v1, &v2, &v3);
-                addToList(f.vertices, vertices[v1]);
-                addToList(f.vertices, vertices[v1]);
-                addToList(f.vertices, vertices[v1]);
+                addToList(f.vertices, vertices[v1 - 1]);
+                addToList(f.vertices, vertices[v2 - 1]);
+                addToList(f.vertices, vertices[v3 - 1]);
                 
                 f.faceNormal = ComputeFaceNormal(f);
-                f.faceColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+                f.faceColor = color;
+                
+                m.faces.push_back(f);
             }
         }
         
         fclose(file);
     }
-    
-    return m;
+    return vertices;
 }
 
 
