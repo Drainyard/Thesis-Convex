@@ -248,7 +248,6 @@ int main()
     //gen.seed(1526208347);
     h.pointGenerator.gen = gen;
     
-    
     //int numberOfPoints = 645932; // Man in vest numbers
     //int numberOfPoints = 17536; // Arnold
     //int numberOfPoints = 27948;
@@ -258,7 +257,8 @@ int main()
     int numberOfPoints;
     
     Mesh bunnyMesh = {};
-    auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/stanford_bunny.obj", bunnyMesh, &numberOfPoints, 750.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
+    //auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/MidPoly/001_MidPoly.OBJ", bunnyMesh, &numberOfPoints, 1.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
+    auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/LowPoly/001_LowPoly.OBJ", bunnyMesh, &numberOfPoints, 1.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
     bunnyMesh.position = glm::vec3(0.0f);
     bunnyMesh.scale = glm::vec3(globalScale);
     
@@ -326,6 +326,12 @@ int main()
             {
                 RunFullHullTestInc(configData.incTestSets[i], renderContext.originOffset);
             }
+            
+            for(size_t i = 0; i < configData.dacTestSets.size; i++)
+            {
+                RunFullHullTestDac(configData.dacTestSets[i], renderContext.originOffset);
+            }
+            
         }
         
         if(KeyDown(Key_Y))

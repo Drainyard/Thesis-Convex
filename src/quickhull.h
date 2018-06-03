@@ -299,7 +299,7 @@ static QhFace* qhAddFace(QhHull& q, List<int> &vertexHandles, QhVertex* vertices
     
     newFace.faceNormal = ComputeFaceNormal(newFace, vertices);
     
-    newFace.faceColor = glm::vec4(1.0f, 0.5f, 0.0f, 1.0f);
+    newFace.faceColor = rgb(0, 255, 55);
     newFace.faceColor.w = 0.5f;
     
     addToList(q.faces, newFace);

@@ -44,6 +44,16 @@ struct DacContext
     std::vector<DacFace *> faces;
     Mesh *m;
     DacVertex *upperP;
+    
+    struct
+    {
+        int createdFaces;
+        int processedVertices;
+        unsigned long long sidednessQueries;
+        int facesOnHull;
+        int verticesOnHull;
+        unsigned long long timeSpent;
+    } processingState;
 };
 
 //no need for such a big inf
@@ -367,7 +377,7 @@ Mesh &dacConvertToMesh(DacContext &context, RenderContext &renderContext)
             newVertex.vertexIndex = f->vertex[i]->vIndex;
             addToList(newFace.vertices, newVertex);
         }
-        newFace.faceColor = glm::vec4(1.0f, 0.5f, 0.0f, 1.0f);
+        newFace.faceColor = rgb(251, 255, 135);
         newFace.faceColor.w = 0.5f;
         newFace.faceNormal = f->normal;
         newFace.centerPoint = f->centerPoint;
@@ -459,6 +469,10 @@ void dacInitializeContext(DacContext &dacContext, Vertex *vertices, int numberOf
     }
     dacContext.numberOfPoints = numberOfPoints;
     dacContext.initialized = true;
+    nil.vector = glm::vec3(INF, INF, INF); 
+    nil.vIndex = 0; 
+    nil.next = nullptr; 
+    nil.prev = nullptr;
     dacCopyVertices(dacContext, vertices, numberOfPoints);
 }
 

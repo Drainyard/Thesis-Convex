@@ -114,8 +114,8 @@ static void InitializeHull(Hull &h, Vertex *vertices, int numberOfPoints, HullTy
     h.incContext.initialized = false;
     h.incContext = {};
     
-    //h.dacContext.initialized = false;
-    //h.dacContext = {};
+    h.dacContext.initialized = false;
+    h.dacContext = {};
     
     h.currentHullType = hullType;
 }
@@ -128,6 +128,7 @@ static void reinitializeHull(Hull &h, Vertex *vertices, int numberOfPoints)
     h.qhContext.initialized = false;
     h.stepQhContext.initialized = false;
     h.timedStepQhContext.initialized = false;
+    h.dacContext.initialized = false;
     
     h.incContext.initialized = false;
 }
@@ -324,7 +325,6 @@ static void RunFullHullTestInc(TestSet &testSet, glm::vec3 offset)
                 continue;
             }
             
-            printf("Processed: %d\n", incContext.processingState.processedVertices);
             addedFaces += incContext.processingState.createdFaces;
             pointsProcessed +=  incContext.processingState.processedVertices;
             sidednessQueries +=  incContext.processingState.sidednessQueries;
@@ -335,6 +335,7 @@ static void RunFullHullTestInc(TestSet &testSet, glm::vec3 offset)
         
         WriteHullToCSV("../data/inc_hull_out", addedFaces / numForAvg, numFaces / numForAvg, n, pointsProcessed / numForAvg, 0, sidednessQueries / numForAvg,  verticesOnHull / numForAvg, timeSpent / numForAvg, genType);
         
+
         addedFaces = 0;
         numFaces = 0;
         pointsProcessed = 0;
@@ -343,6 +344,71 @@ static void RunFullHullTestInc(TestSet &testSet, glm::vec3 offset)
         timeSpent = 0;
     }
     log_a("Done inc\n");
+}
+
+static void RunFullHullTestDac(TestSet &testSet, glm::vec3 offset)
+{
+    auto vertexAmounts = testSet.testSet;
+    auto genType = testSet.genType;
+    
+    Vertex *vertices = nullptr;
+    
+    auto seed = time(NULL);
+    PointGenerator generator;
+    std::random_device rd{};
+    std::mt19937 gen{rd()};
+    gen.seed((unsigned int)seed);
+    generator.gen = gen;
+    
+    DacContext dacContext = {};
+    
+    log_a("Count: %zd\n", testSet.count);
+    for(size_t i = 0; i < testSet.count; i++)
+    {
+        int addedFaces = 0;
+        int numFaces = 0;
+        int pointsProcessed = 0;
+        unsigned long long sidednessQueries = 0;
+        int verticesOnHull = 0;
+        unsigned long long timeSpent = 0;
+        
+        int numForAvg = Max(1, testSet.iterations);
+        auto n = vertexAmounts[i];
+        
+        log_a("Num: %d\n", n);
+        initPointGenerator(generator, genType, n);
+        
+        for (int j = 0; j < numForAvg; j++)
+        {
+            log_a("%d \n", j);
+            
+            vertices = generate(generator, 0.0f, 5000.0f, offset);
+            
+            dacInitializeContext(dacContext, vertices, n);
+            auto timerIndex = startTimer();
+            dacConstructFullHull(dacContext);
+            dacContext.processingState.timeSpent = endTimer(timerIndex);
+            
+            dacContext.initialized = false;
+            
+            addedFaces += dacContext.processingState.createdFaces;
+            pointsProcessed +=  dacContext.processingState.processedVertices;
+            sidednessQueries +=  dacContext.processingState.sidednessQueries;
+            verticesOnHull +=  dacContext.processingState.verticesOnHull;
+            numFaces += dacContext.processingState.facesOnHull;
+            timeSpent +=  dacContext.processingState.timeSpent;
+        }
+        
+        WriteHullToCSV("../data/dac_hull_out", addedFaces / numForAvg, numFaces / numForAvg, n, pointsProcessed / numForAvg, 0, sidednessQueries / numForAvg,  verticesOnHull / numForAvg, timeSpent / numForAvg, genType);
+        
+        addedFaces = 0;
+        numFaces = 0;
+        pointsProcessed = 0;
+        sidednessQueries = 0;
+        verticesOnHull = 0;
+        timeSpent = 0;
+    }
+    log_a("Done dac\n");
 }
 
 static Mesh &FullHull(RenderContext &renderContext, Hull &h)

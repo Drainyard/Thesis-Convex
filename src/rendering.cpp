@@ -487,7 +487,7 @@ static Vertex* LoadObj(const char* filePath, float scale = 1.0f)
         
         while(fgets(buffer, 64, file))
         {
-            if(startsWith(buffer, "v"))
+            if(startsWith(buffer, "v") && !startsWith(buffer, "vt"))
             {
                 vCount++;
             }
@@ -501,7 +501,7 @@ static Vertex* LoadObj(const char* filePath, float scale = 1.0f)
         
         while(fgets(buffer, 64, file))
         {
-            if(startsWith(buffer, "v"))
+            if(startsWith(buffer, "v") && !startsWith(buffer, "vt"))
             {
                 sscanf(buffer, "v %f %f %f", &vertices[i].position.x, &vertices[i].position.y, &vertices[i].position.z);
                 
@@ -532,7 +532,7 @@ static Vertex* LoadObjWithFaces(RenderContext &renderContext, const char* filePa
         
         while(fgets(buffer, 64, file))
         {
-            if(startsWith(buffer, "v"))
+            if(startsWith(buffer, "v") && !startsWith(buffer, "vt"))
             {
                 vCount++;
             }
@@ -545,9 +545,11 @@ static Vertex* LoadObjWithFaces(RenderContext &renderContext, const char* filePa
         
         int i = 0;
         
+        bool tangents = false;
+        
         while(fgets(buffer, 64, file))
         {
-            if(startsWith(buffer, "v"))
+            if(startsWith(buffer, "v") && !startsWith(buffer, "vt"))
             {
                 sscanf(buffer, "v %f %f %f", &vertices[i].position.x, &vertices[i].position.y, &vertices[i].position.z);
                 
@@ -555,7 +557,11 @@ static Vertex* LoadObjWithFaces(RenderContext &renderContext, const char* filePa
                 vertices[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
                 i++;
             }
-            if(startsWith(buffer, "f"))
+            else if(startsWith(buffer, "vt"))
+            {
+                tangents = true;
+            }
+            else if(startsWith(buffer, "f "))
             {
                 Face f = {};
                 
@@ -563,7 +569,30 @@ static Vertex* LoadObjWithFaces(RenderContext &renderContext, const char* filePa
                 int v2 = {};
                 int v3 = {};
                 
-                sscanf(buffer, "f %d %d %d", &v1, &v2, &v3);
+                int t1 = {};
+                int t2 = {};
+                int t3 = {};
+                
+                
+                auto bufIndex = 0;
+                auto numVertices = 0;
+                while(buffer[bufIndex] != '\n')
+                {
+                    if(buffer[bufIndex] == ' ')
+                    {
+                        numVertices++;
+                    }
+                    bufIndex++;
+                }
+                
+                if(tangents)
+                {
+                    sscanf(buffer, "f %d/%d %d/%d %d/%d", &v1, &t1, &v2, &t2, &v3, &t3);
+                }
+                else
+                {
+                    sscanf(buffer, "f %d %d %d", &v1, &v2, &v3);
+                }
                 addToList(f.vertices, vertices[v1 - 1]);
                 addToList(f.vertices, vertices[v2 - 1]);
                 addToList(f.vertices, vertices[v3 - 1]);

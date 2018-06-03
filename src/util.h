@@ -28,6 +28,11 @@
 #define Max(A,B) ((A > B) ? (A) : (B))
 #define Abs(x) ((x) < 0 ? -(x) : (x))
 
+glm::vec4 rgb(float r, float g, float b)
+{
+    return glm::vec4(r / 255.0f, g / 255.0f, b / 255.0f, 1.0f);
+}
+
 inline bool startsWith(const char *a, const char *b)
 {
     if(strncmp(a, b, strlen(b)) == 0) return 1;

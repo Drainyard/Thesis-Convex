@@ -642,7 +642,7 @@ Mesh &incConvertToMesh(IncContext &context, RenderContext &renderContext)
                 newVertex.vertexIndex = f->vertex[i]->vIndex;
                 addToList(newFace.vertices, newVertex);
             }
-            newFace.faceColor = glm::vec4(1.0f, 0.5f, 0.0f, 1.0f);
+            newFace.faceColor = rgb(163, 71, 255);
             newFace.faceColor.w = 0.5f;
             newFace.faceNormal = f->normal;
             newFace.centerPoint = f->centerPoint;
@@ -696,7 +696,6 @@ void incConstructFullHull(IncContext &incContext)
         nextVertex = v->next;
         if (!v->isProcessed)
         {
-            auto idx = startTimer();
             std::pair<std::vector<IncFace *>, std::vector<IncEdge *>> cleaningBundle = incAddToHull(v, incContext);
             if (incContext.failed)
             {
