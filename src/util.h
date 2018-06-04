@@ -23,7 +23,6 @@
 
 #define UNUSED(var) (void)var
 
-
 #define Min(A,B) ((A < B) ? (A) : (B))
 #define Max(A,B) ((A > B) ? (A) : (B))
 #define Abs(x) ((x) < 0 ? -(x) : (x))
@@ -39,7 +38,7 @@ inline bool startsWith(const char *a, const char *b)
     return 0;
 }
 
-using coord_t = float;
+using coord_t = double;
 
 static float randomFloat(std::uniform_real_distribution<coord_t>& d, std::mt19937& gen, float start, float end)
 {

@@ -106,14 +106,14 @@ coord_t DistancePointToFace(QhHull &q, QhFace f, QhVertex v)
     return glm::abs((glm::dot(f.faceNormal, v.position) - glm::dot(f.faceNormal, f.centerPoint))); 
 }
 
-static bool IsPointOnPositiveSide(QhHull &q, QhFace f, QhVertex v, coord_t epsilon = 0.0f)
+static bool IsPointOnPositiveSide(QhHull &q, QhFace f, QhVertex v, coord_t epsilon = 0.0)
 {
     q.processingState.sidednessQueries++;
     auto d = glm::dot(f.faceNormal, v.position - f.centerPoint);
     return d > epsilon;
 }
 
-static bool IsPointOnPositiveSide(QhHull &q, QhFace f, glm::vec3 v, coord_t epsilon = 0.0f)
+static bool IsPointOnPositiveSide(QhHull &q, QhFace f, glm::vec3 v, coord_t epsilon = 0.0)
 {
     q.processingState.sidednessQueries++;
     auto d = glm::dot(f.faceNormal, v - f.centerPoint);
@@ -222,7 +222,7 @@ static glm::vec3 ComputeFaceNormal(QhFace f, QhVertex* vertices)
 {
     // Newell's Method
     // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
-    glm::vec3 normal = glm::vec3(0.0f);
+    glm::vec3 normal = glm::vec3(0.0);
     
     for(size_t i = 0; i < f.vertices.size; i++)
     {
@@ -421,7 +421,7 @@ coord_t SquareDistancePointToSegment(glm::vec3 a, glm::vec3 b, glm::vec3 c)
     
     coord_t e = glm::dot(ac, ab);
     
-    if(e <= 0.0f) return glm::dot(ac, ac);
+    if(e <= 0.0) return glm::dot(ac, ac);
     coord_t f = glm::dot(ab, ab);
     if( e >= f) return glm::dot(bc, bc);
     
@@ -491,7 +491,7 @@ coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
     auto extremePoints = qhFindExtremePoints(vertices, numVertices);
     
     vertex_pair mostDistantPair = {};
-    auto dist = 0.0f;
+    auto dist = 0.0;
     auto mostDist1 = -1;
     auto mostDist2 = -1;
     
@@ -530,9 +530,9 @@ coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
         }
     }
     
-    coord_t maxX = 0.0f;
-    coord_t maxY = 0.0f;
-    coord_t maxZ = 0.0f;
+    coord_t maxX = 0.0;
+    coord_t maxY = 0.0;
+    coord_t maxZ = 0.0;
     
     for(int i = 0; i < numVertices; i++)
     {
@@ -789,7 +789,7 @@ Mesh& qhConvertToMesh(RenderContext& renderContext, QhHull& qHull, Vertex* verti
         qHull.m = &InitEmptyMesh(renderContext);
     }
     
-    qHull.m->position = glm::vec3(0.0f);
+    qHull.m->position = glm::vec3(0.0);
     qHull.m->scale = glm::vec3(globalScale);
     qHull.m->dirty = true;
     
@@ -921,7 +921,7 @@ void qhHorizonStep(QhHull& qHull, QhVertex* vertices, QhFace& f, std::vector<int
     qhFindConvexHorizon(p, v, qHull, horizon, epsilon);
 }
 
-bool qhCheckEdgeConvex(QhHull &hull, QhFace leftFace, QhFace rightFace, coord_t epsilon = 0.0f)
+bool qhCheckEdgeConvex(QhHull &hull, QhFace leftFace, QhFace rightFace, coord_t epsilon = 0.0)
 {
     auto leftBelow = !IsPointOnPositiveSide(hull, leftFace, rightFace.centerPoint, epsilon);
     auto rightBelow = !IsPointOnPositiveSide(hull, rightFace, leftFace.centerPoint, epsilon);
@@ -1175,7 +1175,7 @@ void qhInitializeContext(QhContext& qhContext, Vertex* vertices, int numberOfPoi
     
     qhCopyVertices(qhContext, vertices, numberOfPoints);
     qhContext.numberOfPoints = numberOfPoints;
-    qhContext.epsilon = 0.0f;
+    qhContext.epsilon = 0.0;
     qhContext.iter = QHIteration::initQH;
     qhContext.currentFace = nullptr;
     qhContext.previousIteration = 0;

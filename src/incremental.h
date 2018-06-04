@@ -209,7 +209,7 @@ glm::vec3 incComputeFaceNormal(IncFace *f)
 {
     // Newell's Method
     // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
-    glm::vec3 normal = glm::vec3(0.0f);
+    glm::vec3 normal = glm::vec3(0.0);
     
     for (int i = 0; i < 3; i++)
     {
@@ -224,14 +224,14 @@ glm::vec3 incComputeFaceNormal(IncFace *f)
     return glm::normalize(normal);
 }
 
-static bool incIsPointOnPositiveSide(IncFace *f, IncVertex *v, coord_t epsilon = 0.0f)
+static bool incIsPointOnPositiveSide(IncFace *f, IncVertex *v, coord_t epsilon = 0.0)
 {
     incSidednessQueries++;
     auto d = glm::dot(f->normal, v->vector - f->centerPoint);
     return d > epsilon;
 }
 
-static bool incIsPointCoplanar(IncFace *f, IncVertex *v, coord_t epsilon = 0.0f)
+static bool incIsPointCoplanar(IncFace *f, IncVertex *v, coord_t epsilon = 0.0)
 {
     auto d = glm::dot(f->normal, v->vector - f->centerPoint);
     return d >= -epsilon && d <= epsilon;
@@ -268,7 +268,8 @@ IncFace *incMakeFace(IncVertex *v0, IncVertex *v1, IncVertex *v2, IncFace *face)
     f->vertex[0] = v0;
     f->vertex[1] = v1;
     f->vertex[2] = v2;
-    f->centerPoint = (f->vertex[0]->vector + f->vertex[1]->vector + f->vertex[2]->vector) / 3.0f;
+    auto v = (f->vertex[0]->vector + f->vertex[1]->vector + f->vertex[2]->vector);
+    f->centerPoint = glm::vec3(v.x / 3.0, v.y / 3.0, v.z / 3.0);
     
     e0->adjFace[0] = e1->adjFace[0] = e2->adjFace[0] = f;
     
@@ -467,7 +468,8 @@ IncFace *incMakeConeFace(IncEdge *e, IncVertex *v)
     newFace->edge[1] = newEdge1;
     newFace->edge[2] = newEdge2;
     incEnforceCounterClockWise(newFace, e, v);
-    newFace->centerPoint = (newFace->vertex[0]->vector + newFace->vertex[1]->vector + newFace->vertex[2]->vector) / 3.0f;
+    auto c = newFace->vertex[0]->vector + newFace->vertex[1]->vector + newFace->vertex[2]->vector;
+    newFace->centerPoint = glm::vec3((coord_t)c.x / 3.0, (coord_t)c.y / 3.0, (coord_t)c.z / 3.0);
     newFace->normal = incComputeFaceNormal(newFace);
     
     if (!newEdge1->adjFace[0])
@@ -625,7 +627,7 @@ Mesh &incConvertToMesh(IncContext &context, RenderContext &renderContext)
     }
     
     context.m->faces.clear();
-    context.m->position = glm::vec3(0.0f);
+    context.m->position = glm::vec3(0.0);
     context.m->scale = glm::vec3(globalScale);
     context.m->dirty = true;
     

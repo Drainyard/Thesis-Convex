@@ -565,38 +565,37 @@ static Vertex* LoadObjWithFaces(RenderContext &renderContext, const char* filePa
             {
                 Face f = {};
                 
-                int v1 = {};
-                int v2 = {};
-                int v3 = {};
-                
-                int t1 = {};
-                int t2 = {};
-                int t3 = {};
-                
-                
-                auto bufIndex = 0;
-                auto numVertices = 0;
-                while(buffer[bufIndex] != '\n')
-                {
-                    if(buffer[bufIndex] == ' ')
-                    {
-                        numVertices++;
-                    }
-                    bufIndex++;
-                }
-                
+                char *r = (char*)malloc(strlen(buffer));
+                char *str = r;
+                strcpy(str, buffer);
                 if(tangents)
                 {
-                    sscanf(buffer, "f %d/%d %d/%d %d/%d", &v1, &t1, &v2, &t2, &v3, &t3);
+                    char *tok = strtok(str, " ");
+                    int v, t;
+                    while ((tok = strtok(nullptr, " ")) != nullptr)
+                    {
+                        if(!startsWith(tok, "f") && !startsWith(tok, "\n"))
+                        {
+                            sscanf(tok, "%d/%d", &v, &t);
+                            addToList(f.vertices, vertices[v - 1]);
+                        }
+                    }
                 }
                 else
                 {
-                    sscanf(buffer, "f %d %d %d", &v1, &v2, &v3);
+                    char *tok = strtok(str, " ");
+                    int v;
+                    while ((tok = strtok(nullptr, " ")) != nullptr)
+                    {
+                        if(!startsWith(tok, "f") && !startsWith(tok, "\n"))
+                        {
+                            sscanf(tok, "%d", &v);
+                            addToList(f.vertices, vertices[v - 1]);
+                        }
+                    }
                 }
-                addToList(f.vertices, vertices[v1 - 1]);
-                addToList(f.vertices, vertices[v2 - 1]);
-                addToList(f.vertices, vertices[v3 - 1]);
-                
+
+                free(r);
                 f.faceNormal = ComputeFaceNormal(f);
                 f.faceColor = color;
                 

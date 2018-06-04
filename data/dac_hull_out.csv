@@ -85,3 +85,18 @@ input vertices, faces added, faces in hull, points processed, distance queries, 
 8000,0,0,0,0,0,0,13323, Many internal, some on sphere
 9000,0,0,0,0,0,0,14294, Many internal, some on sphere
 10000,0,0,0,0,0,0,10882, Many internal, some on sphere
+10, 290, 124, 0, 0, 0, 0, 18, In Sphere
+100, 6020, 725, 0, 0, 0, 0, 132, In Sphere
+1000, 73363, 2826, 0, 0, 0, 0, 1489, In Sphere
+1500, 226234, 6366, 0, 0, 0, 0, 1802, In Sphere
+2000, 439788, 10609, 0, 0, 0, 0, 2934, In Sphere
+2500, 716617, 15369, 0, 0, 0, 0, 4197, In Sphere
+5000, 1189844, 21570, 0, 0, 0, 0, 11828, In Sphere
+7500, 483740, 4712, 0, 0, 0, 0, 10943, In Sphere
+10000, 1575565, 14277, 0, 0, 0, 0, 18483, In Sphere
+12500, 820962, 6135, 0, 0, 0, 0, 17847, In Sphere
+15000, 970008, 6744, 0, 0, 0, 0, 23149, In Sphere
+17500, 1132031, 7441, 0, 0, 0, 0, 29561, In Sphere
+20000, 1312400, 7762, 0, 0, 0, 0, 31216, In Sphere
+25000, 1644897, 9221, 0, 0, 0, 0, 36295, In Sphere
+30000, 1944502, 10162, 0, 0, 0, 0, 41337, In Sphere

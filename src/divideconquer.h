@@ -93,7 +93,7 @@ glm::vec3 dacComputeFaceNormal(DacFace *f)
 {
     // Newell's Method
     // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
-    glm::vec3 normal = glm::vec3(0.0f);
+    glm::vec3 normal = glm::vec3(0.0);
     
     for (int i = 0; i < 3; i++)
     {
@@ -108,7 +108,7 @@ glm::vec3 dacComputeFaceNormal(DacFace *f)
     return glm::normalize(normal);
 }
 
-static bool dacIsPointOnPositiveSide(DacFace *f, DacVertex *v, coord_t epsilon = 0.0f)
+static bool dacIsPointOnPositiveSide(DacFace *f, DacVertex *v, coord_t epsilon = 0.0)
 {
     auto d = glm::dot(f->normal, v->vector - f->centerPoint);
     return d > epsilon;
@@ -164,7 +164,7 @@ coord_t time(DacVertex *p, DacVertex *q, DacVertex *r)
     return ((q->vector.x - p->vector.x) * (r->vector.z - p->vector.z) - (r->vector.x - p->vector.x) * (q->vector.z - p->vector.z)) / orient(p, q, r);
 }
 
-void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
+void dacHull(DacContext &dacContext, DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
 {
     DacVertex *u, *v, *mid;
     int i, j, k, l, minl;
@@ -182,8 +182,8 @@ void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
         ;
     mid = v = u->next;
     // recurse
-    dacHull(list, n / 2, B, A, lower);
-    dacHull(mid, n - n / 2, B + n / 2 * 2, A + n / 2 * 2, lower);
+    dacHull(dacContext, list, n / 2, B, A, lower);
+    dacHull(dacContext, mid, n - n / 2, B + n / 2 * 2, A + n / 2 * 2, lower);
     
     // find initial bridge
     for (;;)
@@ -191,18 +191,14 @@ void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
         if (orient(u, v, v->next) < 0)
         {
             v = v->next;
-            continue;
         }
-        if (orient(u->prev, u, v) < 0)
+        else if (orient(u->prev, u, v) < 0)
         {
             u = u->prev;
-            continue;
         }
-        break;
+        else
+            break;
     }
-    
-    i = k = 0;
-    j = n / 2 * 2;
     
     // possible to overflow this
     int eIndex = -1;
@@ -223,7 +219,7 @@ void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
     
     // merge by tracking bridge uv over time
     // infinite loop until no insertion/deletion events occur
-    for (;;)
+    for (i = k = 0, j = n / 2 * 2, oldTime.timeValue = -INF; ; oldTime = newTime)
     {
         if (lower)
         {
@@ -247,7 +243,6 @@ void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
         newTime.timeValue = INF;
         for (l = 0; l < 6; l++)
         {
-            
             if (events[l].eIndex != oldTime.eIndex &&
                 events[l].timeValue > oldTime.timeValue &&
                 events[l].timeValue < newTime.timeValue)
@@ -256,11 +251,13 @@ void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
                 newTime = events[l];
             }
         }
+        
         //if newTime==INF, no insertion/deletion events occured, and we break for loop
         if (newTime.timeValue == INF)
         {
             break;
         }
+        
         //act on the smallest time value
         switch (minl)
         {
@@ -313,7 +310,6 @@ void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
             events[5].eIndex = eIndex++;
             break;
         }
-        oldTime = newTime;
     }
     A[k] = NIL;
     
@@ -321,6 +317,7 @@ void dacHull(DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
     u->next = v;
     v->prev = u;
     
+    dacContext.processingState.createdFaces += k;
     // now go back in time to update pointers
     // during insertion of q between p and r, we cannot store p and r in the prev and next fields, as they are still in use in L and R
     for (k--; k >= 0; k--)
@@ -363,7 +360,7 @@ Mesh &dacConvertToMesh(DacContext &context, RenderContext &renderContext)
     }
     
     context.m->faces.clear();
-    context.m->position = glm::vec3(0.0f);
+    context.m->position = glm::vec3(0.0);
     context.m->scale = glm::vec3(globalScale);
     context.m->dirty = true;
     
@@ -407,7 +404,7 @@ void dacConstructFullHull(DacContext &dacContext)
     DacVertex **A = new DacVertex *[2 * n];
     //work array
     DacVertex **B = new DacVertex *[2 * n];
-    dacHull(list, n, A, B, true);
+    dacHull(dacContext, list, n, A, B, true);
     
     //create faces by processing the events in event array A
     for (i = 0; A[i] != NIL; A[i++]->act())
@@ -420,7 +417,7 @@ void dacConstructFullHull(DacContext &dacContext)
     DacVertex **C = new DacVertex *[2 * n];
     //work array
     DacVertex **D = new DacVertex *[2 * n];
-    dacHull(upperList, n, C, D, false);
+    dacHull(dacContext, upperList, n, C, D, false);
     
     for (i = 0; C[i] != NIL; C[i++]->act())
     {
@@ -450,6 +447,7 @@ void dacConstructFullHull(DacContext &dacContext)
             }
         }
     }
+    dacContext.processingState.facesOnHull = dacContext.faces.size();
     delete[] A;
     delete[] B;
     delete[] C;
