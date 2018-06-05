@@ -75,6 +75,40 @@ def plot_comparison(path, title, outfile, ylabel, labels = ['QuickHull', 'Increm
 
     plt.close()
 
+def plot_comparison_n(path, title, outfile, ylabel, labels=None, divide=False, show=False, minrange=0):
+    label_len = len(labels)
+    names = []
+    markers = ['x', '^', 'p', 'h', '*', 'o', '.', ',', '<', '>', 's']
+    linetypes = ['-', '--', '-.', ':']
+    for i in range(0, label_len):
+        names.append('x_{}'.format(i))
+        names.append('y_{}'.format(i))
+    data = np.genfromtxt(path, delimiter=',', names=names)
+
+
+
+    fig, ax = plt.subplots()
+
+    for i in range(0, len(labels)):
+        x_name = 'x_{}'.format(i)
+        y_name = 'y_{}'.format(i)
+        if divide:
+            data[y_name] = [np.divide(y, 1000000.0) for y in data[y_name]]
+        ax.plot(data[x_name][minrange:,], data[y_name][minrange:,], color='black', label=labels[i], marker=markers[i % len(markers)], markersize=6.0, linewidth=0.5, linestyle=linetypes[i % len(linetypes)])
+
+    format_axis(ax)
+    ax.legend()
+
+    plt.xlabel('n')
+    plt.ylabel(ylabel)
+    plt.title(title)
+    savefig(outfile)
+
+    if show:
+        plt.show()
+
+    plt.close()
+
 def plot_three(path, title, outfile, ylabel, labels=['QuickHull', 'Incremental', 'Points on hull'], divide=False, show=False):
     data = np.genfromtxt(path, delimiter=',', names=['x_qh', 'y_qh', 'x_inc', 'y_inc', 'x_out', 'y_out'])
 
@@ -120,7 +154,7 @@ def plot_single_nlogn(path, title, outfile, label, miny = [0.0, 0.5], minrange=0
     ax.legend()
 
     plt.xlabel('n')
-    plt.ylabel('Time spent over n log n (s)')
+    plt.ylabel('Time over n log n (s)')
     plt.title(title)
     savefig(outfile)
     if show:
@@ -144,7 +178,7 @@ def plot_nlogn(path, title, outfile, miny = [0.0, 0.5], minrange=0, show=False):
     ax.legend()
 
     plt.xlabel('n')
-    plt.ylabel('Time spent over n log n (s)')
+    plt.ylabel('Time over n log n (s)')
     plt.title(title)
     savefig(outfile)
     if show:
@@ -168,7 +202,7 @@ def plot_nsquared(path, title, outfile, miny = [0.0, 0.5], minrange=0, show=Fals
     ax.legend()
 
     plt.xlabel('n')
-    plt.ylabel('Time spent over n log n (s)')
+    plt.ylabel('Time over n log n (s)')
     plt.title(title)
     savefig(outfile)
     
@@ -177,32 +211,32 @@ def plot_nsquared(path, title, outfile, miny = [0.0, 0.5], minrange=0, show=Fals
 
     plt.close()
 
-def savefig(path):
+def savefig(path)
     plt.savefig(os.path.join('graphs' + os.sep, path + '.pdf'), format='pdf', dpi=1000)
     
 
 if __name__ == '__main__':
     basedir = 'c:\\Users\\Niels\\projects\\Thesis-Convex\\data\\'
-    plot_comparison(os.path.join(basedir, 'in_sphere_10m.csv'), 'Time for points in a sphere', 'time_qh_inc_in_sphere', 'Time spent (s)')
+    plot_comparison(os.path.join(basedir, 'in_sphere_10m.csv'), 'Time for points in a sphere', 'time_qh_inc_in_sphere', 'Time (s)')
     plot_nlogn(os.path.join(basedir, 'in_sphere_10m.csv'), 'Time for points in a sphere over nlogn', 'time_qh_inc_in_sphere_nlogn', minrange=8)
-    plot_comparison(os.path.join(basedir, 'on_sphere_100k.csv'), 'Time for points on a sphere', 'time_qh_inc_on_sphere', 'Time spent (s)')
+    plot_comparison(os.path.join(basedir, 'on_sphere_100k.csv'), 'Time for points on a sphere', 'time_qh_inc_on_sphere', 'Time (s)')
     plot_nlogn(os.path.join(basedir, 'on_sphere_100k.csv'), 'Time for points on a sphere over nlogn', 'time_qh_inc_on_sphere_nlogn', [0.0,10.5])
     plot_nsquared(os.path.join(basedir, 'on_sphere_100k.csv'), 'Time for points on a sphere over nsquared', 'time_qh_inc_on_sphere_squard', [0.0,0.01], 5)
-    plot_comparison(os.path.join(basedir, 'in_cube_1_2m.csv'), 'Time for points in a cube', 'time_qh_inc_in_cube', 'Time spent (s)')
+    plot_comparison(os.path.join(basedir, 'in_cube_1_2m.csv'), 'Time for points in a cube', 'time_qh_inc_in_cube', 'Time (s)')
     plot_nlogn(os.path.join(basedir, 'in_cube_1_2m.csv'), 'Time for points in a cube over nlogn', 'time_qh_inc_in_cube_nlogn', [0.0, 1.5], 7)
-    plot_comparison(os.path.join(basedir, 'normalized_sphere.csv'), 'Time for points on a normalized sphere', 'time_qh_inc_normalized_sphere', 'Time spent (s)')
+    plot_comparison(os.path.join(basedir, 'normalized_sphere.csv'), 'Time for points on a normalized sphere', 'time_qh_inc_normalized_sphere', 'Time (s)')
     plot_nsquared(os.path.join(basedir, 'normalized_sphere.csv'), 'Time for points on a normalized sphere over nsquared', 'time_qh_inc_normalized_squared', [0.0,0.02], 5)
-    plot_comparison(os.path.join(basedir, 'many_internal.csv'), 'Time for points on a distribution with many internal points', 'time_qh_inc_many_internal', 'Time spent (s)')
-    plot_single(os.path.join(basedir, 'qh_many_internal.csv'), 'Time for points on a distribution with many internal points', 'time_qh_many_internal', 'QuickHull', 'Time spent (s)')
+    plot_comparison(os.path.join(basedir, 'many_internal.csv'), 'Time for points on a distribution with many internal points', 'time_qh_inc_many_internal', 'Time (s)')
+    plot_single(os.path.join(basedir, 'qh_many_internal.csv'), 'Time for points on a distribution with many internal points', 'time_qh_many_internal', 'QuickHull', 'Time (s)')
     plot_single_nlogn(os.path.join(basedir, 'qh_many_internal.csv'), 'Time for points on a distribution with many internal points over nlogn', 'time_qh_many_internal_nlogn', 'QuickHull', [0.0, 0.15], 5)
     plot_comparison(os.path.join(basedir, 'on_sphere_processed.csv'), 'Number of points processed for points on a sphere', 'processed_qh_inc_on_sphere', 'Processed points')
     plot_three(os.path.join(basedir, 'many_internal_processed.csv'), 'Number of points processed and in hull when many points are internal', 'processed_internal', 'Points')
-    plot_comparison(os.path.join(basedir, 'normalized_qh.csv'), 'Time on sphere and on normalized sphere (QuickHull)', 'time_qh_on_norm_sphere', 'Time spent (s)', labels=None)
-    plot_three(os.path.join(basedir, 'in_sphere_dac_inc_qh.csv'), 'Time for points in a sphere', 'in_sphere_dac_inc_qh', 'Time spent (s)', ['QuickHull', 'Incremental', 'Divide and Conquer'], divide=True)
-    plot_three(os.path.join(basedir, 'on_sphere_dac_inc_qh.csv'), 'Time for points on a sphere', 'on_sphere_dac_inc_qh', 'Time spent (s)', ['QuickHull', 'Incremental', 'Divide and Conquer'], divide=True)
-    plot_comparison(os.path.join(basedir, 'on_sphere_inc_dac.csv'), 'Time for points on a sphere', 'on_sphere_inc_dac', 'Time spent (s)', labels=['Incremental', 'Divide and Conquer'])
-    plot_three(os.path.join(basedir, 'in_cube_dac_inc_qh.csv'), 'Time for points in a cube', 'in_cube_dac_inc_qh', 'Time spent (s)', ['QuickHull', 'Incremental', 'Divide and Conquer'], divide=True)
+    plot_comparison(os.path.join(basedir, 'normalized_qh.csv'), 'Time on sphere and on normalized sphere (QuickHull)', 'time_qh_on_norm_sphere', 'Time (s)', labels=None)
+    plot_three(os.path.join(basedir, 'in_sphere_dac_inc_qh.csv'), 'Time for points in a sphere', 'in_sphere_dac_inc_qh', 'Time (s)', ['QuickHull', 'Incremental', 'Divide and Conquer'], divide=True)
+    plot_three(os.path.join(basedir, 'on_sphere_dac_inc_qh.csv'), 'Time for points on a sphere', 'on_sphere_dac_inc_qh', 'Time (s)', ['QuickHull', 'Incremental', 'Divide and Conquer'], divide=True)
+    plot_comparison(os.path.join(basedir, 'on_sphere_inc_dac.csv'), 'Time for points on a sphere', 'on_sphere_inc_dac', 'Time (s)', labels=['Incremental', 'Divide and Conquer'])
+    plot_three(os.path.join(basedir, 'in_cube_dac_inc_qh.csv'), 'Time for points in a cube', 'in_cube_dac_inc_qh', 'Time (s)', ['QuickHull', 'Incremental', 'Divide and Conquer'], divide=True)
     plot_comparison(os.path.join(basedir, 'faces_on_hull_in_sphere_qh_inc.csv'), 'Percentage of created faces on the hull', 'faces_on_hull_in_sphere', 'Faces on hull (%)', labels=['QuickHull', 'Incremental'], divide=False, yrange=[5.0, 25.0], minrange=5, percent=True)
     plot_comparison(os.path.join(basedir, 'faces_on_hull_normalized_sphere_qh_inc.csv'), 'Percentage of created faces on the hull', 'faces_on_hull_on_norm_sphere', 'Faces on hull (%)', labels=['QuickHull', 'Incremental'], divide=False, yrange=[32.0, 35.0], minrange=5, percent=True)
     plot_comparison(os.path.join(basedir, 'faces_on_hull_on_sphere_qh_inc.csv'), 'Percentage of created faces on the hull', 'faces_on_hull_on_sphere', 'Faces on hull (%)', labels=['QuickHull', 'Incremental'], divide=False, yrange=[32.5, 34.0], minrange=5, percent=True)
-    
+    plot_comparison_n(os.path.join(basedir, 'dac_nlogn.csv'), 'Time (s) over nlogn', 'time_dac_nlogn', 'Time (s) over nlogn', labels=['In Sphere', 'On Sphere', 'In Cube', 'Normalized Sphere', 'Many Internal'], show=True, minrange=4) 

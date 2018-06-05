@@ -57,7 +57,7 @@ struct DacContext
 };
 
 //no need for such a big inf
-const coord_t INF = 1e20f;
+const coord_t INF = 1e30f;
 static DacVertex nil = {glm::vec3(INF, INF, INF), 0, nullptr, nullptr};
 DacVertex *NIL = &nil;
 
@@ -168,6 +168,10 @@ void dacHull(DacContext &dacContext, DacVertex *list, int n, DacVertex **A, DacV
 {
     DacVertex *u, *v, *mid;
     int i, j, k, l, minl;
+    
+    DacEvent oldTime;
+    DacEvent newTime;
+    DacEvent events[6];
     //suppress warning
     minl = -1;
     
@@ -183,16 +187,16 @@ void dacHull(DacContext &dacContext, DacVertex *list, int n, DacVertex **A, DacV
     mid = v = u->next;
     // recurse
     dacHull(dacContext, list, n / 2, B, A, lower);
-    dacHull(dacContext, mid, n - n / 2, B + n / 2 * 2, A + n / 2 * 2, lower);
+    dacHull(dacContext, mid, n - n / 2, &B[n / 2 * 2], &A[n / 2 * 2], lower);
     
     // find initial bridge
     for (;;)
     {
-        if (orient(u, v, v->next) < 0)
+        if (orient(u, v, v->next) < 0.0)
         {
             v = v->next;
         }
-        else if (orient(u->prev, u, v) < 0)
+        else if (orient(u->prev, u, v) < 0.0)
         {
             u = u->prev;
         }
@@ -202,20 +206,6 @@ void dacHull(DacContext &dacContext, DacVertex *list, int n, DacVertex **A, DacV
     
     // possible to overflow this
     int eIndex = -1;
-    
-    DacEvent oldTime = {};
-    DacEvent newTime = {};
-    DacEvent events[6];
-    
-    oldTime.timeValue = -INF;
-    oldTime.eIndex = eIndex++;
-    
-    events[0].eIndex = eIndex++;
-    events[1].eIndex = eIndex++;
-    events[2].eIndex = eIndex++;
-    events[3].eIndex = eIndex++;
-    events[4].eIndex = eIndex++;
-    events[5].eIndex = eIndex++;
     
     // merge by tracking bridge uv over time
     // infinite loop until no insertion/deletion events occur
@@ -240,11 +230,9 @@ void dacHull(DacContext &dacContext, DacVertex *list, int n, DacVertex **A, DacV
             events[5].timeValue = -time(u, v->prev, v);
         }
         //we find the movies in chronological time
-        newTime.timeValue = INF;
-        for (l = 0; l < 6; l++)
+        for (newTime.timeValue = INF, l = 0; l < 6; l++)
         {
-            if (events[l].eIndex != oldTime.eIndex &&
-                events[l].timeValue > oldTime.timeValue &&
+            if (events[l].timeValue > oldTime.timeValue &&
                 events[l].timeValue < newTime.timeValue)
             {
                 minl = l;
@@ -262,53 +250,51 @@ void dacHull(DacContext &dacContext, DacVertex *list, int n, DacVertex **A, DacV
         switch (minl)
         {
             case 0:
-            //insert or delete of w in L. If w is to the left of u, insert or delete w in A.
-            if (B[i]->vector.x < u->vector.x)
             {
-                A[k] = B[i];
-                k++;
+                //insert or delete of w in L. If w is to the left of u, insert or delete w in A.
+                if (B[i]->vector.x < u->vector.x)
+                {
+                    A[k++] = B[i];
+                }
+                B[i++]->act();
+                break;
             }
-            B[i]->act();
-            i++;
-            events[0].eIndex = eIndex++;
-            break;
             case 1:
-            //insert or delete of w in R. If w is to the right of v, insert or delete w in A.
-            if (B[j]->vector.x > v->vector.x)
             {
-                A[k] = B[j];
-                k++;
+                //insert or delete of w in R. If w is to the right of v, insert or delete w in A.
+                if (B[j]->vector.x > v->vector.x)
+                {
+                    A[k++] = B[j];
+                }
+                B[j++]->act();
+                break;
             }
-            B[j]->act();
-            j++;
-            events[1].eIndex = eIndex++;
-            break;
             case 2:
-            //u->prev, u, v was ccw and has turned cw, so u->prev and v is the new bridge, and we delete u in A.
-            A[k] = u;
-            k++;
-            u = u->prev;
-            events[2].eIndex = eIndex++;
-            break;
+            {
+                //u->prev, u, v was ccw and has turned cw, so u->prev and v is the new bridge, and we delete u in A.
+                A[k++] = u;
+                u = u->prev;
+                break;
+            }
             case 3:
-            //u, u->next, v, was cw and turned ccw, so u->next and v is the new bridge, and we insert u->next between u and v.
-            A[k] = u = u->next;
-            k++;
-            events[3].eIndex = eIndex++;
-            break;
+            {
+                //u, u->next, v, was cw and turned ccw, so u->next and v is the new bridge, and we insert u->next between u and v.
+                A[k++] = u = u->next;
+                break;
+            }
             case 4:
-            //u, v, v->next was ccw and turned cw, so u and v->next is the new bridge, and we delete v in A.
-            A[k] = v;
-            v = v->next;
-            k++;
-            events[4].eIndex = eIndex++;
-            break;
+            {
+                //u, v, v->next was ccw and turned cw, so u and v->next is the new bridge, and we delete v in A.
+                A[k++] = v;
+                v = v->next;
+                break;
+            }
             case 5:
-            //u, v->prev, v, was cw and turned ccw, so u and v->prev is the new bridge, and we insert v->prev between u and v.
-            A[k] = v = v->prev;
-            k++;
-            events[5].eIndex = eIndex++;
-            break;
+            {
+                //u, v->prev, v, was cw and turned ccw, so u and v->prev is the new bridge, and we insert v->prev between u and v.
+                A[k++] = v = v->prev;
+                break;
+            }
         }
     }
     A[k] = NIL;
@@ -401,26 +387,26 @@ void dacConstructFullHull(DacContext &dacContext)
     DacVertex *list = sort(P, n);
     
     //Each vertex is inserted at most once and deleted at most once, so at most 2n events (facets).
-    DacVertex **A = new DacVertex *[2 * n];
+    DacVertex **A = (DacVertex**)malloc(2 * n * sizeof(DacVertex));
     //work array
-    DacVertex **B = new DacVertex *[2 * n];
-    dacHull(dacContext, list, n, A, B, true);
+    DacVertex **B = (DacVertex**)malloc(2 * n * sizeof(DacVertex));
+    // dacHull(dacContext, list, n, A, B, true);
     
-    //create faces by processing the events in event array A
-    for (i = 0; A[i] != NIL; A[i++]->act())
-    {
-        DacFace *newFace = dacCreateFaceFromPoints(A, i);
-        dacContext.faces.push_back(newFace);
-    }
+    // //create faces by processing the events in event array A
+    // for (i = 0; A[i] != NIL; A[i++]->act())
+    // {
+    //     DacFace *newFace = dacCreateFaceFromPoints(A, i);
+    //     dacContext.faces.push_back(newFace);
+    // }
     
     DacVertex *upperList = sort(dacContext.upperP, n);
-    DacVertex **C = new DacVertex *[2 * n];
+    DacVertex **C = (DacVertex**)malloc(2 * n * sizeof(DacVertex));
     //work array
-    DacVertex **D = new DacVertex *[2 * n];
+    DacVertex **D = (DacVertex**)malloc(2 * n * sizeof(DacVertex));
     dacHull(dacContext, upperList, n, C, D, false);
     
     for (i = 0; C[i] != NIL; C[i++]->act())
-    {
+    {   
         DacFace *newFace = dacCreateFaceFromPoints(C, i);
         dacContext.faces.push_back(newFace);
     }
@@ -448,10 +434,10 @@ void dacConstructFullHull(DacContext &dacContext)
         }
     }
     dacContext.processingState.facesOnHull = dacContext.faces.size();
-    delete[] A;
-    delete[] B;
-    delete[] C;
-    delete[] D;
+    free(A);
+    free(B);
+    free(C);
+    free(D);
 }
 
 void dacHullStep(DacContext &dacContext)
