@@ -93,9 +93,9 @@ void reinitPoints(Vertex **vertices, ConfigData &configData, Hull &h, RenderCont
     
     if(h.numberOfPoints != configData.numberOfPoints || h.pointGenerator.type != configData.genType)
     {
-        initPointGenerator(h.pointGenerator, configData.genType, configData.numberOfPoints);
+        initPointGenerator(h.pointGenerator, configData.genType, configData.numberOfPoints, 0.0, 200.0);
     }
-    *vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
+    *vertices = generate(h.pointGenerator, renderContext.originOffset);
 }
 
 
@@ -108,9 +108,9 @@ void reinitPoints(Vertex **vertices, int numPoints, Hull &h, RenderContext &rend
     
     if(h.numberOfPoints != numPoints)
     {
-        initPointGenerator(h.pointGenerator, GeneratorType::InSphere, numPoints);
+        initPointGenerator(h.pointGenerator, GeneratorType::InSphere, numPoints, 0.0, 200.0);
     }
-    *vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
+    *vertices = generate(h.pointGenerator, renderContext.originOffset);
 }
 
 void reinitHull(Vertex *vertices, Hull &h, Vertex **currentVertices, Mesh **currentMesh, Mesh **fullHull, Mesh **timedHull, Mesh **stepHull)
@@ -260,12 +260,13 @@ int main()
     //auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/MidPoly/001_MidPoly.OBJ", bunnyMesh, &numberOfPoints, 1.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
     // auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/LowPoly/001_LowPoly.OBJ", bunnyMesh, &numberOfPoints, 1.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
     // auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/HighPoly/001_HighPoly.OBJ", bunnyMesh, &numberOfPoints, 1.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
+    //auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/stanford_bunny.obj", bunnyMesh, &numberOfPoints, 1000.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
     bunnyMesh.position = glm::vec3(0.0f);
     bunnyMesh.scale = glm::vec3(globalScale);
     
-    initPointGenerator(h.pointGenerator, configData.genType, numberOfPoints);
+    initPointGenerator(h.pointGenerator, configData.genType, numberOfPoints, 0.0, 200.0);
     
-    auto vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
+    auto vertices = generate(h.pointGenerator, renderContext.originOffset);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ", 200.0f);
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
     //auto vertices = LoadObj("../assets/obj/CarpetBit.obj");

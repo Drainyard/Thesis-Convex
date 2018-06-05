@@ -52,6 +52,8 @@ static double randomDouble(std::uniform_real_distribution<coord_t>& d, std::mt19
 
 static coord_t randomCoord(std::uniform_real_distribution<coord_t>& d, std::mt19937& gen, coord_t start, coord_t end)
 {
+    // std::uniform_real_distribution<coord_t> rnd(start, end);
+    // return (coord_t)rnd(gen);
     return ((coord_t)d(gen) / (coord_t)d.max() * end) + start;
 }
 

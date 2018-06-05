@@ -3,7 +3,7 @@
 
 struct PointGenerator;
 
-#define GENERATOR_FUNCTION(name) Vertex* name(PointGenerator& pointGenerator, coord_t min, coord_t max, glm::vec3 offset)
+#define GENERATOR_FUNCTION(name) Vertex* name(PointGenerator& pointGenerator, glm::vec3 offset)
 typedef GENERATOR_FUNCTION(GeneratorFunction);
 
 enum GeneratorType
@@ -21,6 +21,8 @@ struct PointGenerator
     GeneratorType type;
     std::mt19937 gen;
     std::uniform_real_distribution<coord_t> d;
+    coord_t min;
+    coord_t max;
 };
 
 struct TestSet
@@ -153,15 +155,21 @@ void loadConfig(const char* filePath, ConfigData &configData)
     }
 }
 
-static void initPointGenerator(PointGenerator& pointGenerator, GeneratorType type, int numberOfPoints)
+static void initPointGenerator(PointGenerator& pointGenerator, GeneratorType type, int numberOfPoints, coord_t min = 0.0, coord_t max = 200.0)
 {
     pointGenerator.type = type;
     pointGenerator.numberOfPoints = numberOfPoints;
+    std::uniform_real_distribution<coord_t> d(min, max);
+    pointGenerator.min = min;
+    pointGenerator.max = max;
+    pointGenerator.d = d;
 }
 
 static GENERATOR_FUNCTION(generatePoints)
 {
     auto res = (Vertex*)malloc(sizeof(Vertex) * pointGenerator.numberOfPoints);
+    auto min = pointGenerator.min;
+    auto max = pointGenerator.max;
     for(int i = 0; i < pointGenerator.numberOfPoints; i++)
     {
         coord_t x = randomCoord(pointGenerator.d, pointGenerator.gen, min, max);
@@ -176,7 +184,7 @@ static GENERATOR_FUNCTION(generatePoints)
 
 static GENERATOR_FUNCTION(generatePointsOnSphere)
 {
-    UNUSED(min);
+    auto max = pointGenerator.max;
     auto radius = (coord_t)max / 2.0f;
     auto res = (Vertex*)malloc(sizeof(Vertex) * pointGenerator.numberOfPoints);
     for(int i = 0; i < pointGenerator.numberOfPoints; i++) 
@@ -195,6 +203,8 @@ static GENERATOR_FUNCTION(generatePointsOnSphere)
 
 static GENERATOR_FUNCTION(generatePointsInSphere)
 {
+    auto min = pointGenerator.min;
+    auto max = pointGenerator.max;
     auto res = (Vertex*)malloc(sizeof(Vertex) * pointGenerator.numberOfPoints);
     for(int i = 0; i < pointGenerator.numberOfPoints; i++) 
     {
@@ -214,6 +224,8 @@ static GENERATOR_FUNCTION(generatePointsInSphere)
 
 GENERATOR_FUNCTION(generatePointsOnNormalizedSphere)
 {
+    auto min = pointGenerator.min;
+    auto max = pointGenerator.max;
     auto res = (Vertex*)malloc(sizeof(Vertex) * pointGenerator.numberOfPoints);
     for(int i = 0; i < pointGenerator.numberOfPoints; i++)
     {
@@ -232,6 +244,8 @@ GENERATOR_FUNCTION(generatePointsOnNormalizedSphere)
 
 GENERATOR_FUNCTION(generatePointsManyInternal)
 {
+    auto min = pointGenerator.min;
+    auto max = pointGenerator.max;
     auto res = (Vertex*)malloc(sizeof(Vertex) * pointGenerator.numberOfPoints);
     
     int pointsOnOutside = 50;
@@ -273,27 +287,27 @@ static GENERATOR_FUNCTION(generate)
     {
         case GeneratorType::InSphere:
         {
-            return generatePointsInSphere(pointGenerator, min, max, offset);
+            return generatePointsInSphere(pointGenerator,offset);
         }
         break;
         case GeneratorType::OnSphere:
         {
-            return generatePointsOnSphere(pointGenerator, min, max, offset);
+            return generatePointsOnSphere(pointGenerator, offset);
         }
         break;
         case GeneratorType::InCube:
         {
-            return generatePoints(pointGenerator, min, max, offset);
+            return generatePoints(pointGenerator, offset);
         }
         break;
         case GeneratorType::NormalizedSphere:
         {
-            return generatePointsOnNormalizedSphere(pointGenerator, min, max, offset);
+            return generatePointsOnNormalizedSphere(pointGenerator, offset);
         }
         break;
         case GeneratorType::ManyInternal:
         {
-            return generatePointsManyInternal(pointGenerator, min, max, offset);
+            return generatePointsManyInternal(pointGenerator, offset);
         }
         break;
     }

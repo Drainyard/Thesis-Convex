@@ -229,13 +229,13 @@ static void RunFullHullTestQh(TestSet &testSet, glm::vec3 offset)
         auto n = vertexAmounts[i];
         
         log_a("Num: %d\n", n);
-        initPointGenerator(generator, genType, n);
+        initPointGenerator(generator, genType, n, 0.0, 5000.0);
         
         for (int j = 0; j < numForAvg; j++)
         {
             log_a("%d \n", j);
             
-            vertices = generate(generator, 0.0f, 5000.0f, offset);
+            vertices = generate(generator, offset);
             
             qhInitializeContext(qhContext, vertices, n);
             auto timerIndex = startTimer();
@@ -303,13 +303,13 @@ static void RunFullHullTestInc(TestSet &testSet, glm::vec3 offset)
         auto n = vertexAmounts[i];
         
         log_a("Num: %d\n", n);
-        initPointGenerator(generator, genType, n);
+        initPointGenerator(generator, genType, n, 0.0, 5000.0);
         
         for (int j = 0; j < numForAvg; j++)
         {
             log_a("%d \n", j);
             
-            vertices = generate(generator, 0.0f, 5000.0f, offset);
+            vertices = generate(generator, offset);
             
             incInitializeContext(incContext, vertices, n);
             auto timerIndex = startTimer();
@@ -376,13 +376,13 @@ static void RunFullHullTestDac(TestSet &testSet, glm::vec3 offset)
         auto n = vertexAmounts[i];
         
         log_a("Num: %d\n", n);
-        initPointGenerator(generator, genType, n);
+        initPointGenerator(generator, genType, n, 0.0, 5000.0);
         
         for (int j = 0; j < numForAvg; j++)
         {
             log_a("%d \n", j);
             
-            vertices = generate(generator, 0.0f, 5000.0f, offset);
+            vertices = generate(generator, offset);
             
             dacInitializeContext(dacContext, vertices, n);
             auto timerIndex = startTimer();
