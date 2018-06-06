@@ -3,7 +3,7 @@
 
 struct DacVertex
 {
-    glm::vec3 vector;
+    glm::vec3 position;
     int vIndex;
     DacVertex *next;
     DacVertex *prev;
@@ -75,7 +75,7 @@ DacVertex *sort(DacVertex points[], int numberOfPoints)
     c = &head;
     do
     {
-        if (l->vector.x < r->vector.x)
+        if (l->position.x < r->position.x)
         {
             c = c->next = l;
             l = l->next;
@@ -97,8 +97,8 @@ glm::vec3 dacComputeFaceNormal(DacFace *f)
     
     for (int i = 0; i < 3; i++)
     {
-        glm::vec3 current = f->vertex[i]->vector;
-        glm::vec3 next = f->vertex[(i + 1) % 3]->vector;
+        glm::vec3 current = f->vertex[i]->position;
+        glm::vec3 next = f->vertex[(i + 1) % 3]->position;
         
         normal.x = normal.x + (current.y - next.y) * (current.z + next.z);
         normal.y = normal.y + (current.z - next.z) * (current.x + next.x);
@@ -110,7 +110,7 @@ glm::vec3 dacComputeFaceNormal(DacFace *f)
 
 static bool dacIsPointOnPositiveSide(DacFace *f, DacVertex *v, coord_t epsilon = 0.0)
 {
-    auto d = glm::dot(f->normal, v->vector - f->centerPoint);
+    auto d = glm::dot(f->normal, v->position - f->centerPoint);
     return d > epsilon;
 }
 
@@ -123,7 +123,7 @@ DacFace *dacCreateFaceFromPoints(DacVertex **A, int i)
     f->vertex[0] = u;
     f->vertex[1] = v;
     f->vertex[2] = w;
-    f->centerPoint = (u->vector + v->vector + w->vector) / 3.0f;
+    f->centerPoint = (u->position + v->position + w->position) / 3.0f;
     f->normal = dacComputeFaceNormal(f);
     return f;
 }
@@ -134,7 +134,7 @@ static void dacCopyVertices(DacContext &dac, Vertex *vertices, int numberOfPoint
     for (int i = 0; i < numberOfPoints; i++)
     {
         dac.vertices[i].vIndex = i;
-        dac.vertices[i].vector = vertices[i].position;
+        dac.vertices[i].position = vertices[i].position;
     }
 }
 
@@ -150,7 +150,7 @@ coord_t orient(DacVertex *p, DacVertex *q, DacVertex *r)
     {
         return 1.0;
     }
-    return (q->vector.x - p->vector.x) * (r->vector.y - p->vector.y) - (r->vector.x - p->vector.x) * (q->vector.y - p->vector.y);
+    return (q->position.x - p->position.x) * (r->position.y - p->position.y) - (r->position.x - p->position.x) * (q->position.y - p->position.y);
 }
 
 //by dividing with orient, we can determine the time when three points switch from cw to ccw (or the other way)
@@ -161,7 +161,7 @@ coord_t time(DacVertex *p, DacVertex *q, DacVertex *r)
         return INF;
     }
     
-    return ((q->vector.x - p->vector.x) * (r->vector.z - p->vector.z) - (r->vector.x - p->vector.x) * (q->vector.z - p->vector.z)) / orient(p, q, r);
+    return ((q->position.x - p->position.x) * (r->position.z - p->position.z) - (r->position.x - p->position.x) * (q->position.z - p->position.z)) / orient(p, q, r);
 }
 
 void dacHull(DacContext &dacContext, DacVertex *list, int n, DacVertex **A, DacVertex **B, bool lower)
@@ -252,7 +252,7 @@ void dacHull(DacContext &dacContext, DacVertex *list, int n, DacVertex **A, DacV
             case 0:
             {
                 //insert or delete of w in L. If w is to the left of u, insert or delete w in A.
-                if (B[i]->vector.x < u->vector.x)
+                if (B[i]->position.x < u->position.x)
                 {
                     A[k++] = B[i];
                 }
@@ -262,7 +262,7 @@ void dacHull(DacContext &dacContext, DacVertex *list, int n, DacVertex **A, DacV
             case 1:
             {
                 //insert or delete of w in R. If w is to the right of v, insert or delete w in A.
-                if (B[j]->vector.x > v->vector.x)
+                if (B[j]->position.x > v->position.x)
                 {
                     A[k++] = B[j];
                 }
@@ -308,7 +308,7 @@ void dacHull(DacContext &dacContext, DacVertex *list, int n, DacVertex **A, DacV
     // during insertion of q between p and r, we cannot store p and r in the prev and next fields, as they are still in use in L and R
     for (k--; k >= 0; k--)
     {
-        if (A[k]->vector.x <= u->vector.x || A[k]->vector.x >= v->vector.x)
+        if (A[k]->position.x <= u->position.x || A[k]->position.x >= v->position.x)
         {
             A[k]->act();
             if (A[k] == u)
@@ -326,7 +326,7 @@ void dacHull(DacContext &dacContext, DacVertex *list, int n, DacVertex **A, DacV
             A[k]->prev = u;
             v->prev = A[k];
             A[k]->next = v;
-            if (A[k]->vector.x < mid->vector.x)
+            if (A[k]->position.x < mid->position.x)
             {
                 u = A[k];
             }
@@ -356,7 +356,7 @@ Mesh &dacConvertToMesh(DacContext &context, RenderContext &renderContext)
         for (int i = 0; i < 3; i++)
         {
             Vertex newVertex = {};
-            newVertex.position = f->vertex[i]->vector;
+            newVertex.position = f->vertex[i]->position;
             newVertex.vertexIndex = f->vertex[i]->vIndex;
             addToList(newFace.vertices, newVertex);
         }
@@ -390,14 +390,14 @@ void dacConstructFullHull(DacContext &dacContext)
     DacVertex **A = (DacVertex**)malloc(2 * n * sizeof(DacVertex));
     //work array
     DacVertex **B = (DacVertex**)malloc(2 * n * sizeof(DacVertex));
-    // dacHull(dacContext, list, n, A, B, true);
+     dacHull(dacContext, list, n, A, B, true);
     
-    // //create faces by processing the events in event array A
-    // for (i = 0; A[i] != NIL; A[i++]->act())
-    // {
-    //     DacFace *newFace = dacCreateFaceFromPoints(A, i);
-    //     dacContext.faces.push_back(newFace);
-    // }
+     //create faces by processing the events in event array A
+    for (i = 0; A[i] != NIL; A[i++]->act())
+    {
+        DacFace *newFace = dacCreateFaceFromPoints(A, i);
+        dacContext.faces.push_back(newFace);
+    }
     
     DacVertex *upperList = sort(dacContext.upperP, n);
     DacVertex **C = (DacVertex**)malloc(2 * n * sizeof(DacVertex));
@@ -453,7 +453,7 @@ void dacInitializeContext(DacContext &dacContext, Vertex *vertices, int numberOf
     }
     dacContext.numberOfPoints = numberOfPoints;
     dacContext.initialized = true;
-    nil.vector = glm::vec3(INF, INF, INF); 
+    nil.position = glm::vec3(INF, INF, INF); 
     nil.vIndex = 0; 
     nil.next = nullptr; 
     nil.prev = nullptr;
