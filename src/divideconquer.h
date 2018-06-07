@@ -397,7 +397,7 @@ void dacConstructFullHull(DacContext &dacContext)
     DacVertex **A = (DacVertex**)malloc(2 * n * sizeof(DacVertex));
     //work array
     DacVertex **B = (DacVertex**)malloc(2 * n * sizeof(DacVertex));
-     dacHull(dacContext, list, n, A, B, true);
+    dacHull(dacContext, list, n, A, B, true);
     
      //create faces by processing the events in event array A
     printHull(dacContext, A);

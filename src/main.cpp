@@ -16,6 +16,9 @@
 #include "Shlwapi.h"
 #endif
 
+#define STB_PERLIN_IMPLEMENTATION
+#include <stb_perlin.h>
+
 #ifdef _WIN32
 #define _USE_MATH_DEFINES
 #endif
@@ -33,6 +36,7 @@
 #include <stb_image.h>
 #include <glad/glad.h>
 #include "GLFW/glfw3.h"
+
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp> 
@@ -93,9 +97,9 @@ void reinitPoints(Vertex **vertices, ConfigData &configData, Hull &h, RenderCont
     
     if(h.numberOfPoints != configData.numberOfPoints || h.pointGenerator.type != configData.genType)
     {
-        initPointGenerator(h.pointGenerator, configData.genType, configData.numberOfPoints);
+        initPointGenerator(h.pointGenerator, configData.genType, configData.numberOfPoints, 0.0, 200.0);
     }
-    *vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
+    *vertices = generate(h.pointGenerator, renderContext.originOffset);
 }
 
 
@@ -108,9 +112,9 @@ void reinitPoints(Vertex **vertices, int numPoints, Hull &h, RenderContext &rend
     
     if(h.numberOfPoints != numPoints)
     {
-        initPointGenerator(h.pointGenerator, GeneratorType::InSphere, numPoints);
+        initPointGenerator(h.pointGenerator, GeneratorType::InSphere, numPoints, 0.0, 200.0);
     }
-    *vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
+    *vertices = generate(h.pointGenerator, renderContext.originOffset);
 }
 
 void reinitHull(Vertex *vertices, Hull &h, Vertex **currentVertices, Mesh **currentMesh, Mesh **fullHull, Mesh **timedHull, Mesh **stepHull)
@@ -151,31 +155,40 @@ void reinitHull(Vertex *vertices, Hull &h, Vertex **currentVertices, Mesh **curr
 
 void renderGenAndHullType(RenderContext &renderContext, Hull &h)
 {
+    auto orientation = glm::quat(0.0f, 0.0f, 0.0f, 0.0f);
+    auto scale = glm::vec3(100.0f, 100.0f, 0.0f);
+    auto position = glm::vec3(0.0f, 0.0f, 0.0f);
+    auto isUi = true;
     switch(h.pointGenerator.type)
     {
         case GeneratorType::InSphere:
         {
-            RenderQuad(renderContext, glm::vec3(500.0f, 500.0f, 0.0f), glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(100.0f, 100.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), false);
+            RenderQuad(renderContext, position, orientation, scale, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), isUi);
         }
         break;
         case GeneratorType::OnSphere:
         {
-            RenderQuad(renderContext, glm::vec3(500.0f, 500.0f, 0.0f), glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(100.0f, 100.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), false);
+            RenderQuad(renderContext, position, orientation, scale, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), isUi);
         }
         break;
         case GeneratorType::InCube:
         {
-            RenderQuad(renderContext, glm::vec3(500.0f, 500.0f, 0.0f), glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(100.0f, 100.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), false);
+            RenderQuad(renderContext, position, orientation, scale, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), isUi);
         }
         break;
         case GeneratorType::NormalizedSphere:
         {
-            RenderQuad(renderContext, glm::vec3(500.0f, 500.0f, 0.0f), glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(100.0f, 100.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), false);
+            RenderQuad(renderContext, position, orientation, scale, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), isUi);
         }
         break;
         case GeneratorType::ManyInternal:
         {
-            RenderQuad(renderContext, glm::vec3(500.0f, 500.0f, 0.0f), glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(100.0f, 100.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), false);
+            RenderQuad(renderContext, position, orientation, scale, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), isUi);
+        }
+        break;
+        case GeneratorType::Clusters:
+        {
+            RenderQuad(renderContext, position, orientation, scale, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), isUi);
         }
         break;
     }
@@ -260,12 +273,13 @@ int main()
     //auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/MidPoly/001_MidPoly.OBJ", bunnyMesh, &numberOfPoints, 1.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
     // auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/LowPoly/001_LowPoly.OBJ", bunnyMesh, &numberOfPoints, 1.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
     // auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/HighPoly/001_HighPoly.OBJ", bunnyMesh, &numberOfPoints, 1.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
+    //auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/stanford_bunny.obj", bunnyMesh, &numberOfPoints, 1000.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
     bunnyMesh.position = glm::vec3(0.0f);
     bunnyMesh.scale = glm::vec3(globalScale);
     
-    initPointGenerator(h.pointGenerator, configData.genType, numberOfPoints);
+    initPointGenerator(h.pointGenerator, configData.genType, numberOfPoints, 0.0, 200.0);
     
-    auto vertices = generate(h.pointGenerator, 0.0f, 200.0f, renderContext.originOffset);
+    auto vertices = generate(h.pointGenerator, renderContext.originOffset);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ", 200.0f);
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
     //auto vertices = LoadObj("../assets/obj/CarpetBit.obj");
@@ -423,6 +437,7 @@ int main()
                 glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
             }
         }
+        
         renderGenAndHullType(renderContext, h);
         
         // Swap buffers

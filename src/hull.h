@@ -75,6 +75,11 @@ const char *GetGeneratorTypeString(GeneratorType type)
             return "Many internal, some on sphere";
         }
         break;
+        case GeneratorType::Clusters:
+        {
+            return "Clusters";
+        }
+        break;
     }
 }
 
@@ -229,13 +234,13 @@ static void RunFullHullTestQh(TestSet &testSet, glm::vec3 offset)
         auto n = vertexAmounts[i];
         
         log_a("Num: %d\n", n);
-        initPointGenerator(generator, genType, n);
+        initPointGenerator(generator, genType, n, 0.0, 5000.0);
         
         for (int j = 0; j < numForAvg; j++)
         {
             log_a("%d \n", j);
             
-            vertices = generate(generator, 0.0f, 5000.0f, offset);
+            vertices = generate(generator, offset);
             
             qhInitializeContext(qhContext, vertices, n);
             auto timerIndex = startTimer();
@@ -303,13 +308,13 @@ static void RunFullHullTestInc(TestSet &testSet, glm::vec3 offset)
         auto n = vertexAmounts[i];
         
         log_a("Num: %d\n", n);
-        initPointGenerator(generator, genType, n);
+        initPointGenerator(generator, genType, n, 0.0, 5000.0);
         
         for (int j = 0; j < numForAvg; j++)
         {
             log_a("%d \n", j);
             
-            vertices = generate(generator, 0.0f, 5000.0f, offset);
+            vertices = generate(generator, offset);
             
             incInitializeContext(incContext, vertices, n);
             auto timerIndex = startTimer();
@@ -335,7 +340,7 @@ static void RunFullHullTestInc(TestSet &testSet, glm::vec3 offset)
         
         WriteHullToCSV("../data/inc_hull_out", addedFaces / numForAvg, numFaces / numForAvg, n, pointsProcessed / numForAvg, 0, sidednessQueries / numForAvg,  verticesOnHull / numForAvg, timeSpent / numForAvg, genType);
         
-
+        
         addedFaces = 0;
         numFaces = 0;
         pointsProcessed = 0;
@@ -376,13 +381,13 @@ static void RunFullHullTestDac(TestSet &testSet, glm::vec3 offset)
         auto n = vertexAmounts[i];
         
         log_a("Num: %d\n", n);
-        initPointGenerator(generator, genType, n);
+        initPointGenerator(generator, genType, n, 0.0, 5000.0);
         
         for (int j = 0; j < numForAvg; j++)
         {
             log_a("%d \n", j);
             
-            vertices = generate(generator, 0.0f, 5000.0f, offset);
+            vertices = generate(generator, offset);
             
             dacInitializeContext(dacContext, vertices, n);
             auto timerIndex = startTimer();
