@@ -18,7 +18,7 @@ struct IncArc
 
 struct IncVertex
 {
-    glm::vec3 vector;
+    glm::vec3 position;
     int vIndex;
     IncEdge *duplicate;
     bool isOnHull;
@@ -149,7 +149,7 @@ static void incCopyVertices(Vertex *vertices, int numberOfPoints)
         v->isRemoved = false;
         v->isAlreadyInConflicts = false;
         v->vIndex = i;
-        v->vector = shuffledVertices[i].position;
+        v->position = shuffledVertices[i].position;
         init(v->arcs);
         incAddToHead(&incVertices, v);
     }
@@ -195,14 +195,14 @@ So colinear if (a-b)x(b-c)=0
 
 This is short hand of
 return
-    ((v1->vector.y - v0->vector.y)(v2->vector.z - v0->vector.z)-(v2->vector.y - v0->vector.y)(v1->vector.z - v0->vector.z) == 0) &&
-    ((v2->vector.x - v0->vector.x)(v1->vector.z - v0->vector.z)-(v1->vector.x - v0->vector.x)(v2->vector.z - v0->vector.z) == 0) &&
-    ((v1->vector.x - v0->vector.x)(v2->vector.y - v0->vector.y)-(v2->vector.x - v0->vector.x)(v1->vector.y - v0->vector.y) == 0)
+    ((v1->position.y - v0->position.y)(v2->position.z - v0->position.z)-(v2->position.y - v0->position.y)(v1->position.z - v0->position.z) == 0) &&
+    ((v2->position.x - v0->position.x)(v1->position.z - v0->position.z)-(v1->position.x - v0->position.x)(v2->position.z - v0->position.z) == 0) &&
+    ((v1->position.x - v0->position.x)(v2->position.y - v0->position.y)-(v2->position.x - v0->position.x)(v1->position.y - v0->position.y) == 0)
     
 */
 bool incColinear(IncVertex *v0, IncVertex *v1, IncVertex *v2)
 {
-    return glm::cross((v0->vector - v1->vector), (v1->vector - v2->vector)) == glm::vec3(0, 0, 0);
+    return glm::cross((v0->position - v1->position), (v1->position - v2->position)) == glm::vec3(0, 0, 0);
 }
 
 glm::vec3 incComputeFaceNormal(IncFace *f)
@@ -213,8 +213,8 @@ glm::vec3 incComputeFaceNormal(IncFace *f)
     
     for (int i = 0; i < 3; i++)
     {
-        glm::vec3 current = f->vertex[i]->vector;
-        glm::vec3 next = f->vertex[(i + 1) % 3]->vector;
+        glm::vec3 current = f->vertex[i]->position;
+        glm::vec3 next = f->vertex[(i + 1) % 3]->position;
         
         normal.x = normal.x + (current.y - next.y) * (current.z + next.z);
         normal.y = normal.y + (current.z - next.z) * (current.x + next.x);
@@ -227,13 +227,13 @@ glm::vec3 incComputeFaceNormal(IncFace *f)
 static bool incIsPointOnPositiveSide(IncFace *f, IncVertex *v, coord_t epsilon = 0.0)
 {
     incSidednessQueries++;
-    auto d = glm::dot(f->normal, v->vector - f->centerPoint);
+    auto d = glm::dot(f->normal, v->position - f->centerPoint);
     return d > epsilon;
 }
 
 static bool incIsPointCoplanar(IncFace *f, IncVertex *v, coord_t epsilon = 0.0)
 {
-    auto d = glm::dot(f->normal, v->vector - f->centerPoint);
+    auto d = glm::dot(f->normal, v->position - f->centerPoint);
     return d >= -epsilon && d <= epsilon;
 }
 
@@ -268,7 +268,7 @@ IncFace *incMakeFace(IncVertex *v0, IncVertex *v1, IncVertex *v2, IncFace *face)
     f->vertex[0] = v0;
     f->vertex[1] = v1;
     f->vertex[2] = v2;
-    auto v = (f->vertex[0]->vector + f->vertex[1]->vector + f->vertex[2]->vector);
+    auto v = (f->vertex[0]->position + f->vertex[1]->position + f->vertex[2]->position);
     f->centerPoint = glm::vec3(v.x / 3.0, v.y / 3.0, v.z / 3.0);
     
     e0->adjFace[0] = e1->adjFace[0] = e2->adjFace[0] = f;
@@ -468,7 +468,7 @@ IncFace *incMakeConeFace(IncEdge *e, IncVertex *v)
     newFace->edge[1] = newEdge1;
     newFace->edge[2] = newEdge2;
     incEnforceCounterClockWise(newFace, e, v);
-    auto c = newFace->vertex[0]->vector + newFace->vertex[1]->vector + newFace->vertex[2]->vector;
+    auto c = newFace->vertex[0]->position + newFace->vertex[1]->position + newFace->vertex[2]->position;
     newFace->centerPoint = glm::vec3((coord_t)c.x / 3.0, (coord_t)c.y / 3.0, (coord_t)c.z / 3.0);
     newFace->normal = incComputeFaceNormal(newFace);
     
@@ -640,7 +640,7 @@ Mesh &incConvertToMesh(IncContext &context, RenderContext &renderContext)
             for (int i = 0; i < 3; i++)
             {
                 Vertex newVertex = {};
-                newVertex.position = f->vertex[i]->vector;
+                newVertex.position = f->vertex[i]->position;
                 newVertex.vertexIndex = f->vertex[i]->vIndex;
                 addToList(newFace.vertices, newVertex);
             }
