@@ -25,6 +25,11 @@ static void SetBoolUniform(GLuint programID, const char* name, bool val)
     glUniform1i(glGetUniformLocation(programID, name), val);
 }
 
+static void SetIntUniform(GLuint programID, const char* name, int val)
+{
+    glUniform1i(glGetUniformLocation(programID, name), val);
+}
+
 struct Resolution
 {
     int window_width;
@@ -257,29 +262,25 @@ static void InitializeOpenGL(RenderContext& renderContext)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderContext.lineEBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * LINE_INDICES, renderContext.lineIndices, GL_STATIC_DRAW);
     
-    
     glBindVertexArray(0);
-    
     
     // Initialize Quad buffers
     glGenVertexArrays(1, &renderContext.quadVAO);
+    glGenBuffers(1, &renderContext.quadVBO);
+    glGenBuffers(1, &renderContext.quadEBO);
+    
     glBindVertexArray(renderContext.quadVAO);
     
-    glGenBuffers(1, &renderContext.quadVBO);
     glBindBuffer(GL_ARRAY_BUFFER, renderContext.quadVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(renderContext.quadVertices),renderContext.quadVertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 12, renderContext.quadVertices, GL_STATIC_DRAW);
     
-    glGenBuffers(1, &renderContext.quadIndexBuffer);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderContext.quadIndexBuffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(renderContext.quadIndices), renderContext.quadIndices, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderContext.quadEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * 6, renderContext.quadIndices, GL_STATIC_DRAW);
     
-    glUseProgram(renderContext.basicShader.programID);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
+    glEnableVertexAttribArray(0);
     
-    GLuint pos = (GLuint)glGetAttribLocation(renderContext.basicShader.programID, "position");
-    
-    glEnableVertexAttribArray(pos);
-    glVertexAttribPointer(pos, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
-    
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
     
     // Initialize point cloud
@@ -594,7 +595,7 @@ static Vertex* LoadObjWithFaces(RenderContext &renderContext, const char* filePa
                         }
                     }
                 }
-
+                
                 free(r);
                 f.faceNormal = ComputeFaceNormal(f);
                 f.faceColor = color;
@@ -673,25 +674,18 @@ static void RenderPointCloud(RenderContext& renderContext, Vertex* inputPoints, 
 
 static void RenderQuad(RenderContext& renderContext, glm::vec3 position = glm::vec3(0.0f), glm::quat orientation = glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3 scale = glm::vec3(1.0f), glm::vec4 color = glm::vec4(1.0f), bool isUI = false)
 {
-    glBindVertexArray(renderContext.quadVAO);
     glUseProgram(renderContext.basicShader.programID);
+    glBindVertexArray(renderContext.quadVAO);
     
     auto m = ComputeTransformation(scale, orientation, position);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, renderContext.quadVBO);
-    glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(GLfloat), &renderContext.quadVertices[0], GL_STATIC_DRAW);
-    
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
     
     SetMatrixUniform(renderContext.basicShader.programID, "M", m);
     SetMatrixUniform(renderContext.basicShader.programID, "V", renderContext.viewMatrix);
     SetMatrixUniform(renderContext.basicShader.programID, "P", renderContext.projectionMatrix);
     SetVec4Uniform(renderContext.basicShader.programID, "c", color);
-    SetBoolUniform(renderContext.basicShader.programID, "isUI", isUI);
+    SetIntUniform(renderContext.basicShader.programID, "isUI", isUI);
     
-    glDrawElements(GL_TRIANGLES, sizeof(renderContext.quadIndices), GL_UNSIGNED_INT, (void*)0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, (void*)0);
     glBindVertexArray(0);
 }
 

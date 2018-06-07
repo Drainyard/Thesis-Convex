@@ -16,6 +16,9 @@
 #include "Shlwapi.h"
 #endif
 
+#define STB_PERLIN_IMPLEMENTATION
+#include <stb_perlin.h>
+
 #ifdef _WIN32
 #define _USE_MATH_DEFINES
 #endif
@@ -33,6 +36,7 @@
 #include <stb_image.h>
 #include <glad/glad.h>
 #include "GLFW/glfw3.h"
+
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp> 
@@ -151,31 +155,40 @@ void reinitHull(Vertex *vertices, Hull &h, Vertex **currentVertices, Mesh **curr
 
 void renderGenAndHullType(RenderContext &renderContext, Hull &h)
 {
+    auto orientation = glm::quat(0.0f, 0.0f, 0.0f, 0.0f);
+    auto scale = glm::vec3(100.0f, 100.0f, 0.0f);
+    auto position = glm::vec3(0.0f, 0.0f, 0.0f);
+    auto isUi = true;
     switch(h.pointGenerator.type)
     {
         case GeneratorType::InSphere:
         {
-            RenderQuad(renderContext, glm::vec3(500.0f, 500.0f, 0.0f), glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(100.0f, 100.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), false);
+            RenderQuad(renderContext, position, orientation, scale, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), isUi);
         }
         break;
         case GeneratorType::OnSphere:
         {
-            RenderQuad(renderContext, glm::vec3(500.0f, 500.0f, 0.0f), glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(100.0f, 100.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), false);
+            RenderQuad(renderContext, position, orientation, scale, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), isUi);
         }
         break;
         case GeneratorType::InCube:
         {
-            RenderQuad(renderContext, glm::vec3(500.0f, 500.0f, 0.0f), glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(100.0f, 100.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), false);
+            RenderQuad(renderContext, position, orientation, scale, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), isUi);
         }
         break;
         case GeneratorType::NormalizedSphere:
         {
-            RenderQuad(renderContext, glm::vec3(500.0f, 500.0f, 0.0f), glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(100.0f, 100.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), false);
+            RenderQuad(renderContext, position, orientation, scale, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), isUi);
         }
         break;
         case GeneratorType::ManyInternal:
         {
-            RenderQuad(renderContext, glm::vec3(500.0f, 500.0f, 0.0f), glm::quat(0.0f, 0.0f, 0.0f, 0.0f), glm::vec3(100.0f, 100.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), false);
+            RenderQuad(renderContext, position, orientation, scale, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), isUi);
+        }
+        break;
+        case GeneratorType::Clusters:
+        {
+            RenderQuad(renderContext, position, orientation, scale, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), isUi);
         }
         break;
     }
@@ -424,6 +437,7 @@ int main()
                 glfwSetInputMode(renderContext.window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
             }
         }
+        
         renderGenAndHullType(renderContext, h);
         
         // Swap buffers

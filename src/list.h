@@ -56,7 +56,7 @@ static void addToList(List<T> &list, T element)
 
 
 template<typename T>
-static void clear(List<T> &list)
+static void clear(List<T> &list, size_t capacity = 0)
 {
     if(list.list)
     {
@@ -65,15 +65,27 @@ static void clear(List<T> &list)
     
     list.list = nullptr;
     list.size = 0;
-    list.capacity = 0;
+    list.capacity = (size_t)pow(capacity, (size_t)ceil(log2(capacity)));
+    
+    if(list.capacity > 0)
+    {
+        list.list = (T*)malloc(sizeof(T) * list.capacity);
+    }
 }
 
 template<typename T>
-static void init(List<T> &list)
+static void init(List<T> &list, size_t capacity = 0)
 {
     list.size = 0;
-    list.capacity = 0;
+    list.capacity = (size_t)pow(capacity, (size_t)ceil(log2(capacity)));
+    
     list.list = nullptr;
+    
+    if(list.capacity > 0)
+    {
+        list.list = (T*)malloc(sizeof(T) * list.capacity);
+    }
+    
 }
 
 #endif

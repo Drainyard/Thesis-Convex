@@ -190,14 +190,14 @@ struct RenderContext
     
     GLuint quadVAO;
     GLuint quadVBO;
-    GLuint quadIndexBuffer;
+    GLuint quadEBO;
     GLuint quadIndices[6] = {0, 1, 2, 2, 1, 3};
-    GLfloat quadVertices[8] = 
+    GLfloat quadVertices[12] = 
     {
-        0.0f, 0.0f,
-        1.0f, 0.0f,
-        0.0f, 1.0f,
-        1.0f, 1.0f
+        -0.5f, -0.5f, 0.0f,
+        0.5f, -0.5f, 0.0f,
+        -0.5f, 0.5f, 0.0f,
+        0.5f, 0.5f, 0.0f,
     };
     
     GLuint pointCloudVAO;

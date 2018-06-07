@@ -390,14 +390,14 @@ void dacConstructFullHull(DacContext &dacContext)
     DacVertex **A = (DacVertex**)malloc(2 * n * sizeof(DacVertex));
     //work array
     DacVertex **B = (DacVertex**)malloc(2 * n * sizeof(DacVertex));
-    // dacHull(dacContext, list, n, A, B, true);
+    dacHull(dacContext, list, n, A, B, true);
     
-    // //create faces by processing the events in event array A
-    // for (i = 0; A[i] != NIL; A[i++]->act())
-    // {
-    //     DacFace *newFace = dacCreateFaceFromPoints(A, i);
-    //     dacContext.faces.push_back(newFace);
-    // }
+    //create faces by processing the events in event array A
+    for (i = 0; A[i] != NIL; A[i++]->act())
+    {
+        DacFace *newFace = dacCreateFaceFromPoints(A, i);
+        dacContext.faces.push_back(newFace);
+    }
     
     DacVertex *upperList = sort(dacContext.upperP, n);
     DacVertex **C = (DacVertex**)malloc(2 * n * sizeof(DacVertex));

@@ -13,6 +13,7 @@ enum GeneratorType
     InCube,
     NormalizedSphere,
     ManyInternal,
+    Clusters
 };
 
 struct PointGenerator
@@ -132,7 +133,7 @@ void loadConfig(const char* filePath, ConfigData &configData)
             {
                 int genType;
                 sscanf(buffer, "type %d", &genType);
-                if(genType > GeneratorType::ManyInternal)
+                if(genType > GeneratorType::Clusters)
                 {
                     genType = GeneratorType::InSphere;
                 }
@@ -159,10 +160,10 @@ static void initPointGenerator(PointGenerator& pointGenerator, GeneratorType typ
 {
     pointGenerator.type = type;
     pointGenerator.numberOfPoints = numberOfPoints;
-    std::uniform_real_distribution<coord_t> d(min, max);
+    //std::uniform_real_distribution<coord_t> d(min, max);
     pointGenerator.min = min;
     pointGenerator.max = max;
-    pointGenerator.d = d;
+    //pointGenerator.d = d;
 }
 
 static GENERATOR_FUNCTION(generatePoints)
@@ -181,6 +182,8 @@ static GENERATOR_FUNCTION(generatePoints)
     }
     return res;
 }
+
+
 
 static GENERATOR_FUNCTION(generatePointsOnSphere)
 {
@@ -221,6 +224,42 @@ static GENERATOR_FUNCTION(generatePointsInSphere)
     }
     return res;
 }
+
+
+static GENERATOR_FUNCTION(generatePointsInClusters)
+{
+    auto res = (Vertex*)malloc(sizeof(Vertex) * pointGenerator.numberOfPoints);
+    auto min = pointGenerator.min;
+    auto max = pointGenerator.max;
+    
+    auto n_clusters = 4;
+    auto pointsPerCluster = pointGenerator.numberOfPoints / n_clusters;
+    
+    PointGenerator p;
+    p.numberOfPoints = pointsPerCluster;
+    p.type = pointGenerator.type;
+    p.gen = pointGenerator.gen;
+    p.d = pointGenerator.d;
+    p.gen.seed((unsigned int)time(NULL));
+    
+    auto partOfMax = max / (n_clusters * 5);
+    
+    for(size_t i = 0; i < n_clusters; i++)
+    {
+        auto r1 = randomCoord(p.d, p.gen, min + partOfMax * i, partOfMax + (partOfMax * i));
+        auto r2 = randomCoord(p.d, p.gen, min + partOfMax * i, partOfMax + (partOfMax * i));
+        p.min = Min(r1, r2);
+        p.max = Max(r1, r2);
+        initPointGenerator(p, p.type, pointsPerCluster, p.min, p.max);
+        auto newOffset = glm::vec3(offset.x + ((randomInt(p.d, p.gen, 0, 1) ? -1 : 1) * randomCoord(p.d, p.gen, max / 2, max)), offset.y + ((randomInt(p.d, p.gen, 0, 1) ? -1 : 1) * randomCoord(p.d, p.gen, max / 2, max)), offset.z + ((randomInt(p.d, p.gen, 0, 1) ? -1 : 1) *randomCoord(p.d, p.gen, max / 2, max)));
+        auto cluster = generatePointsInSphere(p, newOffset);
+        
+        memcpy(res + (pointsPerCluster * i), cluster, sizeof(Vertex) * pointsPerCluster);
+    }
+    
+    return res;
+}
+
 
 GENERATOR_FUNCTION(generatePointsOnNormalizedSphere)
 {
@@ -308,6 +347,11 @@ static GENERATOR_FUNCTION(generate)
         case GeneratorType::ManyInternal:
         {
             return generatePointsManyInternal(pointGenerator, offset);
+        }
+        break;
+        case GeneratorType::Clusters:
+        {
+            return generatePointsInClusters(pointGenerator, offset);
         }
         break;
     }

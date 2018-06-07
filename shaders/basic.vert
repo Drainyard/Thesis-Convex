@@ -12,12 +12,11 @@ void main()
 {
     if(isUI == 1)
     {
-        gl_Position = V * M * vec4(position.xy, 0.0f, 1.0f);
+        gl_Position = P * vec4(position.xy, 0.0f, 1.0f);
     }
     else
     {
-        gl_Position = P * V * M * vec4(position, 1);
+        gl_Position = P * V * M * vec4(position.xyz, 1.0f);
     }
-    
 }
 

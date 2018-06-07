@@ -241,7 +241,7 @@ static QhFace* qhAddFace(QhHull& q, List<int> &vertexHandles, QhVertex* vertices
 {
     QhFace newFace = {};
     
-    init(newFace.vertices);
+    init(newFace.vertices, 3);
     
     for(size_t i = 0; i < vertexHandles.size; i++)
     {
@@ -554,7 +554,7 @@ coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
     //auto epsilon = 0.0f;
     
     List<int> mostDistList = {};
-    init(mostDistList);
+    init(mostDistList, 3);
     
     addToList(mostDistList, mostDist1);
     addToList(mostDistList, mostDist2);
@@ -594,13 +594,13 @@ coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
         f->vertices[1] = t;
         f->faceNormal = ComputeFaceNormal(*f, vertices);
         List<int> list = {};
-        init(list);
+        init(list, 3);
         
         addToList(list, mostDist1);
         addToList(list, currentIndex);
         addToList(list, extremePointCurrentIndex);
         qhAddFace(q, list, vertices);
-        clear(list);
+        clear(list, 3);
         if(q.failed)
             return epsilon;
         
@@ -608,7 +608,7 @@ coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
         addToList(list, mostDist2);
         addToList(list, extremePointCurrentIndex);
         qhAddFace(q, list, vertices);
-        clear(list);
+        clear(list, 3);
         
         if(q.failed)
             return epsilon;
@@ -624,13 +624,13 @@ coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
     else
     {
         List<int> list = {};
-        init(list);
+        init(list, 3);
         
         addToList(list, currentIndex);
         addToList(list, mostDist1);
         addToList(list, extremePointCurrentIndex);
         qhAddFace(q, list, vertices);
-        clear(list);
+        clear(list, 3);
         if(q.failed)
             return epsilon;
         
@@ -638,7 +638,7 @@ coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
         addToList(list, currentIndex);
         addToList(list, extremePointCurrentIndex);
         qhAddFace(q, list, vertices);
-        clear(list);
+        clear(list, 3);
         
         if(q.failed)
             return epsilon;
@@ -803,7 +803,7 @@ Mesh& qhConvertToMesh(RenderContext& renderContext, QhHull& qHull, Vertex* verti
     for(const auto& f : qHull.faces)
     {
         Face newFace = {};
-        init(newFace.vertices);
+        init(newFace.vertices, 3);
         for(size_t i = 0; i < f.vertices.size; i++)
         {
             auto v = vertices[f.vertices.list[i]];
@@ -909,6 +909,7 @@ void qhHorizonStep(QhHull& qHull, QhVertex* vertices, QhFace& f, std::vector<int
                 auto& newF = qHull.faces[fa.neighbours[neighbourIndex].faceHandle];
                 if(!newF.visitedV && IsPointOnPositiveSide(qHull, neighbour, p, epsilon))
                 {
+                    newF.visitedV = true;
                     v.push_back(newF.indexInHull);
                 }
             }
@@ -936,7 +937,7 @@ void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack,
         auto f = qHull.faces[fHandle];
         
         List<int> list = {};
-        init(list);
+        init(list, 3);
         
         addToList(list, e.origin);
         addToList(list, e.end);
@@ -971,6 +972,7 @@ void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack,
     
     
     std::vector<int> uniqueInV;
+    
     uniqueInV.reserve(v.size());
     for(size_t i = 0; i < v.size(); i++)
     {
@@ -1001,7 +1003,6 @@ void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack,
             q.assigned = false;
         }
     }
-    
     
     // The way we understand this, is that unassigned now means any point that was
     // assigned in the first round, but is part of a face that is about to be

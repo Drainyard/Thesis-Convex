@@ -75,6 +75,11 @@ const char *GetGeneratorTypeString(GeneratorType type)
             return "Many internal, some on sphere";
         }
         break;
+        case GeneratorType::Clusters:
+        {
+            return "Clusters";
+        }
+        break;
     }
 }
 
@@ -335,7 +340,7 @@ static void RunFullHullTestInc(TestSet &testSet, glm::vec3 offset)
         
         WriteHullToCSV("../data/inc_hull_out", addedFaces / numForAvg, numFaces / numForAvg, n, pointsProcessed / numForAvg, 0, sidednessQueries / numForAvg,  verticesOnHull / numForAvg, timeSpent / numForAvg, genType);
         
-
+        
         addedFaces = 0;
         numFaces = 0;
         pointsProcessed = 0;
