@@ -114,11 +114,8 @@ static bool dacIsPointOnPositiveSide(DacFace *f, DacVertex *v, coord_t epsilon =
     return d > epsilon;
 }
 
-DacFace *dacCreateFaceFromPoints(DacVertex **A, int i)
+DacFace *dacCreateFaceFromPoints(DacVertex *u, DacVertex *v, DacVertex *w)
 {
-    DacVertex *u = A[i]->prev;
-    DacVertex *v = A[i];
-    DacVertex *w = A[i]->next;
     DacFace *f = (DacFace *)malloc(sizeof(DacFace));
     f->vertex[0] = u;
     f->vertex[1] = v;
@@ -135,6 +132,16 @@ static void dacCopyVertices(DacContext &dac, Vertex *vertices, int numberOfPoint
     {
         dac.vertices[i].vIndex = i;
         dac.vertices[i].position = vertices[i].position;
+    }
+}
+
+void printHull(DacContext &dacContext, DacVertex **events)
+{
+    for (int i = 0; events[i] != NIL; i++)
+    {
+        DacFace *newFace = dacCreateFaceFromPoints(events[i]->prev, events[i], events[i]->next);
+        dacContext.faces.push_back(newFace);
+        events[i]->act();
     }
 }
 
@@ -393,11 +400,8 @@ void dacConstructFullHull(DacContext &dacContext)
      dacHull(dacContext, list, n, A, B, true);
     
      //create faces by processing the events in event array A
-    for (i = 0; A[i] != NIL; A[i++]->act())
-    {
-        DacFace *newFace = dacCreateFaceFromPoints(A, i);
-        dacContext.faces.push_back(newFace);
-    }
+    printHull(dacContext, A);
+
     
     DacVertex *upperList = sort(dacContext.upperP, n);
     DacVertex **C = (DacVertex**)malloc(2 * n * sizeof(DacVertex));
@@ -405,11 +409,7 @@ void dacConstructFullHull(DacContext &dacContext)
     DacVertex **D = (DacVertex**)malloc(2 * n * sizeof(DacVertex));
     dacHull(dacContext, upperList, n, C, D, false);
     
-    for (i = 0; C[i] != NIL; C[i++]->act())
-    {   
-        DacFace *newFace = dacCreateFaceFromPoints(C, i);
-        dacContext.faces.push_back(newFace);
-    }
+    printHull(dacContext, C);
     
     //dirty normal check
     for (size_t j = 0; j != dacContext.faces.size(); ++j)
