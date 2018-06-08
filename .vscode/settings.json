@@ -50,6 +50,7 @@
         "unordered_set": "cpp",
         "vector": "cpp",
         "xutility": "cpp",
-        "list": "cpp"
+        "list": "cpp",
+        "fstream": "cpp"
     }
 }
