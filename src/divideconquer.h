@@ -210,14 +210,14 @@ double time(DacVertex *p, DacVertex *q, DacVertex *r)
 
 void dacHull(DacContext &dacContext, DacVertex *list, DacVertex **A, DacVertex **B, int offset, int mergeIteration, bool lower)
 {
-    int leftGroupIndex = mergeIteration * offset;
-    int rightGroupIndex = (leftGroupIndex + ((mergeIteration + 1) * offset)) / 2;
-    int eventListOffset = leftGroupIndex * 2;
+    int leftSideIndex = mergeIteration * offset;
+    int rightSideIndex = (leftSideIndex + ((mergeIteration + 1) * offset)) / 2;
+    int eventOffset = leftSideIndex * 2;
 
     //Chan base case
     if (offset == 1)
     {
-        A[eventListOffset]->next = A[eventListOffset]->prev = A[eventListOffset] = NIL;
+        A[eventOffset]->next = A[eventOffset]->prev = A[eventOffset] = NIL;
         return;
     }
 
@@ -225,9 +225,9 @@ void dacHull(DacContext &dacContext, DacVertex *list, DacVertex **A, DacVertex *
     int i, j, k, l, minl;
 
     // find last u in L
-    for (u = &list[leftGroupIndex]; u->next != NIL; u = u->next)
+    for (u = &list[leftSideIndex]; u->next != NIL; u = u->next)
         ;
-    mid = v = &list[rightGroupIndex];
+    mid = v = &list[rightSideIndex];
 
     double oldTime;
     double newTime;
@@ -252,7 +252,7 @@ void dacHull(DacContext &dacContext, DacVertex *list, DacVertex **A, DacVertex *
 
     // merge by tracking bridge uv over time
     // infinite loop until no insertion/deletion events occur
-    for (i = leftGroupIndex * 2, j = rightGroupIndex * 2, k = eventListOffset, oldTime = -INF;; oldTime = newTime)
+    for (i = leftSideIndex * 2, j = rightSideIndex * 2, k = eventOffset, oldTime = -INF;; oldTime = newTime)
     {
         if (lower)
         {
@@ -348,7 +348,7 @@ void dacHull(DacContext &dacContext, DacVertex *list, DacVertex **A, DacVertex *
     dacContext.processingState.createdFaces += k;
     // now go back in time to update pointers
     // during insertion of q between p and r, we cannot store p and r in the prev and next fields, as they are still in use in L and R
-    for (k--; k >= eventListOffset; k--)
+    for (k--; k >= eventOffset; k--)
     {
         if (A[k]->position.x <= u->position.x || A[k]->position.x >= v->position.x)
         {
