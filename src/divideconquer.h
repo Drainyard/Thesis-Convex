@@ -397,7 +397,7 @@ void dacConstructFullHull(DacContext &dacContext)
         offset = 1;
         swap = true;
         mergesLeft = n;
-        do
+        while (mergesLeft > 0)
         {
             for (i = 0; i < mergesLeft; i++)
             {
@@ -413,7 +413,7 @@ void dacConstructFullHull(DacContext &dacContext)
             swap = !swap;
             offset *= 2;
             mergesLeft /= 2;
-        } while (mergesLeft > 0);
+        }
 
         swap ? createFaces(dacContext, dacContext.B) : createFaces(dacContext, dacContext.A);
         free(dacContext.A);
