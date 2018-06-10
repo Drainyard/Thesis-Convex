@@ -256,7 +256,7 @@ int main()
     auto previousHullType = h.currentHullType;
     
     std::random_device rd{};
-    std::mt19937 gen{rd()};
+    std::mt19937_64 gen{rd()};
     gen.seed((unsigned int)seed);
     //gen.seed(1526208347);
     h.pointGenerator.gen = gen;

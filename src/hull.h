@@ -212,7 +212,7 @@ static void RunFullHullTestQh(TestSet &testSet, glm::vec3 offset)
     auto seed = time(NULL);
     PointGenerator generator;
     std::random_device rd{};
-    std::mt19937 gen{rd()};
+    std::mt19937_64 gen{rd()};
     gen.seed((unsigned int)seed);
     generator.gen = gen;
     
@@ -288,7 +288,7 @@ static void RunFullHullTestInc(TestSet &testSet, glm::vec3 offset)
     auto seed = time(NULL);
     PointGenerator generator;
     std::random_device rd{};
-    std::mt19937 gen{rd()};
+    std::mt19937_64 gen{rd()};
     gen.seed((unsigned int)seed);
     generator.gen = gen;
     
@@ -361,7 +361,7 @@ static void RunFullHullTestDac(TestSet &testSet, glm::vec3 offset)
     auto seed = time(NULL);
     PointGenerator generator;
     std::random_device rd{};
-    std::mt19937 gen{rd()};
+    std::mt19937_64 gen{rd()};
     gen.seed((unsigned int)seed);
     generator.gen = gen;
     

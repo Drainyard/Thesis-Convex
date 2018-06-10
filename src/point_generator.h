@@ -20,7 +20,7 @@ struct PointGenerator
 {
     int numberOfPoints;
     GeneratorType type;
-    std::mt19937 gen;
+    std::mt19937_64 gen;
     std::uniform_real_distribution<coord_t> d;
     coord_t min;
     coord_t max;
@@ -232,7 +232,7 @@ static GENERATOR_FUNCTION(generatePointsInClusters)
     auto min = pointGenerator.min;
     auto max = pointGenerator.max;
     
-    auto n_clusters = 4;
+    auto n_clusters = 10;
     auto pointsPerCluster = pointGenerator.numberOfPoints / n_clusters;
     
     PointGenerator p;
@@ -242,7 +242,7 @@ static GENERATOR_FUNCTION(generatePointsInClusters)
     p.d = pointGenerator.d;
     p.gen.seed((unsigned int)time(NULL));
     
-    auto partOfMax = max / (n_clusters * 5);
+    auto partOfMax = max / (n_clusters * 10);
     
     for(size_t i = 0; i < n_clusters; i++)
     {
