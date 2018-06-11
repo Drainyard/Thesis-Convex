@@ -2,12 +2,7 @@
 #include <chrono>
 #include <random>
 #include <vector>
-#include <iterator>
-#include <map>
-#include <stack>
-#include <unordered_map>
-#include <unordered_set>
-#include <iostream>
+
 #include <cstdio>
 #include <cstdlib>
 #if defined(__linux)
@@ -15,9 +10,6 @@
 #else
 #include "Shlwapi.h"
 #endif
-
-#define STB_PERLIN_IMPLEMENTATION
-#include <stb_perlin.h>
 
 #ifdef _WIN32
 #define _USE_MATH_DEFINES
@@ -36,7 +28,6 @@
 #include <stb_image.h>
 #include <glad/glad.h>
 #include "GLFW/glfw3.h"
-
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/matrix_transform.hpp> 
@@ -81,40 +72,32 @@ void reinitPoints(Vertex **vertices, ConfigData &configData, Hull &h, RenderCont
     {
         free(t.testSet);
     }
+    
     for(auto &t : configData.incTestSets)
     {
         free(t.testSet);
     }
+    
     for(auto &t : configData.dacTestSets)
     {
         free(t.testSet);
     }
+    
     clear(configData.qhTestSets);
     clear(configData.incTestSets);
     clear(configData.dacTestSets);
     
-    loadConfig("../.config", configData);
+    loadConfig("../.config", configData, renderContext);
     
     if(h.numberOfPoints != configData.numberOfPoints || h.pointGenerator.type != configData.genType)
     {
         initPointGenerator(h.pointGenerator, configData.genType, configData.numberOfPoints, 0.0, 200.0);
     }
-    *vertices = generate(h.pointGenerator, renderContext.originOffset);
-}
-
-
-void reinitPoints(Vertex **vertices, int numPoints, Hull &h, RenderContext &renderContext)
-{
-    if(*vertices)
-    {
-        free(*vertices);
-    }
     
-    if(h.numberOfPoints != numPoints)
-    {
-        initPointGenerator(h.pointGenerator, GeneratorType::InSphere, numPoints, 0.0, 200.0);
-    }
     *vertices = generate(h.pointGenerator, renderContext.originOffset);
+    
+    configData.meshVertices = nullptr;
+    configData.loadedMesh.faces.clear();
 }
 
 void reinitHull(Vertex *vertices, Hull &h, Vertex **currentVertices, Mesh **currentMesh, Mesh **fullHull, Mesh **timedHull, Mesh **stepHull)
@@ -196,13 +179,12 @@ void renderGenAndHullType(RenderContext &renderContext, Hull &h)
 
 int main()
 {
-    printf("Verts: %zd\n", sizeof(VertexInfo));
-    // Degenerate: 1520515408
-    //auto seed = 1521294278;
     auto seed = time(NULL);
-    //seed = 1525801902;
+    
     srand((unsigned int)seed);
+    
     printf("Seed: %zd\n", seed);
+    
     RenderContext renderContext = {};
     renderContext.FoV = 45.0f;
     renderContext.position = glm::vec3(0.0f, 50.5f, 70.0f);
@@ -217,10 +199,7 @@ int main()
     
     InitializeOpenGL(renderContext);
     
-    //glClearColor(41.0f / 255.0f, 54.0f / 255.0f, 69.0f / 255.0f, 1.0f);
     glClearColor(0.15f, 0.15f, 0.2f, 1.0f);
-    
-    printf("Sizeof: %zd\n", sizeof(coord_t));
     
     double lastFrame = glfwGetTime();
     double currentFrame = 0.0;
@@ -236,7 +215,7 @@ int main()
     HullType hullType = HullType::QH;
     
     ConfigData configData = {};
-    loadConfig("../.config", configData);
+    loadConfig("../.config", configData, renderContext);
     
     Hull h;
     h.vertices = nullptr;
@@ -258,34 +237,24 @@ int main()
     std::random_device rd{};
     std::mt19937_64 gen{rd()};
     gen.seed((unsigned int)seed);
-    //gen.seed(1526208347);
     h.pointGenerator.gen = gen;
     
-    //int numberOfPoints = 645932; // Man in vest numbers
-    //int numberOfPoints = 17536; // Arnold
-    //int numberOfPoints = 27948;
-    //int numberOfPoints = 3057;
-    //int numberOfPoints = configData.numberOfPoints;
-    //int numberOfPoints = 2503;
     int numberOfPoints;
+    Vertex *vertices;
     
-    Mesh bunnyMesh = {};
-    auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/MidPoly/001_MidPoly.OBJ", bunnyMesh, &numberOfPoints, 1.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
-    //auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/LowPoly/001_LowPoly.OBJ", bunnyMesh, &numberOfPoints, 1.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
-    //auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/HighPoly/001_HighPoly.OBJ", bunnyMesh, &numberOfPoints, 1.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
-    //auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/stanford_bunny.obj", bunnyMesh, &numberOfPoints, 1000.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
-    //auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/ArnoldSchwarzeneggerBust.OBJ", bunnyMesh, &numberOfPoints, 100.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
-    
-    bunnyMesh.position = glm::vec3(0.0f);
-    bunnyMesh.scale = glm::vec3(globalScale);
+    if(!configData.meshVertices)
+    {
+        numberOfPoints = configData.numberOfPoints;
+        
+        vertices = generate(h.pointGenerator, renderContext.originOffset);
+    }
+    else
+    {
+        numberOfPoints = configData.verticesInMesh;
+        vertices = configData.meshVertices;
+    }
     
     initPointGenerator(h.pointGenerator, configData.genType, numberOfPoints, 0.0, 200.0);
-    
-    //auto vertices = generate(h.pointGenerator, renderContext.originOffset);
-    //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ", 200.0f);
-    //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
-    //auto vertices = LoadObj("../assets/obj/CarpetBit.obj");
-    //auto vertices = LoadObj("../assets/obj/globaglwhat.obj");
     
     InitializeHull(h, vertices, h.pointGenerator.numberOfPoints, hullType);
     
@@ -370,7 +339,11 @@ int main()
             currentMesh = fullHull;
         }
         
-        RenderMesh(renderContext, bunnyMesh);
+        if(configData.meshVertices)
+        {
+            RenderMesh(renderContext, configData.loadedMesh);
+        }
+        
         
         if(KeyDown(Key_J))
         {

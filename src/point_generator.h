@@ -42,6 +42,10 @@ struct ConfigData
     List<TestSet> qhTestSets;
     List<TestSet> incTestSets;
     List<TestSet> dacTestSets;
+    
+    Mesh loadedMesh;
+    Vertex *meshVertices;
+    int verticesInMesh;
 };
 
 void readTestSet(const char *filename, TestSet &testSet)
@@ -117,9 +121,10 @@ void readTestSets(char *buffer, size_t bufSize, List<TestSet> &list, FILE *f)
     prevPos = ftell(f);
 }
 
-void loadConfig(const char* filePath, ConfigData &configData)
+void loadConfig(const char* filePath, ConfigData &configData, RenderContext &renderContext)
 {
     FILE* f = fopen(filePath, "r");
+    
     if(f)
     {
         char buffer[64];
@@ -150,6 +155,16 @@ void loadConfig(const char* filePath, ConfigData &configData)
             else if(startsWith(buffer, "q"))
             {
                 readTestSets(buffer, 64, configData.qhTestSets, f);
+            }
+            else if(startsWith(buffer, "mesh"))
+            {
+                char path[512];
+                float scale;
+                sscanf(buffer, "mesh %s %f", path, &scale);
+                configData.meshVertices = LoadObjWithFaces(renderContext, path, configData.loadedMesh, &configData.verticesInMesh, scale, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
+                
+                configData.loadedMesh.position = glm::vec3(0.0f);
+                configData.loadedMesh.scale = glm::vec3(globalScale);
             }
         }
         fclose(f);

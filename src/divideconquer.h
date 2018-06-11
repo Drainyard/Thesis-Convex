@@ -42,7 +42,7 @@ struct DacContext
     DacVertex **A;
     DacVertex **B;
     bool lower;
-
+    
     struct
     {
         int createdFaces;
@@ -52,7 +52,7 @@ struct DacContext
         int verticesOnHull;
         unsigned long long timeSpent;
     } processingState;
-
+    
     struct
     {
         int mergesLeft;
@@ -97,7 +97,7 @@ void sort(DacVertex A[], int n)
     DacVertex *B = new DacVertex[n];
     for (subsize = 1; subsize < n; subsize *= 2)
         for (left = 0, mid = subsize; mid < n; left = mid + subsize, mid = left + subsize)
-            merge(A, B, n, left, mid);
+        merge(A, B, n, left, mid);
     delete[] B;
 }
 
@@ -106,17 +106,17 @@ glm::vec3 dacComputeFaceNormal(DacFace *f)
     // Newell's Method
     // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
     glm::vec3 normal = glm::vec3(0.0);
-
+    
     for (int i = 0; i < 3; i++)
     {
         glm::vec3 current = f->vertex[i]->position;
         glm::vec3 next = f->vertex[(i + 1) % 3]->position;
-
+        
         normal.x = normal.x + (current.y - next.y) * (current.z + next.z);
         normal.y = normal.y + (current.z - next.z) * (current.x + next.x);
         normal.z = normal.z + (current.x - next.x) * (current.y + next.y);
     }
-
+    
     return glm::normalize(normal);
 }
 
@@ -157,7 +157,7 @@ void createFaces(DacContext &dacContext, DacVertex **events)
         dacContext.faces.push_back(newFace);
         events[i]->act();
     }
-
+    
     //dirty normal check
     for (size_t j = 0; j != dacContext.faces.size(); ++j)
     {
@@ -189,7 +189,7 @@ double orient(DacVertex *p, DacVertex *q, DacVertex *r)
     //                 (1  r_x  r_y)
     //the determinant gives twice the signed area of the triangle formed by p, q and r
     //SO, this tests if three points do a ccw turn at time -INF
-
+    
     if (p == NIL || q == NIL || r == NIL)
     {
         return 1.0;
@@ -204,7 +204,7 @@ double time(DacVertex *p, DacVertex *q, DacVertex *r)
     {
         return INF;
     }
-
+    
     return ((q->position.x - p->position.x) * (r->position.z - p->position.z) - (r->position.x - p->position.x) * (q->position.z - p->position.z)) / orient(p, q, r);
 }
 
@@ -213,28 +213,28 @@ void dacHull(DacContext &dacContext, DacVertex *list, DacVertex **A, DacVertex *
     int leftSideIndex = mergeIteration * offset;
     int rightSideIndex = (leftSideIndex + ((mergeIteration + 1) * offset)) / 2;
     int eventOffset = leftSideIndex * 2;
-
+    
     //Chan base case
     if (offset == 1)
     {
         A[eventOffset]->next = A[eventOffset]->prev = A[eventOffset] = NIL;
         return;
     }
-
+    
     DacVertex *u, *v, *mid;
     int i, j, k, l, minl;
-
+    
     // find last u in L
     for (u = &list[leftSideIndex]; u->next != NIL; u = u->next)
         ;
     mid = v = &list[rightSideIndex];
-
+    
     double oldTime;
     double newTime;
     double events[6];
     //suppress warning
     minl = -1;
-
+    
     // find initial bridge
     for (;;)
     {
@@ -249,7 +249,7 @@ void dacHull(DacContext &dacContext, DacVertex *list, DacVertex **A, DacVertex *
         else
             break;
     }
-
+    
     // merge by tracking bridge uv over time
     // infinite loop until no insertion/deletion events occur
     for (i = leftSideIndex * 2, j = rightSideIndex * 2, k = eventOffset, oldTime = -INF;; oldTime = newTime)
@@ -281,70 +281,70 @@ void dacHull(DacContext &dacContext, DacVertex *list, DacVertex **A, DacVertex *
                 newTime = events[l];
             }
         }
-
+        
         //if newTime==INF, no insertion/deletion events occured, and we break for loop
         if (newTime == INF)
         {
             break;
         }
-
+        
         //act on the smallest time value
         switch (minl)
         {
-        case 0:
-        {
-            //insert or delete of w in L. If w is to the left of u, insert or delete w in A.
-            if (B[i]->position.x < u->position.x)
+            case 0:
             {
-                A[k++] = B[i];
+                //insert or delete of w in L. If w is to the left of u, insert or delete w in A.
+                if (B[i]->position.x < u->position.x)
+                {
+                    A[k++] = B[i];
+                }
+                B[i++]->act();
+                break;
             }
-            B[i++]->act();
-            break;
-        }
-        case 1:
-        {
-            //insert or delete of w in R. If w is to the right of v, insert or delete w in A.
-            if (B[j]->position.x > v->position.x)
+            case 1:
             {
-                A[k++] = B[j];
+                //insert or delete of w in R. If w is to the right of v, insert or delete w in A.
+                if (B[j]->position.x > v->position.x)
+                {
+                    A[k++] = B[j];
+                }
+                B[j++]->act();
+                break;
             }
-            B[j++]->act();
-            break;
-        }
-        case 2:
-        {
-            //u->prev, u, v was ccw and has turned cw, so u->prev and v is the new bridge, and we delete u in A.
-            A[k++] = u;
-            u = u->prev;
-            break;
-        }
-        case 3:
-        {
-            //u, u->next, v, was cw and turned ccw, so u->next and v is the new bridge, and we insert u->next between u and v.
-            A[k++] = u = u->next;
-            break;
-        }
-        case 4:
-        {
-            //u, v, v->next was ccw and turned cw, so u and v->next is the new bridge, and we delete v in A.
-            A[k++] = v;
-            v = v->next;
-            break;
-        }
-        case 5:
-        {
-            //u, v->prev, v, was cw and turned ccw, so u and v->prev is the new bridge, and we insert v->prev between u and v.
-            A[k++] = v = v->prev;
-            break;
-        }
+            case 2:
+            {
+                //u->prev, u, v was ccw and has turned cw, so u->prev and v is the new bridge, and we delete u in A.
+                A[k++] = u;
+                u = u->prev;
+                break;
+            }
+            case 3:
+            {
+                //u, u->next, v, was cw and turned ccw, so u->next and v is the new bridge, and we insert u->next between u and v.
+                A[k++] = u = u->next;
+                break;
+            }
+            case 4:
+            {
+                //u, v, v->next was ccw and turned cw, so u and v->next is the new bridge, and we delete v in A.
+                A[k++] = v;
+                v = v->next;
+                break;
+            }
+            case 5:
+            {
+                //u, v->prev, v, was cw and turned ccw, so u and v->prev is the new bridge, and we insert v->prev between u and v.
+                A[k++] = v = v->prev;
+                break;
+            }
         }
     }
     A[k] = NIL;
-
+    
     //connect the bridge uv
     u->next = v;
     v->prev = u;
-
+    
     dacContext.processingState.createdFaces += k;
     // now go back in time to update pointers
     // during insertion of q between p and r, we cannot store p and r in the prev and next fields, as they are still in use in L and R
@@ -384,16 +384,16 @@ void dacConstructFullHull(DacContext &dacContext)
 {
     int n = dacContext.numberOfPoints;
     DacVertex *P = dacContext.sortedP;
-
+    
     int i;
     bool swap;
     int offset, mergesLeft;
-
+    
     for (int m = 0; m < 2; m++)
     {
         dacContext.A = (DacVertex **)malloc(2 * n * sizeof(DacVertex));
         dacContext.B = (DacVertex **)malloc(2 * n * sizeof(DacVertex));
-
+        
         offset = 1;
         swap = true;
         mergesLeft = n;
@@ -414,15 +414,15 @@ void dacConstructFullHull(DacContext &dacContext)
             offset *= 2;
             mergesLeft /= 2;
         }
-
+        
         swap ? createFaces(dacContext, dacContext.B) : createFaces(dacContext, dacContext.A);
         free(dacContext.A);
         free(dacContext.B);
-
+        
         P = dacContext.sortedUpperP;
         dacContext.lower = false;
     }
-
+    
     dacContext.processingState.facesOnHull = (int)dacContext.faces.size();
 }
 
@@ -446,11 +446,11 @@ void dacHullStep(DacContext &dacContext)
     {
         dacContext.A = (DacVertex **)malloc(2 * n * sizeof(DacVertex));
         dacContext.B = (DacVertex **)malloc(2 * n * sizeof(DacVertex));
-
+        
         dacContext.stepInfo.offset = 1;
         dacContext.stepInfo.swap = true;
         dacContext.stepInfo.mergesLeft = n;
-
+        
         dacContext.stepInfo.initAB = false;
     }
     else
@@ -459,7 +459,7 @@ void dacHullStep(DacContext &dacContext)
         dacContext.stepInfo.offset *= 2;
         dacContext.stepInfo.mergesLeft /= 2;
     }
-
+    
     if (dacContext.stepInfo.mergesLeft > 0)
     {
         for (int i = 0; i < dacContext.stepInfo.mergesLeft; i++)
@@ -510,7 +510,7 @@ void dacInitializeContext(DacContext &dacContext, Vertex *vertices, int n)
         free(f);
     }
     dacContext.faces.clear();
-
+    
     dacContext.numberOfPoints = n;
     dacContext.initialized = true;
     nil.position = glm::vec3(INF, INF, INF);
@@ -518,10 +518,10 @@ void dacInitializeContext(DacContext &dacContext, Vertex *vertices, int n)
     nil.next = nullptr;
     nil.prev = nullptr;
     dacCopyVertices(dacContext, vertices, n);
-
+    
     dacContext.sortedP = (DacVertex *)malloc(sizeof(DacVertex) * n);
     memcpy(dacContext.sortedP, dacContext.vertices, sizeof(DacVertex) * n);
-
+    
     sort(dacContext.sortedP, n);
     dacContext.sortedUpperP = (DacVertex *)malloc(sizeof(DacVertex) * n);
     memcpy(dacContext.sortedUpperP, dacContext.sortedP, sizeof(DacVertex) * n);
@@ -535,12 +535,12 @@ Mesh &dacConvertToMesh(DacContext &context, RenderContext &renderContext)
     {
         context.m = &InitEmptyMesh(renderContext);
     }
-
+    
     context.m->faces.clear();
     context.m->position = glm::vec3(0.0);
     context.m->scale = glm::vec3(globalScale);
     context.m->dirty = true;
-
+    
     for (const auto &f : context.faces)
     {
         Face newFace = {};
@@ -557,7 +557,7 @@ Mesh &dacConvertToMesh(DacContext &context, RenderContext &renderContext)
         newFace.centerPoint = f->centerPoint;
         context.m->faces.push_back(newFace);
     }
-
+    
     return *context.m;
 }
 
