@@ -556,6 +556,7 @@ static Vertex* LoadObjWithFaces(RenderContext &renderContext, const char* filePa
                 
                 vertices[i].position = vertices[i].position * scale;
                 vertices[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
+                
                 i++;
             }
             else if(startsWith(buffer, "vt"))
@@ -566,9 +567,9 @@ static Vertex* LoadObjWithFaces(RenderContext &renderContext, const char* filePa
             {
                 Face f = {};
                 
-                char *r = (char*)malloc(strlen(buffer));
-                char *str = r;
+                char str[256];
                 strcpy(str, buffer);
+                
                 if(tangents)
                 {
                     char *tok = strtok(str, " ");
@@ -596,16 +597,18 @@ static Vertex* LoadObjWithFaces(RenderContext &renderContext, const char* filePa
                     }
                 }
                 
-                free(r);
                 f.faceNormal = ComputeFaceNormal(f);
                 f.faceColor = color;
                 
                 m.faces.push_back(f);
+                
             }
         }
         
         fclose(file);
     }
+    
+    //*numberOfPoints = (int)pow(2, floor(log2(*numberOfPoints) - 1));
     return vertices;
 }
 

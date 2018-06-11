@@ -265,21 +265,23 @@ int main()
     //int numberOfPoints = 17536; // Arnold
     //int numberOfPoints = 27948;
     //int numberOfPoints = 3057;
-    int numberOfPoints = configData.numberOfPoints;
+    //int numberOfPoints = configData.numberOfPoints;
     //int numberOfPoints = 2503;
-    //int numberOfPoints;
+    int numberOfPoints;
     
     Mesh bunnyMesh = {};
-    //auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/MidPoly/001_MidPoly.OBJ", bunnyMesh, &numberOfPoints, 1.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
-    // auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/LowPoly/001_LowPoly.OBJ", bunnyMesh, &numberOfPoints, 1.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
-    // auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/HighPoly/001_HighPoly.OBJ", bunnyMesh, &numberOfPoints, 1.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
+    auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/MidPoly/001_MidPoly.OBJ", bunnyMesh, &numberOfPoints, 1.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
+    //auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/LowPoly/001_LowPoly.OBJ", bunnyMesh, &numberOfPoints, 1.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
+    //auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/HighPoly/001_HighPoly.OBJ", bunnyMesh, &numberOfPoints, 1.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
     //auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/stanford_bunny.obj", bunnyMesh, &numberOfPoints, 1000.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
+    //auto vertices = LoadObjWithFaces(renderContext, "../assets/obj/ArnoldSchwarzeneggerBust.OBJ", bunnyMesh, &numberOfPoints, 100.0f, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
+    
     bunnyMesh.position = glm::vec3(0.0f);
     bunnyMesh.scale = glm::vec3(globalScale);
     
     initPointGenerator(h.pointGenerator, configData.genType, numberOfPoints, 0.0, 200.0);
     
-    auto vertices = generate(h.pointGenerator, renderContext.originOffset);
+    //auto vertices = generate(h.pointGenerator, renderContext.originOffset);
     //auto vertices = LoadObj("../assets/obj/big boi arnold 17500.OBJ", 200.0f);
     //auto vertices = LoadObj("../assets/obj/man in vest 650k.OBJ");
     //auto vertices = LoadObj("../assets/obj/CarpetBit.obj");
@@ -368,7 +370,7 @@ int main()
             currentMesh = fullHull;
         }
         
-        //RenderMesh(renderContext, bunnyMesh);
+        RenderMesh(renderContext, bunnyMesh);
         
         if(KeyDown(Key_J))
         {

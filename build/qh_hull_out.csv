@@ -1,0 +1,11 @@
+input vertices, faces added, faces in hull, points processed, distance queries, sidednessQueries, vertices in hull, time spent, point distribution
+645932, 25750, 2958, 5033, 2344505, 13461519, 1484, 0, In Sphere
+40000, 5711, 656, 1050, 111784, 570719, 330, 0, In Sphere
+19999, 3491, 466, 652, 56250, 267047, 235, 0, In Sphere
+32768, 4955, 634, 943, 95093, 473883, 319, 0, In Sphere
+32768, 4955, 634, 943, 95093, 473883, 319, 0, In Sphere
+1024, 1657, 350, 317, 4141, 19621, 177, 0, In Sphere
+8192, 9471, 1572, 1660, 33828, 202066, 788, 0, In Sphere
+17536, 17034, 2696, 2946, 65692, 458792, 1350, 0, In Sphere
+99999, 12041, 1124, 2152, 274955, 1534919, 564, 0, In Sphere
+99999, 12041, 1124, 2152, 274955, 1534919, 564, 0, In Sphere
