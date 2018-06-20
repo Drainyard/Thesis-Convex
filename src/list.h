@@ -10,24 +10,13 @@ struct List
     
     T &operator[](size_t index)
     {
-#if DEBUG
-        if(index >= this->size)
-        {
-            assert(false);
-        }
-#endif
+        assert(index < this->size);
         return this->list[index];
     }
     
-    
     T &operator[](int index)
     {
-#if DEBUG
-        if(index >= (int)this->size)
-        {
-            assert(false);
-        }
-#endif
+        assert(index < this->size);
         return this->list[index];
     }
     
