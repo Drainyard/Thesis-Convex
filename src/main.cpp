@@ -240,26 +240,28 @@ int main()
     h.pointGenerator.gen = gen;
     
     int numberOfPoints;
-    Vertex *vertices;
-    
-    if(!configData.meshVertices)
+
+    if(configData.vertices)
     {
         numberOfPoints = configData.numberOfPoints;
-        
-        vertices = generate(h.pointGenerator, renderContext.originOffset);
+    }    
+    else if(!configData.meshVertices)
+    {
+        numberOfPoints = configData.numberOfPoints;
+        configData.vertices = generate(h.pointGenerator, renderContext.originOffset);
     }
     else
     {
         numberOfPoints = configData.verticesInMesh;
-        vertices = configData.meshVertices;
+        configData.vertices = configData.meshVertices;
     }
     
     initPointGenerator(h.pointGenerator, configData.genType, numberOfPoints, 0.0, 200.0);
     
-    InitializeHull(h, vertices, h.pointGenerator.numberOfPoints, hullType);
+    InitializeHull(h, configData.vertices, h.pointGenerator.numberOfPoints, hullType);
     
     Mesh* currentMesh = nullptr;
-    Vertex* currentVertices = vertices;
+    Vertex* currentVertices = configData.vertices;
     
     auto fps = 0.0;
     auto currentFrameCount = 0;
@@ -320,13 +322,13 @@ int main()
         
         if(KeyDown(Key_Y))
         {
-            reinitPoints(&vertices, configData, h, renderContext);
-            reinitHull(vertices, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
+            reinitPoints(&configData.vertices, configData, h, renderContext);
+            reinitHull(configData.vertices, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
         }
         
         if(KeyDown(Key_C))
         {
-            reinitHull(vertices, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
+            reinitHull(configData.vertices, h, &currentVertices, &currentMesh, &fullHull, &timedHull, &stepHull);
         }
         
         if(KeyDown(Key_H))
@@ -397,7 +399,7 @@ int main()
         
         if(currentMesh)
         {
-            RenderMesh(renderContext, *currentMesh, vertices);
+            RenderMesh(renderContext, *currentMesh, configData.vertices);
         }
         
         if(KeyDown(Key_9))

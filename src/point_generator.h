@@ -37,6 +37,7 @@ struct TestSet
 struct ConfigData
 {
     int numberOfPoints;
+    Vertex *vertices;
     GeneratorType genType;
     
     List<TestSet> qhTestSets;
@@ -121,16 +122,50 @@ void readTestSets(char *buffer, size_t bufSize, List<TestSet> &list, FILE *f)
     prevPos = ftell(f);
 }
 
+
+static Vertex *loadWortman(const char *path, ConfigData &configData, glm::vec3 offset)
+{
+    FILE *f = fopen(path, "r");
+    printf("Err: %s\n", strerror(errno));
+    Vertex *vertices = nullptr;
+
+    if(f)
+    {
+        char buffer[128];
+
+        fgets(buffer, 128, f);
+        sscanf(buffer, "%d", &configData.numberOfPoints);
+		configData.numberOfPoints++;
+        vertices = (Vertex*)malloc(sizeof(Vertex) * configData.numberOfPoints);
+        int i = 0;
+        while(fgets(buffer, 128, f))
+        {
+            auto &v = vertices[i++];
+            glm::vec3 p;
+            sscanf(buffer, "%f %f %f", &p.x, &p.y, &p.z);
+            vertices[i].position = glm::vec3(p.x, p.y, p.z) - offset;
+            vertices[i].color = glm::vec4(0.0f, 1.0f, 1.0f, 1.0f);
+        }
+
+        fclose(f);
+    }
+    return vertices;
+}
+
 void loadConfig(const char* filePath, ConfigData &configData, RenderContext &renderContext)
 {
     FILE* f = fopen(filePath, "r");
-    
+    configData.vertices = nullptr;
     if(f)
     {
         char buffer[64];
         while(getData(buffer, 64, f))
         {
-            if(startsWith(buffer, "points"))
+            if(startsWith(buffer, "#"))
+            {
+                continue;
+            }
+            else if(startsWith(buffer, "points"))
             {
                 sscanf(buffer, "points %d", &configData.numberOfPoints);
             }
@@ -166,10 +201,17 @@ void loadConfig(const char* filePath, ConfigData &configData, RenderContext &ren
                 configData.loadedMesh.position = glm::vec3(0.0f);
                 configData.loadedMesh.scale = glm::vec3(globalScale);
             }
+            else if(startsWith(buffer, "w"))
+            {
+                char path[128];
+                sscanf(buffer, "w %s", path);
+                configData.vertices = loadWortman(path, configData, renderContext.originOffset);
+            }
         }
         fclose(f);
     }
 }
+
 
 static void initPointGenerator(PointGenerator& pointGenerator, GeneratorType type, int numberOfPoints, coord_t min = 0.0, coord_t max = 200.0)
 {
