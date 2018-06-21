@@ -100,20 +100,20 @@ static void qhCopyVertices(QhContext& q, Vertex* vertices, int numberOfPoints)
 
 // t=nn·v1−nn·p
 // p0=p+t·nn
-coord_t DistancePointToFace(QhHull &q, QhFace f, QhVertex v)
+coord_t qhDistancePointToFace(QhHull &q, QhFace f, QhVertex v)
 {
     q.processingState.distanceQueryCount++;
     return glm::abs((glm::dot(f.faceNormal, v.position) - glm::dot(f.faceNormal, f.centerPoint))); 
 }
 
-static bool IsPointOnPositiveSide(QhHull &q, QhFace f, QhVertex v, coord_t epsilon = 0.0)
+static bool qhIsPointOnPositiveSide(QhHull &q, QhFace f, QhVertex v, coord_t epsilon = 0.0)
 {
     q.processingState.sidednessQueries++;
     auto d = glm::dot(f.faceNormal, v.position - f.centerPoint);
     return d > epsilon;
 }
 
-static bool IsPointOnPositiveSide(QhHull &q, QhFace f, glm::vec3 v, coord_t epsilon = 0.0)
+static bool qhIsPointOnPositiveSide(QhHull &q, QhFace f, glm::vec3 v, coord_t epsilon = 0.0)
 {
     q.processingState.sidednessQueries++;
     auto d = glm::dot(f.faceNormal, v - f.centerPoint);
@@ -408,12 +408,12 @@ static int qhRemoveFace(QhHull& qHull, int faceId, QhVertex* vertices)
 }
 
 
-coord_t DistanceBetweenPoints(Vertex& p1, Vertex& p2)
+coord_t qhDistanceBetweenPoints(Vertex& p1, Vertex& p2)
 {
     return glm::distance(p1.position, p2.position);
 }
 
-coord_t SquareDistancePointToSegment(glm::vec3 a, glm::vec3 b, glm::vec3 c)
+coord_t qhSquareDistancePointToSegment(glm::vec3 a, glm::vec3 b, glm::vec3 c)
 {
     glm::vec3 ab = b - a;
     glm::vec3 ac = c - a;
@@ -428,7 +428,7 @@ coord_t SquareDistancePointToSegment(glm::vec3 a, glm::vec3 b, glm::vec3 c)
     return glm::dot(ac, ac) - (e * e) / f;
 }
 
-struct vertex_pair
+struct VertexPair
 {
     QhVertex first;
     QhVertex second;
@@ -490,7 +490,7 @@ coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
     // First we find all 6 extreme points in the whole point set
     auto extremePoints = qhFindExtremePoints(vertices, numVertices);
     
-    vertex_pair mostDistantPair = {};
+    VertexPair mostDistantPair = {};
     auto dist = 0.0;
     auto mostDist1 = -1;
     auto mostDist2 = -1;
@@ -522,7 +522,7 @@ coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
     // spanned by the two extreme points
     for(int i = 0; i < numVertices; i++)
     {
-        auto distance = SquareDistancePointToSegment(mostDistantPair.first.position, mostDistantPair.second.position, vertices[i].position);
+        auto distance = qhSquareDistancePointToSegment(mostDistantPair.first.position, mostDistantPair.second.position, vertices[i].position);
         if(distance > extremePointCurrentFurthest)
         {
             extremePointCurrentIndex = i;
@@ -554,11 +554,9 @@ coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
     //auto epsilon = 0.0f;
     
     List<int> mostDistList = {};
-    init(mostDistList, 3);
+    init(mostDistList);
     
-    addToList(mostDistList, mostDist1);
-    addToList(mostDistList, mostDist2);
-    addToList(mostDistList, extremePointCurrentIndex);
+    addToList(mostDistList, {mostDist1, mostDist2, extremePointCurrentIndex});
     
     auto* f = qhAddFace(q, mostDistList, vertices);
     
@@ -579,7 +577,7 @@ coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
             continue;
         }
         
-        auto distance = DistancePointToFace(q, *f, vertices[i]);
+        auto distance = qhDistancePointToFace(q, *f, vertices[i]);
         if(distance > currentFurthest)
         {
             currentIndex = i;
@@ -587,35 +585,33 @@ coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
         }
     }
     
-    if(IsPointOnPositiveSide(q, *f, vertices[currentIndex], epsilon))
+    if(qhIsPointOnPositiveSide(q, *f, vertices[currentIndex], epsilon))
     {
         auto t = f->vertices[0];
         f->vertices[0] = f->vertices[1];
         f->vertices[1] = t;
         f->faceNormal = ComputeFaceNormal(*f, vertices);
         List<int> list = {};
-        init(list, 3);
+        init(list);
         
-        addToList(list, mostDist1);
-        addToList(list, currentIndex);
-        addToList(list, extremePointCurrentIndex);
+        addToList(list, {mostDist1, currentIndex, extremePointCurrentIndex});
+        
         qhAddFace(q, list, vertices);
         clear(list, 3);
         if(q.failed)
             return epsilon;
         
-        addToList(list, currentIndex);
-        addToList(list, mostDist2);
-        addToList(list, extremePointCurrentIndex);
+        
+        addToList(list, {currentIndex, mostDist2, extremePointCurrentIndex});
+        
         qhAddFace(q, list, vertices);
         clear(list, 3);
         
         if(q.failed)
             return epsilon;
         
-        addToList(list, mostDist1);
-        addToList(list, mostDist2);
-        addToList(list, currentIndex);
+        addToList(list, {mostDist1, mostDist2, currentIndex});
+        
         qhAddFace(q, list, vertices);
         clear(list);
         if(q.failed)
@@ -626,26 +622,26 @@ coord_t qhGenerateInitialSimplex(QhVertex* vertices, int numVertices, QhHull& q)
         List<int> list = {};
         init(list, 3);
         
-        addToList(list, currentIndex);
-        addToList(list, mostDist1);
-        addToList(list, extremePointCurrentIndex);
+        
+        addToList(list, {currentIndex, mostDist1, extremePointCurrentIndex});
+        
         qhAddFace(q, list, vertices);
         clear(list, 3);
         if(q.failed)
             return epsilon;
         
-        addToList(list, mostDist2);
-        addToList(list, currentIndex);
-        addToList(list, extremePointCurrentIndex);
+        
+        addToList(list, {mostDist2, currentIndex, extremePointCurrentIndex});
+        
         qhAddFace(q, list, vertices);
         clear(list, 3);
         
         if(q.failed)
             return epsilon;
         
-        addToList(list, mostDist2);
-        addToList(list, mostDist1);
-        addToList(list, currentIndex);
+        
+        addToList(list, {mostDist2, mostDist1, currentIndex});
+        
         qhAddFace(q, list, vertices);
         clear(list);
         
@@ -682,10 +678,10 @@ void qhAssignToOutsideSets(QhHull& q, QhVertex* vertices, int numVertices, List<
             coord_t currentDist = 0.0;
             int currentDistIndex = 0;
             
-            if(IsPointOnPositiveSide(q, f, unassigned[vertexIndex], epsilon))
+            if(qhIsPointOnPositiveSide(q, f, unassigned[vertexIndex], epsilon))
             {
                 auto v = unassigned[vertexIndex];
-                auto newDist = DistancePointToFace(q, f, v);
+                auto newDist = qhDistancePointToFace(q, f, v);
                 if(newDist > currentDistIndex)
                 {
                     currentDist = newDist;
@@ -762,7 +758,7 @@ void qhFindConvexHorizon(QhVertex& viewPoint, std::vector<int>& faces, QhHull& q
             auto& neighbour = f.neighbours[neighbourIndex];
             auto& neighbourFace = qHull.faces[neighbour.faceHandle];
             
-            if(!IsPointOnPositiveSide(qHull, neighbourFace, viewPoint, epsilon))
+            if(!qhIsPointOnPositiveSide(qHull, neighbourFace, viewPoint, epsilon))
             {
                 Edge newEdge = {};
                 newEdge.origin = neighbour.originVertex;
@@ -907,7 +903,7 @@ void qhHorizonStep(QhHull& qHull, QhVertex* vertices, QhFace& f, std::vector<int
             
             if(fa.neighbours[neighbourIndex].faceHandle <= qHull.faces.size){
                 auto& newF = qHull.faces[fa.neighbours[neighbourIndex].faceHandle];
-                if(!newF.visitedV && IsPointOnPositiveSide(qHull, neighbour, p, epsilon))
+                if(!newF.visitedV && qhIsPointOnPositiveSide(qHull, neighbour, p, epsilon))
                 {
                     newF.visitedV = true;
                     v.push_back(newF.indexInHull);
@@ -924,8 +920,8 @@ void qhHorizonStep(QhHull& qHull, QhVertex* vertices, QhFace& f, std::vector<int
 
 bool qhCheckEdgeConvex(QhHull &hull, QhFace leftFace, QhFace rightFace, coord_t epsilon = 0.0)
 {
-    auto leftBelow = !IsPointOnPositiveSide(hull, leftFace, rightFace.centerPoint, epsilon);
-    auto rightBelow = !IsPointOnPositiveSide(hull, rightFace, leftFace.centerPoint, epsilon);
+    auto leftBelow = !qhIsPointOnPositiveSide(hull, leftFace, rightFace.centerPoint, epsilon);
+    auto rightBelow = !qhIsPointOnPositiveSide(hull, rightFace, leftFace.centerPoint, epsilon);
     
     return leftBelow && rightBelow;
 }
@@ -958,7 +954,7 @@ void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack,
                 otherFace = qHull.faces[(newF->indexInHull + 8) % qHull.faces.size];
             }
             
-            if(IsPointOnPositiveSide(qHull, *newF, otherFace.centerPoint, epsilon))
+            if(qhIsPointOnPositiveSide(qHull, *newF, otherFace.centerPoint, epsilon))
             {
                 auto t = newF->vertices[0];
                 newF->vertices[0] = newF->vertices[1];
@@ -1023,9 +1019,9 @@ void qhIteration(QhHull& qHull, QhVertex* vertices, std::vector<int>& faceStack,
             {
                 auto osHandle = fInV.outsideSet[osIndex];
                 auto& q = vertices[osHandle];
-                if(!q.assigned && q.faceHandles.size == 0 && IsPointOnPositiveSide(qHull, newFace, q, epsilon))
+                if(!q.assigned && q.faceHandles.size == 0 && qhIsPointOnPositiveSide(qHull, newFace, q, epsilon))
                 {
-                    auto newDist = DistancePointToFace(qHull, newFace, q);
+                    auto newDist = qhDistancePointToFace(qHull, newFace, q);
                     if(newDist > currentDist)
                     {
                         currentDist = newDist;

@@ -1,4 +1,4 @@
 @echo off
 pushd build
-start cmd /k main
+start cmd /k main 
 popd

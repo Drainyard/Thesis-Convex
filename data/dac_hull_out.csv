@@ -85,18 +85,98 @@ input vertices, faces added, faces in hull, points processed, distance queries, 
 8000,0,0,0,0,0,0,13323, Many internal, some on sphere
 9000,0,0,0,0,0,0,14294, Many internal, some on sphere
 10000,0,0,0,0,0,0,10882, Many internal, some on sphere
-10, 290, 124, 0, 0, 0, 0, 18, In Sphere
-100, 6020, 725, 0, 0, 0, 0, 132, In Sphere
-1000, 73363, 2826, 0, 0, 0, 0, 1489, In Sphere
-1500, 226234, 6366, 0, 0, 0, 0, 1802, In Sphere
-2000, 439788, 10609, 0, 0, 0, 0, 2934, In Sphere
-2500, 716617, 15369, 0, 0, 0, 0, 4197, In Sphere
-5000, 1189844, 21570, 0, 0, 0, 0, 11828, In Sphere
-7500, 483740, 4712, 0, 0, 0, 0, 10943, In Sphere
-10000, 1575565, 14277, 0, 0, 0, 0, 18483, In Sphere
-12500, 820962, 6135, 0, 0, 0, 0, 17847, In Sphere
-15000, 970008, 6744, 0, 0, 0, 0, 23149, In Sphere
-17500, 1132031, 7441, 0, 0, 0, 0, 29561, In Sphere
-20000, 1312400, 7762, 0, 0, 0, 0, 31216, In Sphere
-25000, 1644897, 9221, 0, 0, 0, 0, 36295, In Sphere
-30000, 1944502, 10162, 0, 0, 0, 0, 41337, In Sphere
+10,0,0,0,0,0,0,18, In Sphere,
+100,0,0,0,0,0,0,132, In Sphere,
+1000,0,0,0,0,0,0,1489, In Sphere,
+1500,0,0,0,0,0,0,1802, In Sphere,
+2000,0,0,0,0,0,0,2934, In Sphere,
+2500,0,0,0,0,0,0,4197, In Sphere,
+5000,0,0,0,0,0,0,11828, In Sphere,
+7500,0,0,0,0,0,0,10943, In Sphere,
+10000,0,0,0,0,0,0,18483, In Sphere,
+12500,0,0,0,0,0,0,17847, In Sphere,
+15000,0,0,0,0,0,0,23149, In Sphere,
+17500,0,0,0,0,0,0,29561, In Sphere,
+20000,0,0,0,0,0,0,31216, In Sphere,
+25000,0,0,0,0,0,0,36295, In Sphere,
+30000,0,0,0,0,0,0,41337, In Sphere,
+2,0,0,0,0,0,0,0, In Sphere,
+4,0,0,0,0,0,0,12, In Sphere,
+8,0,0,0,0,0,0,11, In Sphere,
+16,0,0,0,0,0,0,11, In Sphere,
+32,0,0,0,0,0,0,23, In Sphere,
+64,0,0,0,0,0,0,55, In Sphere,
+128,0,0,0,0,0,0,81, In Sphere,
+256,0,0,0,0,0,0,177, In Sphere,
+512,0,0,0,0,0,0,351, In Sphere,
+1024,0,0,0,0,0,0,646, In Sphere,
+2048,0,0,0,0,0,0,1279, In Sphere,
+4096,0,0,0,0,0,0,2726, In Sphere,
+8192,0,0,0,0,0,0,5348, In Sphere,
+16384,0,0,0,0,0,0,16276, In Sphere,
+32768,0,0,0,0,0,0,29680, In Sphere,
+65536,0,0,0,0,0,0,52480, In Sphere,
+2,0,0,0,0,0,0,0, On Sphere,
+4,0,0,0,0,0,0,5, On Sphere,
+8,0,0,0,0,0,0,8, On Sphere,
+16,0,0,0,0,0,0,16, On Sphere,
+32,0,0,0,0,0,0,36, On Sphere,
+64,0,0,0,0,0,0,109, On Sphere,
+128,0,0,0,0,0,0,160, On Sphere,
+256,0,0,0,0,0,0,389, On Sphere,
+512,0,0,0,0,0,0,749, On Sphere,
+1024,0,0,0,0,0,0,1719, On Sphere,
+2048,0,0,0,0,0,0,4235, On Sphere,
+4096,0,0,0,0,0,0,11149, On Sphere,
+8192,0,0,0,0,0,0,24025, On Sphere,
+16384,0,0,0,0,0,0,46290, On Sphere,
+32768,0,0,0,0,0,0,88669, On Sphere,
+65536,0,0,0,0,0,0,184782, On Sphere,
+2,0,0,0,0,0,0,0, In Cube,
+4,0,0,0,0,0,0,4, In Cube,
+8,0,0,0,0,0,0,7, In Cube,
+16,0,0,0,0,0,0,12, In Cube,
+32,0,0,0,0,0,0,26, In Cube,
+64,0,0,0,0,0,0,48, In Cube,
+128,0,0,0,0,0,0,119, In Cube,
+256,0,0,0,0,0,0,171, In Cube,
+512,0,0,0,0,0,0,389, In Cube,
+1024,0,0,0,0,0,0,807, In Cube,
+2048,0,0,0,0,0,0,1786, In Cube,
+4096,0,0,0,0,0,0,3150, In Cube,
+8192,0,0,0,0,0,0,7291, In Cube,
+16384,0,0,0,0,0,0,18084, In Cube,
+32768,0,0,0,0,0,0,30106, In Cube,
+65536,0,0,0,0,0,0,56560, In Cube,
+2,0,0,0,0,0,0,0, On Normalized Sphere,
+4,0,0,0,0,0,0,3, On Normalized Sphere,
+8,0,0,0,0,0,0,9, On Normalized Sphere,
+16,0,0,0,0,0,0,13, On Normalized Sphere,
+32,0,0,0,0,0,0,29, On Normalized Sphere,
+64,0,0,0,0,0,0,92, On Normalized Sphere,
+128,0,0,0,0,0,0,181, On Normalized Sphere,
+256,0,0,0,0,0,0,377, On Normalized Sphere,
+512,0,0,0,0,0,0,785, On Normalized Sphere,
+1024,0,0,0,0,0,0,1739, On Normalized Sphere,
+2048,0,0,0,0,0,0,3745, On Normalized Sphere,
+4096,0,0,0,0,0,0,8395, On Normalized Sphere,
+8192,0,0,0,0,0,0,24204, On Normalized Sphere,
+16384,0,0,0,0,0,0,42268, On Normalized Sphere,
+32768,0,0,0,0,0,0,81577, On Normalized Sphere,
+65536,0,0,0,0,0,0,166437, On Normalized Sphere,
+2,0,0,0,0,0,0,0, Many internal, some on sphere
+4,0,0,0,0,0,0,2, Many internal, some on sphere
+8,0,0,0,0,0,0,5, Many internal, some on sphere
+16,0,0,0,0,0,0,11, Many internal, some on sphere
+32,0,0,0,0,0,0,27, Many internal, some on sphere
+64,0,0,0,0,0,0,48, Many internal, some on sphere
+128,0,0,0,0,0,0,107, Many internal, some on sphere
+256,0,0,0,0,0,0,153, Many internal, some on sphere
+512,0,0,0,0,0,0,333, Many internal, some on sphere
+1024,0,0,0,0,0,0,662, Many internal, some on sphere
+2048,0,0,0,0,0,0,1330, Many internal, some on sphere
+4096,0,0,0,0,0,0,2790, Many internal, some on sphere
+8192,0,0,0,0,0,0,6674, Many internal, some on sphere
+16384,0,0,0,0,0,0,11633, Many internal, some on sphere
+32768,0,0,0,0,0,0,27051, Many internal, some on sphere
+65536,0,0,0,0,0,0,54761, Many internal, some on sphere

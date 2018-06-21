@@ -20,7 +20,7 @@ struct PointGenerator
 {
     int numberOfPoints;
     GeneratorType type;
-    std::mt19937 gen;
+    std::mt19937_64 gen;
     std::uniform_real_distribution<coord_t> d;
     coord_t min;
     coord_t max;
@@ -42,6 +42,10 @@ struct ConfigData
     List<TestSet> qhTestSets;
     List<TestSet> incTestSets;
     List<TestSet> dacTestSets;
+    
+    Mesh loadedMesh;
+    Vertex *meshVertices;
+    int verticesInMesh;
 };
 
 void readTestSet(const char *filename, TestSet &testSet)
@@ -117,9 +121,10 @@ void readTestSets(char *buffer, size_t bufSize, List<TestSet> &list, FILE *f)
     prevPos = ftell(f);
 }
 
-void loadConfig(const char* filePath, ConfigData &configData)
+void loadConfig(const char* filePath, ConfigData &configData, RenderContext &renderContext)
 {
     FILE* f = fopen(filePath, "r");
+    
     if(f)
     {
         char buffer[64];
@@ -150,6 +155,16 @@ void loadConfig(const char* filePath, ConfigData &configData)
             else if(startsWith(buffer, "q"))
             {
                 readTestSets(buffer, 64, configData.qhTestSets, f);
+            }
+            else if(startsWith(buffer, "mesh"))
+            {
+                char path[512];
+                float scale;
+                sscanf(buffer, "mesh %s %f", path, &scale);
+                configData.meshVertices = LoadObjWithFaces(renderContext, path, configData.loadedMesh, &configData.verticesInMesh, scale, glm::vec4(0.7f, 0.7f, 0.7f, 1.0f));
+                
+                configData.loadedMesh.position = glm::vec3(0.0f);
+                configData.loadedMesh.scale = glm::vec3(globalScale);
             }
         }
         fclose(f);
@@ -232,7 +247,7 @@ static GENERATOR_FUNCTION(generatePointsInClusters)
     auto min = pointGenerator.min;
     auto max = pointGenerator.max;
     
-    auto n_clusters = 4;
+    auto n_clusters = 10;
     auto pointsPerCluster = pointGenerator.numberOfPoints / n_clusters;
     
     PointGenerator p;
@@ -242,7 +257,7 @@ static GENERATOR_FUNCTION(generatePointsInClusters)
     p.d = pointGenerator.d;
     p.gen.seed((unsigned int)time(NULL));
     
-    auto partOfMax = max / (n_clusters * 5);
+    auto partOfMax = max / (n_clusters * 10);
     
     for(size_t i = 0; i < n_clusters; i++)
     {

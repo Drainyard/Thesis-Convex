@@ -10,24 +10,13 @@ struct List
     
     T &operator[](size_t index)
     {
-#if DEBUG
-        if(index >= this->size)
-        {
-            assert(false);
-        }
-#endif
+        assert(index < this->size);
         return this->list[index];
     }
     
-    
     T &operator[](int index)
     {
-#if DEBUG
-        if(index >= (int)this->size)
-        {
-            assert(false);
-        }
-#endif
+        assert(index < this->size);
         return this->list[index];
     }
     
@@ -54,6 +43,26 @@ static void addToList(List<T> &list, T element)
     list.list[list.size++] = element;
 }
 
+template<typename T>
+static void addToList(List<T> &list, std::initializer_list<T> elements)
+{
+    if(list.capacity == 0)
+    {
+        list.capacity = (size_t)(pow(elements.size(), log2(elements.size())));
+        list.list = (T*)malloc(sizeof(T) * list.capacity);
+    }
+    
+    if(list.size + elements.size() > list.capacity)
+    {
+        list.capacity = (size_t)(pow(list.size + elements.size(), log2(list.size + elements.size())));
+        list.list = (T*)realloc(list.list, sizeof(T) * list.capacity);
+    }
+    
+    for(auto &e : elements)
+    {
+        list.list[list.size++] = e;
+    }
+}
 
 template<typename T>
 static void clear(List<T> &list, size_t capacity = 0)
