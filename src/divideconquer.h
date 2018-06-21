@@ -25,7 +25,7 @@ struct DacVertex
 
 struct DacFace
 {
-    DacVertex *vertex[3];
+    DacVertex vertex[3];
     glm::vec3 normal;
     glm::vec3 centerPoint;
 };
@@ -33,9 +33,10 @@ struct DacFace
 struct DacContext
 {
     bool initialized;
+    bool done;
     DacVertex *vertices;
     int numberOfPoints;
-    std::vector<DacFace *> faces;
+    std::vector<DacFace> faces;
     Mesh *m;
     DacVertex *sortedP;
     DacVertex *sortedUpperP;
@@ -102,7 +103,7 @@ void sort(DacVertex A[], int n)
     delete[] B;
 }
 
-glm::vec3 dacComputeFaceNormal(DacFace *f)
+glm::vec3 dacComputeFaceNormal(DacFace f)
 {
     // Newell's Method
     // https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
@@ -110,8 +111,8 @@ glm::vec3 dacComputeFaceNormal(DacFace *f)
     
     for (int i = 0; i < 3; i++)
     {
-        glm::vec3 current = f->vertex[i]->position;
-        glm::vec3 next = f->vertex[(i + 1) % 3]->position;
+        glm::vec3 current = f.vertex[i].position;
+        glm::vec3 next = f.vertex[(i + 1) % 3].position;
         
         normal.x = normal.x + (current.y - next.y) * (current.z + next.z);
         normal.y = normal.y + (current.z - next.z) * (current.x + next.x);
@@ -121,20 +122,29 @@ glm::vec3 dacComputeFaceNormal(DacFace *f)
     return glm::normalize(normal);
 }
 
-static bool dacIsPointOnPositiveSide(DacFace *f, DacVertex *v, coord_t epsilon = 0.0)
+static bool dacIsPointOnPositiveSide(DacFace f, DacVertex v, coord_t epsilon = 0.0)
 {
-    auto d = glm::dot(f->normal, v->position - f->centerPoint);
+    auto d = glm::dot(f.normal, v.position - f.centerPoint);
     return d > epsilon;
 }
 
-DacFace *dacCreateFaceFromPoints(DacVertex *u, DacVertex *v, DacVertex *w)
+DacFace dacCreateFaceFromPoints(DacVertex *u, DacVertex *v, DacVertex *w)
 {
-    DacFace *f = (DacFace *)malloc(sizeof(DacFace));
-    f->vertex[0] = u;
-    f->vertex[1] = v;
-    f->vertex[2] = w;
-    f->centerPoint = (u->position + v->position + w->position) / 3.0f;
-    f->normal = dacComputeFaceNormal(f);
+    DacFace f = {};
+    DacVertex v1 = {};
+    v1.position = u->position;
+    v1.vIndex = u->vIndex;
+    DacVertex v2 = {};
+    v2.position = v->position;
+    v2.vIndex = v->vIndex;
+    DacVertex v3 = {};
+    v3.position = w->position;
+    v3.vIndex = w->vIndex;
+    f.vertex[0] = v1;
+    f.vertex[1] = v2;
+    f.vertex[2] = v3;
+    f.centerPoint = (u->position + v->position + w->position) / 3.0f;
+    f.normal = dacComputeFaceNormal(f);
     return f;
 }
 
@@ -154,35 +164,12 @@ void createFaces(DacContext &dacContext, DacVertex **events)
     int i;
     for (i = 0; events[i] != NIL; i++)
     {
-        DacFace *newFace = dacCreateFaceFromPoints(events[i]->prev, events[i], events[i]->next);
+        if(events[i]->prev == NIL || events[i] == NIL || events[i]->next == NIL)
+            continue;
+        DacFace newFace = dacCreateFaceFromPoints(events[i]->prev, events[i], events[i]->next);
         dacContext.faces.push_back(newFace);
         events[i]->act();
-    }
-    
-    /*
-    //dirty normal check
-    for (size_t j = 0; j != dacContext.faces.size(); ++j)
-    {
-        DacFace *face = dacContext.faces[j];
-        DacFace *otherFace = dacContext.faces[(j + 199) % dacContext.faces.size()];
-        for (i = 0; i < 3; ++i)
-        {
-            DacVertex *v = otherFace->vertex[i];
-            if (v != face->vertex[0] || v != face->vertex[1] || v != face->vertex[2])
-            {
-                if (dacIsPointOnPositiveSide(face, v))
-                {
-                    DacVertex *u = face->vertex[0];
-                    DacVertex *w = face->vertex[2];
-                    face->vertex[0] = w;
-                    face->vertex[2] = u;
-                    face->normal = dacComputeFaceNormal(face);
-                    break;
-                }
-            }
-        }
-    }
-    */
+    }    
 }
 
 double orient(DacVertex *p, DacVertex *q, DacVertex *r)
@@ -431,20 +418,23 @@ void dacConstructFullHull(DacContext &dacContext)
 
 void dacHullStep(DacContext &dacContext)
 {
-    if (!dacContext.initialized)
+    if (!dacContext.initialized || dacContext.done)
     {
         return;
     }
 
     int i, m;
     int n = dacContext.numberOfPoints;
-    DacVertex *P = dacContext.lower ? dacContext.sortedP : dacContext.sortedUpperP;
 
     DacVertex *tempP = (DacVertex *)malloc(n * sizeof(DacVertex));
-    memcpy(tempP, P, sizeof(DacVertex) * n);
+    memcpy(tempP, dacContext.sortedP, sizeof(DacVertex) * n);
+    DacVertex *tempUpperP = (DacVertex *)malloc(n * sizeof(DacVertex));
+    memcpy(tempUpperP, dacContext.sortedUpperP, sizeof(DacVertex) * n);
 
-    dacContext.A = (DacVertex **)malloc(2 * n * sizeof(DacVertex));
-    dacContext.B = (DacVertex **)malloc(2 * n * sizeof(DacVertex));
+    DacVertex** A = (DacVertex **)malloc(2 * n * sizeof(DacVertex));
+    DacVertex** B = (DacVertex **)malloc(2 * n * sizeof(DacVertex));
+    DacVertex** C = (DacVertex **)malloc(2 * n * sizeof(DacVertex));
+    DacVertex** D = (DacVertex **)malloc(2 * n * sizeof(DacVertex));
 
     if (dacContext.stepInfo.initAB)
     {
@@ -465,11 +455,13 @@ void dacHullStep(DacContext &dacContext)
         {
             if (swap)
             {
-                dacHull(dacContext, tempP, dacContext.A, dacContext.B, offset, i, dacContext.lower);
+                dacHull(dacContext, tempP, A, B, offset, i, true);
+                dacHull(dacContext, tempUpperP, C, D, offset, i, false);
             }
             else
             {
-                dacHull(dacContext, tempP, dacContext.B, dacContext.A, offset, i, dacContext.lower);
+                dacHull(dacContext, tempP, B, A, offset, i, true);
+                dacHull(dacContext, tempUpperP, D, C, offset, i, false);
             }
         }
         swap = !swap;
@@ -485,29 +477,32 @@ void dacHullStep(DacContext &dacContext)
 
         if (swap)
         {
-            dacHull(dacContext, tempP, dacContext.A, dacContext.B, offset, i, dacContext.lower);
-            createFaces(dacContext, dacContext.B + (start * 2));
+            dacHull(dacContext, tempP, A, B, offset, i, true);
+            createFaces(dacContext, A + (start * 2));
+            dacHull(dacContext, tempUpperP, C, D, offset, i, false);
+            createFaces(dacContext, C + (start * 2));
         }
         else
         {
-            dacHull(dacContext, tempP, dacContext.B, dacContext.A, offset, i, dacContext.lower);
-            createFaces(dacContext, dacContext.A + (start * 2));
+            dacHull(dacContext, tempP, B, A, offset, i, true);
+            createFaces(dacContext, B + (start * 2));
+            dacHull(dacContext, tempUpperP, D, C, offset, i, false);
+            createFaces(dacContext, D + (start * 2));
         }
     }
     mergesLeft /= 2;
 
-    free(dacContext.A);
-    free(dacContext.B);
+    free(A);
+    free(B);
+    free(C);
+    free(D);
+    free(tempP);
+    free(tempUpperP);
 
     if (mergesLeft < 1)
     {
-        if (!dacContext.lower)
-        {
-            dacContext.initialized = false;
-            return;
-        }
-        dacContext.lower = false;
-        dacContext.stepInfo.initAB = true;
+        dacContext.initialized = false;
+        dacContext.done = true;
     }
 }
 
@@ -525,12 +520,9 @@ void dacInitializeContext(DacContext &dacContext, Vertex *vertices, int n)
     {
         free(dacContext.sortedUpperP);
     }
-    for (DacFace *f : dacContext.faces)
-    {
-        free(f);
-    }
     dacContext.faces.clear();
-    
+    dacContext.done = false;
+
     dacContext.numberOfPoints = n;
     dacContext.initialized = true;
     nil.position = glm::vec3(INF, INF, INF);
@@ -561,6 +553,29 @@ Mesh &dacConvertToMesh(DacContext &context, RenderContext &renderContext)
     context.m->scale = glm::vec3(globalScale);
     context.m->dirty = true;
     
+    //dirty normal check
+    for (size_t j = 0; j != context.faces.size(); ++j)
+    {
+        DacFace& face = context.faces[j];
+        DacFace& otherFace = context.faces[(j + 199) % context.faces.size()];
+        for (int i = 0; i < 3; ++i)
+        {
+            DacVertex& v = otherFace.vertex[i];
+            if (v.vIndex != face.vertex[0].vIndex || v.vIndex != face.vertex[1].vIndex || v.vIndex != face.vertex[2].vIndex)
+            {
+                if (dacIsPointOnPositiveSide(face, v))
+                {
+                    DacVertex u = face.vertex[0];
+                    DacVertex w = face.vertex[2];
+                    face.vertex[0] = w;
+                    face.vertex[2] = u;
+                    face.normal = dacComputeFaceNormal(face);
+                    break;
+                }
+            }
+        }
+    }
+
     for (const auto &f : context.faces)
     {
         Face newFace = {};
@@ -568,17 +583,18 @@ Mesh &dacConvertToMesh(DacContext &context, RenderContext &renderContext)
         for (int i = 0; i < 3; i++)
         {
             Vertex newVertex = {};
-            newVertex.position = f->vertex[i]->position;
-            newVertex.vertexIndex = f->vertex[i]->vIndex;
+            newVertex.position = f.vertex[i].position;
+            newVertex.vertexIndex = f.vertex[i].vIndex;
             addToList(newFace.vertices, newVertex);
         }
         newFace.faceColor = rgb(251, 255, 135);
         newFace.faceColor.w = 0.5f;
-        newFace.faceNormal = f->normal;
-        newFace.centerPoint = f->centerPoint;
+        newFace.faceNormal = f.normal;
+        newFace.centerPoint = f.centerPoint;
         context.m->faces.push_back(newFace);
     }
-    context.faces.clear();
+    if(!context.done)
+        context.faces.clear();
     
     return *context.m;
 }

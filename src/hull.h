@@ -193,7 +193,7 @@ static Mesh *UpdateHull(RenderContext &renderContext, Hull &h, HullType hullType
         case Dac:
         {
             auto &dacContext = h.timedStepDacContext;
-            if (h.dacTimer.running)
+            if (h.dacTimer.running && !dacContext.done)
             {
                 if (h.dacTimer.currentTime <= 0.0)
                 {
@@ -517,6 +517,9 @@ static Mesh &StepHull(RenderContext &renderContext, Hull &h)
         case Dac:
         {
             auto &dacContext = h.stepDacContext;
+            if(dacContext.done)
+                return dacConvertToMesh(dacContext, renderContext);
+            
             if (!dacContext.initialized)
             {
                 dacInitializeContext(dacContext, h.vertices, h.numberOfPoints);

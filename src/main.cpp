@@ -249,6 +249,7 @@ int main()
     {
         numberOfPoints = configData.numberOfPoints;
         configData.vertices = generate(h.pointGenerator, renderContext.originOffset);
+        reinitPoints(&configData.vertices, configData, h, renderContext);
     }
     else
     {
