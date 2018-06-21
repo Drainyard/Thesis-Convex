@@ -1,0 +1,16 @@
+input vertices, faces added, faces in hull, points processed, distance queries, sidednessQueries, vertices in hull, time spent, point distribution
+16, 4, 4, 4, 13, 49, 4, 0, In Sphere
+16, 28, 14, 10, 27, 179, 9, 0, In Sphere
+16, 24, 12, 9, 35, 161, 8, 0, In Sphere
+16, 37, 20, 12, 28, 187, 12, 0, In Sphere
+16, 4, 4, 4, 13, 49, 4, 0, In Sphere
+16, 28, 16, 10, 24, 151, 10, 0, In Sphere
+16, 30, 16, 11, 40, 180, 10, 0, In Sphere
+16, 27, 12, 11, 28, 164, 8, 0, In Sphere
+16, 28, 14, 10, 27, 158, 9, 0, In Sphere
+16, 30, 18, 12, 25, 152, 11, 0, In Sphere
+16, 26, 12, 10, 32, 171, 8, 0, In Sphere
+16, 31, 14, 11, 24, 169, 9, 0, In Sphere
+16, 31, 14, 11, 24, 169, 9, 0, In Sphere
+16, 31, 14, 11, 24, 169, 9, 0, In Sphere
+16, 27, 16, 10, 21, 144, 10, 0, In Sphere

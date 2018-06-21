@@ -1,2 +1,3 @@
 # Thesis-Convex
-THIS IS OUR THESIS BOB
+Convex Hulls in 3-d
+Evaluating Convex Hull Algorithms in 3-d

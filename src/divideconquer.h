@@ -55,6 +55,7 @@ struct DacContext
     
     struct
     {
+        int dacCount;
         int mergesLeft;
         int offset;
         bool swap;
@@ -158,6 +159,7 @@ void createFaces(DacContext &dacContext, DacVertex **events)
         events[i]->act();
     }
     
+    /*
     //dirty normal check
     for (size_t j = 0; j != dacContext.faces.size(); ++j)
     {
@@ -180,6 +182,7 @@ void createFaces(DacContext &dacContext, DacVertex **events)
             }
         }
     }
+    */
 }
 
 double orient(DacVertex *p, DacVertex *q, DacVertex *r)
@@ -432,55 +435,72 @@ void dacHullStep(DacContext &dacContext)
     {
         return;
     }
+
+    int i, m;
     int n = dacContext.numberOfPoints;
-    DacVertex *P;
-    if (dacContext.lower)
-    {
-        P = dacContext.sortedP;
-    }
-    else
-    {
-        P = dacContext.sortedUpperP;
-    }
+    DacVertex *P = dacContext.lower ? dacContext.sortedP : dacContext.sortedUpperP;
+
+    DacVertex *tempP = (DacVertex *)malloc(n * sizeof(DacVertex));
+    memcpy(tempP, P, sizeof(DacVertex) * n);
+
+    dacContext.A = (DacVertex **)malloc(2 * n * sizeof(DacVertex));
+    dacContext.B = (DacVertex **)malloc(2 * n * sizeof(DacVertex));
+
     if (dacContext.stepInfo.initAB)
     {
-        dacContext.A = (DacVertex **)malloc(2 * n * sizeof(DacVertex));
-        dacContext.B = (DacVertex **)malloc(2 * n * sizeof(DacVertex));
-        
-        dacContext.stepInfo.offset = 1;
-        dacContext.stepInfo.swap = true;
-        dacContext.stepInfo.mergesLeft = n;
-        
+        dacContext.stepInfo.dacCount = 2;
         dacContext.stepInfo.initAB = false;
     }
     else
     {
-        dacContext.stepInfo.swap = !dacContext.stepInfo.swap;
-        dacContext.stepInfo.offset *= 2;
-        dacContext.stepInfo.mergesLeft /= 2;
+        dacContext.stepInfo.dacCount++;
     }
-    
-    if (dacContext.stepInfo.mergesLeft > 0)
+
+    int offset = 1;
+    int mergesLeft = n;
+    bool swap = true;
+    for (m = 0; m < dacContext.stepInfo.dacCount; m++)
     {
-        for (int i = 0; i < dacContext.stepInfo.mergesLeft; i++)
+        for (i = 0; i < mergesLeft; i++)
         {
-            if (dacContext.stepInfo.swap)
+            if (swap)
             {
-                dacHull(dacContext, P, dacContext.A, dacContext.B, dacContext.stepInfo.offset, i, dacContext.lower);
+                dacHull(dacContext, tempP, dacContext.A, dacContext.B, offset, i, dacContext.lower);
             }
             else
             {
-                dacHull(dacContext, P, dacContext.B, dacContext.A, dacContext.stepInfo.offset, i, dacContext.lower);
+                dacHull(dacContext, tempP, dacContext.B, dacContext.A, offset, i, dacContext.lower);
             }
         }
-        //TODO need to copy all the objects or else we can't act() on the pointers!!!
-        dacContext.stepInfo.swap ? createFaces(dacContext, dacContext.A) : createFaces(dacContext, dacContext.B);
+        swap = !swap;
+        offset *= 2;
+        mergesLeft /= 2;
     }
-    else
+
+    int start, end;
+    for (i = 0; i < mergesLeft; i++)
     {
-        dacContext.stepInfo.swap ? createFaces(dacContext, dacContext.B) : createFaces(dacContext, dacContext.A);
-        free(dacContext.A);
-        free(dacContext.B);
+        start = i * offset;
+        end = start + offset - 1;
+
+        if (swap)
+        {
+            dacHull(dacContext, tempP, dacContext.A, dacContext.B, offset, i, dacContext.lower);
+            createFaces(dacContext, dacContext.A + start * 2);
+        }
+        else
+        {
+            dacHull(dacContext, tempP, dacContext.B, dacContext.A, offset, i, dacContext.lower);
+            createFaces(dacContext, dacContext.B + start * 2);
+        }
+    }
+    mergesLeft /= 2;
+
+    free(dacContext.A);
+    free(dacContext.B);
+
+    if (mergesLeft < 1)
+    {
         if (!dacContext.lower)
         {
             dacContext.initialized = false;
@@ -489,6 +509,7 @@ void dacHullStep(DacContext &dacContext)
         dacContext.lower = false;
         dacContext.stepInfo.initAB = true;
     }
+    free(tempP);
 }
 
 void dacInitializeContext(DacContext &dacContext, Vertex *vertices, int n)
@@ -544,6 +565,7 @@ Mesh &dacConvertToMesh(DacContext &context, RenderContext &renderContext)
     for (const auto &f : context.faces)
     {
         Face newFace = {};
+        init(newFace.vertices, 3);
         for (int i = 0; i < 3; i++)
         {
             Vertex newVertex = {};
@@ -557,6 +579,7 @@ Mesh &dacConvertToMesh(DacContext &context, RenderContext &renderContext)
         newFace.centerPoint = f->centerPoint;
         context.m->faces.push_back(newFace);
     }
+    context.faces.clear();
     
     return *context.m;
 }
