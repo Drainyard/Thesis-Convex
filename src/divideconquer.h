@@ -486,12 +486,12 @@ void dacHullStep(DacContext &dacContext)
         if (swap)
         {
             dacHull(dacContext, tempP, dacContext.A, dacContext.B, offset, i, dacContext.lower);
-            createFaces(dacContext, dacContext.A + start * 2);
+            createFaces(dacContext, dacContext.B + (start * 2));
         }
         else
         {
             dacHull(dacContext, tempP, dacContext.B, dacContext.A, offset, i, dacContext.lower);
-            createFaces(dacContext, dacContext.B + start * 2);
+            createFaces(dacContext, dacContext.A + (start * 2));
         }
     }
     mergesLeft /= 2;
@@ -509,7 +509,6 @@ void dacHullStep(DacContext &dacContext)
         dacContext.lower = false;
         dacContext.stepInfo.initAB = true;
     }
-    free(tempP);
 }
 
 void dacInitializeContext(DacContext &dacContext, Vertex *vertices, int n)
