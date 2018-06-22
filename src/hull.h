@@ -517,14 +517,14 @@ static Mesh &StepHull(RenderContext &renderContext, Hull &h)
         case Dac:
         {
             auto &dacContext = h.stepDacContext;
-            if(dacContext.done)
-                return dacConvertToMesh(dacContext, renderContext);
             
             if (!dacContext.initialized)
             {
                 dacInitializeContext(dacContext, h.vertices, h.numberOfPoints);
             }
-            dacHullStep(dacContext);
+
+            if(!dacContext.done)
+                dacHullStep(dacContext);
             return dacConvertToMesh(dacContext, renderContext);
         }
         break;
