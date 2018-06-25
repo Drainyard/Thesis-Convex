@@ -122,6 +122,8 @@ static void InitializeHull(Hull &h, Vertex *vertices, int numberOfPoints, HullTy
     h.dacContext.initialized = false;
     h.dacContext = {};
     
+    h.dacTimer.timerInit = 0.2;
+    h.dacTimer.currentTime = h.dacTimer.timerInit;
     h.currentHullType = hullType;
 }
 
@@ -203,7 +205,7 @@ static Mesh *UpdateHull(RenderContext &renderContext, Hull &h, HullType hullType
                 }
                 else
                 {
-                    h.incTimer.currentTime -= deltaTime;
+                    h.dacTimer.currentTime -= deltaTime;
                 }
             }
         }
