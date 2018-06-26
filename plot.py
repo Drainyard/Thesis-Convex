@@ -246,6 +246,33 @@ def plot_nsquared(path, title, outfile, miny = [0.0, 0.5], minrange=0, show=Fals
 
     plt.close()
 
+def plot_nsquared_logn(path, title, outfile, miny = [0.0, 0.5], minrange=0, show=False):
+    data = np.genfromtxt(path, delimiter=',', names=['x_qh', 'y_qh', 'x_inc', 'y_inc'])
+
+    fig, ax = plt.subplots()
+    plt.tight_layout()
+
+
+    data['y_qh'] = [np.divide(y, np.power(x, 2.1)) for y,x in zip(data['y_qh'], data['x_qh'])]
+    data['y_inc'] = [np.divide(y, np.multiply(x, x)) for y,x in zip(data['y_inc'], data['x_inc'])]
+    ax.plot(data['x_qh'][minrange:,], data['y_qh'][minrange:,], color='black', label='Quickhull', marker='x', markersize=6.0, linewidth=0.5)
+    ax.plot(data['x_inc'][minrange:,], data['y_inc'][minrange:,], color='black', label='Randomized incremental', marker='^', markersize=6.0, linewidth=0.5, linestyle='dashed')
+    #ax.plot(data['x_inc'], data['y_inc'], color='black', label='data', marker='^', markersize=6.0)
+    format_axis(ax)
+
+    ax.set_ylim(miny)
+    ax.legend()
+
+    plt.xlabel('n')
+    plt.ylabel('Time over n^2 log n (s)')
+    plt.title(title)
+    savefig(outfile)
+    
+    if show:
+        plt.show()
+
+    plt.close()
+
 def plot_ncubed(path, title, outfile, miny = [0.0, 0.5], minrange=0, show=False):
     data = np.genfromtxt(path, delimiter=',', names=['x_qh', 'y_qh', 'x_inc', 'y_inc'])
 
@@ -337,4 +364,5 @@ if __name__ == '__main__':
     # plot_comparison(os.path.join(basedir, 'sidedness_many_internal_qh_inc.csv'), 'Sidedness queries', 'sidedness_many_internal_qh_inc', 'Sidedness queries', labels=['Quickhull', 'Randomized incremental'], divide=False, show=True)
     # plot_comparison(os.path.join(basedir, 'sidedness_on_sphere_qh_inc.csv'), 'Sidedness queries', 'sidedness_on_sphere_qh_inc', 'Sidedness queries', labels=['Quickhull', 'Randomized incremental'], divide=False, show=True)
     # plot_comparison(os.path.join(basedir, 'sidedness_in_cube_qh_inc.csv'), 'Sidedness queries', 'sidedness_in_cube_qh_inc', 'Sidedness queries', labels=['Quickhull', 'Randomized incremental'], divide=False, show=True)
-    plot_bar('Model comparison', 'bar_models')
+    plot_nsquared_logn(os.path.join(basedir, 'on_sphere_100k.csv'), 'Time for points on a sphere over nsquared log n', 'time_qh_inc_on_sphere_squared_logn', [-0.01,0.01], 5, show=True)
+    # plot_bar('Model comparison', 'bar_models')

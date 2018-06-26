@@ -41,8 +41,8 @@ static Resolution get_resolution()
     const GLFWvidmode * mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
     
     Resolution res = {};
-    res.window_width = mode->width;
-    res.window_height = mode->height;
+    res.window_width = 1920;//mode->width;
+    res.window_height = 1080;//mode->height;
     return res;
 }
 

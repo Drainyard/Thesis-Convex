@@ -258,3 +258,17 @@ input vertices, faces added, faces in hull, points processed, distance queries, 
 1000000,7576,548,1288,0,58788904,276,14487843, In Cube,
 1100000,7891,569,1336,0,66161776,286,16868741, In Cube,
 1200000,7928,590,1359,0,70914652,297,19173196, In Cube,
+10, 30, 15, 9, 0, 157, 9, 93, Many internal, some on sphere
+100, 260, 92, 53, 0, 3613, 48, 1436, Many internal, some on sphere
+1000, 424, 92, 84, 0, 43870, 48, 7833, Many internal, some on sphere
+2000, 542, 92, 107, 0, 95939, 48, 20993, Many internal, some on sphere
+5000, 684, 92, 131, 0, 240133, 48, 42664, Many internal, some on sphere
+10000, 964, 92, 180, 0, 549767, 48, 81343, Many internal, some on sphere
+20000, 1142, 92, 210, 0, 1124311, 48, 162038, Many internal, some on sphere
+30000, 1414, 92, 255, 0, 1756288, 48, 284840, Many internal, some on sphere
+50000, 1632, 92, 293, 0, 2887501, 48, 509973, Many internal, some on sphere
+100000, 2518, 92, 444, 0, 5831884, 48, 1214877, Many internal, some on sphere
+150000, 3262, 92, 573, 0, 8605166, 48, 1648611, Many internal, some on sphere
+200000, 4510, 92, 771, 0, 12155105, 48, 2503298, Many internal, some on sphere
+300000, 5503, 92, 931, 0, 17295167, 48, 3830349, Many internal, some on sphere
+500000, 6423, 92, 1088, 0, 28506237, 48, 6835033, Many internal, some on sphere
